@@ -86,8 +86,34 @@
 * same goes for management
 * should decisions, such as turning on the light be delegated to the server, or should they be delegated to the iot device?
 
+### Push or pull model?
+* push model
+  * the greenhouse sends update messages to the server
+  * advantages:
+    * can send updates for equipment status as events occur (eg the heater turns on, send notification)
+    * the server does not need to have code for sending requests to the iot devices
+  * disadvantages:
+    * means of pulling from (to) the greenhouses is still needed for remote configuration
+* pull model
+  * the server asks for data at intermittent intervals
+  * advantages:
+    * standard time intervals for gathering data
+    * already needed for configuration
+  * disadvantages
+    * does not support updating
+* could just implement both
+
 ### Need Non Volatile Flash Memory!!
 * or you could just use the mac address
+* but what if I want to save configuration?
 
 ### Additional requirement!
 * There should be local logging to write to an SD card, so upon failure, this can be inspected
+
+### Questions
+* with projects, should each project have a globally applied preset, or should each device in a project have its own preset
+* individual devices, probably, since this is small scale
+
+### Logging
+* logging should take place over network and to an SD card
+* each device should have its own log file in its own project directory. Those logs are persistent even if the device disconnects or changes projects
