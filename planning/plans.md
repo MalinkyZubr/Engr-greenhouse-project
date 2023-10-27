@@ -117,3 +117,6 @@
 ### Logging
 * logging should take place over network and to an SD card
 * each device should have its own log file in its own project directory. Those logs are persistent even if the device disconnects or changes projects
+
+### Deployment
+* entire app should be deployed to docker in order to provide compatibility
