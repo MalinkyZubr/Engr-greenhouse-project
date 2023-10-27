@@ -63,6 +63,8 @@
 * server should store presets in its own database table, and collected data in another. 
   * each project should have its own identifier whcih can be used to query data from specific projects
 * should provide timekeeping for the clients. At every data exchange for information from sensors, sync the times
+* microcontrollers should send the status of their active devices as well, like heaters, lights, and pumps
+  * when a device turns on, the iot device should send a logging message
 
 ### ALTERNATIVELY
 * Greenhouse connects directly to the webserver and makes http requests
@@ -82,6 +84,10 @@
 ### More questions
 * for data collection, should the server make a request to the iot device, or should the iot device make a request to the server containing the data?
 * same goes for management
+* should decisions, such as turning on the light be delegated to the server, or should they be delegated to the iot device?
 
 ### Need Non Volatile Flash Memory!!
 * or you could just use the mac address
+
+### Additional requirement!
+* There should be local logging to write to an SD card, so upon failure, this can be inspected
