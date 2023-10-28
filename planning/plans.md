@@ -120,3 +120,4 @@
 
 ### Deployment
 * entire app should be deployed to docker in order to provide compatibility
+* each sensor and connected device should have separate status

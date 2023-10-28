@@ -1,37 +1,47 @@
 CREATE TABLE ActiveProjects {
     ProjectID INT IDENTITY,
     ProjectName varchar(255),
-    DateStarted DEFAULT GETDATE()
+    DateStarted DATE DEFAULT GETDATE(),
+    PRIMARY KEY (ProjectID),
+    UNIQUE (ProjectName)
 }
 
 CREATE TABLE ArchivedProjects {
-    ProjectID INT IDENTITY,
+    ProjectID int,
     ProjectName varchar(255),
     DateStarted DATE,
-    DateEnded DEFAULT GETDATE()
+    DateEnded DATE DEFAULT GETDATE(),
+    PRIMARY KEY (ProjectID),
+    UNIQUE (ProjectName)
 }
 
 CREATE TABLE Data {
-    ProjectID INT IDENTITY,
-    ProjectName varchar(255),
-    DateCollected DEFAULT GETDATE(),
-    TimestampCollected DEFAULT CURRENT_TIMESTAMP(),
-    DeviceID varchar(255),
+    DeviceID INT,
+    ProjectID INT,
+    DateCollected DATE DEFAULT GETDATE(),
+    TimestampCollected TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
     Temperature FLOAT,
     Humidity FLOAT,
     Moisture FLOAT,
     LightExposure FLOAT,
-    IRExposure FLOAT 
+    IRExposure FLOAT,
+    pHLevel FLOAT,
 }
 
 CREATE TABLE RegisteredDevices {
     DeviceID INT IDENTITY,
+    DeviceName varchar(255),
     DeviceIP varchar(255),
     DeviceMAC varchar(255),
     PresetID varchar(255),
     ProjectID varchar(255),
-    Runtime FLOAT,
-    DeviceStatus BOOLEAN
+    CreationDate DATE DEFAULT GETDATE(),
+    CreationTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    DeviceStatus BOOLEAN,
+    PRIMARY KEY (DeviceID),
+    UNIQUE (DeviceName),
+    UNIQUE (DeviceIP),
+    UNIQUE (DeviceMAC)
 }
 
 CREATE TABLE Presets {
@@ -42,4 +52,7 @@ CREATE TABLE Presets {
     Moisture FLOAT,
     LightExposure FLOAT,
     IRExposure FLOAT,
+    PRIMARY KEY(PresetID),
+    UNIQUE (PresetName)
 }
+
