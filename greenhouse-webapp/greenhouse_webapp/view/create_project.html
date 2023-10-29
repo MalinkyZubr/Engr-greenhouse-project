@@ -6,10 +6,24 @@
     </head>
     <body>
         <div class="header">
-            <h1>Register Devices<name></h1>
+            <h1>Create New Project<name></h1>
         </div>
-            <div class="table very-wide-element">
-                <h2>Available Devices To Register</h2>
+
+        <div class="container">
+            <div class="table wide-element">
+                <h2>
+                    <label for="project">Project Name:</label><br>
+                    <input type="text" id="projectname" name="temp"><br>
+                </h2>
+                <form id="desc">
+                    <h3><label for="desc">Description:</label></h3>
+                    <textarea id="w3review" name="w3review" rows="15" cols="50">Enter a unique description for your stuff</textarea>
+                    <br>
+                </form>
+            </div>
+
+            <div class="table">
+                <h2>Assigned Devices</h2>
                 <table class="table">
                     <tbody>
                         <form id="device-selector">
@@ -44,7 +58,7 @@
         </div>
 
         <div class="buttons">
-            <button class="button very-wide-element">Register Devices</button>
+            <button class="button very-wide-element">Create Project</button>
         </div>
     </body>
 </html>

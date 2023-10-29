@@ -1,0 +1,148 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+.header {
+    background-color: green;
+    padding: 20px;
+    text-align: left;
+}
+
+.header h1 {
+    font-size: 24px;
+    margin: 0;
+}
+
+.container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-gap: 20px;
+}
+
+.table {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center; /* Center text in tables */
+    overflow: auto; /* Add scrollbars to tables */
+    height: 350px;
+    max-height: 400px;
+}
+
+.table h2 {
+    text-align: center;
+    position: sticky;/* Center column headers for all tables */
+}
+
+.table table {
+    width: 100%;
+}
+
+.table-header {
+    position: sticky;
+    top: 0;
+    background-color: white;
+}
+
+.table-header table {
+    width: 100%;
+    position: -webkit-sticky; /* For Safari */
+    z-index: 2; /* Ensure the header appears on top of the body */
+}
+
+.table table th, .table table td {
+    padding: 10px;
+}
+
+.table table td button {
+    background-color: green;
+    color: white;
+    border: none;
+    padding: 5px 0; /* Buttons fill up their sections */
+    width: 100%; /* Buttons fill up their sections */
+    text-align: center;
+    text-decoration: none;
+    display: block;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.registered-devices-table th {
+    width: 50%; /* Equally spaced columns for Registered Devices */
+}
+
+.registered-devices-table th, .registered-devices-table td {
+    text-align: center; /* Center column headers and data in Registered Devices */
+}
+
+.status-button {
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    padding: 5px 0; /* Buttons fill up their sections */
+    width: 100%; /* Buttons fill up their sections */
+    text-align: center;
+    text-decoration: none;
+    display: block;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-gap: 10px;
+}
+
+.button {
+    background-color: green;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    cursor: pointer;
+}
+.very-wide-element {
+    grid-column: span 3;
+}
+.wide-element {
+    grid-column: span 2;
+}
+.checkbox-button {
+    display: block;
+    position: relative;
+    padding: 10px 20px;
+    background-color: #eee;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 10px;
+    user-select: none;
+}
+
+/* Hide the default checkbox input */
+.checkbox-button input {
+    display: none;
+}
+
+/* Style the custom checkbox (checkmark) */
+.checkbox-button .checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    background-color: #fff;
+    border: 2px solid #ccc;
+    border-radius: 50%;
+    margin: 5px;
+}
+
+/* Style the checkmark when the checkbox is checked */
+.checkbox-button input:checked + .checkmark {
+    background-color: green; /* Change color to your desired color */
+    border-color: green;
+    transition: background-color 0.3s, border-color 0.3s;
+}

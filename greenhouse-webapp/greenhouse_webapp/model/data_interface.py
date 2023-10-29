@@ -158,7 +158,7 @@ class insertData(DatabaseQuery):
     f"""INSERT INTO Data (DeviceID, ProjectID, Temperature, Humidity, Moisture, LightExposure, IRExposure, pHLevel)
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"""
     def query(self, cursor, device_id, project_id, temperature, humidity, moisture, light_exposure, ir_exposure, ph_level):
-        return cursor.execute(self.query, (device_id, project_id, temperature, humidity, moisturem light_exposure, ir_exposure, ph_level))
+        return cursor.execute(self.query, (device_id, project_id, temperature, humidity, moisture light_exposure, ir_exposure, ph_level))
 
 
 class getDeviceID(DatabaseQuery):
@@ -204,7 +204,7 @@ class registerDevice(DatabaseQuery):
     query = \
     f"""INSERT INTO RegisteredDevices (DeviceName, DeviceIP, DeviceMAC, PresetID, ProjectID, DeviceStatus)
     VALUES (%s, %s, %s, %s, %s, %s);"""
-    def query(self, cursor, device_name, device_ip, device_map, preset_id, project_id, device_status):
+    def query(self, cursor, device_name, device_ip, device_mac, preset_id, project_id, device_status):
         return cursor.execute(self.query, (device_name, device_ip, device_mac, preset_id, project_id, device_status))
 
 
@@ -256,7 +256,7 @@ class updatePreset(DatabaseQuery):
 class deletePreset(DatabaseQuery):
     query = \
     f"""DELETE FROM Presets WHERE PresetID = %s"""
-    def query(self, cursort, preset_id):
+    def query(self, cursor, preset_id):
         return cursor.execute(self.query, {"PresetID":preset_id})
 
 
@@ -275,8 +275,35 @@ class DatabaseInterface:
             self.cursor.execute(sql_creation_script)
 
         self.queries = {
-            "getActiveProjects":
+            "getActiveProjects":getActiveProjects(),
+            "getProjectID":getProjectID(),
+            "getArchiveProjectID":getArchiveProjectID(),
+            "getProject":getProject(),
+            "getArchivedProjects":getArchivedProjects(),
+            "getProjectData":getProjectData(),
+            "getDeviceData":getDeviceData(),
+            "addProject":addProject(),
+            "updateProject":updateProject(),
+            "archiveProject":archiveProject(),
+            "deleteProject":deleteProject(),
+            "insertData":insertData(),
+            "getDeviceID":getDeviceID(),
+            "getDevices":getDevices(),
+            "getProjectDevices":getProjectDevices(),
+            "getDevices":getDevice(),
+            "configureDevice":configureDevice(),
+            "registerDevice":registerDevice(),
+            "deleteDevice":deleteDevice(),
+            "getPresetID":getPresetID(),
+            "getPresets":getPresets(),
+            "getPreset":getPreset(),
+            "createPreset":createPreset(),
+            "updatePreset":updatePreset(),
+            "deletePreset":deletePreset()
         }
+    def execute(self, query, *query_parameters):
+        return self.queries[query](self.cursor, *query_parameters)
 
-
-        
+    def shutdown(self):
+        self.cursor.close()
+        self.connector.close()

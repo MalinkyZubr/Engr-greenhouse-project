@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="style.css">
+  </head>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Create New Preset<name></h1>
+        </div>
+
+        <div class="container">
+            <div class="table wide-element">
+                <h2>
+                    <label for="preset">Preset Name:</label><br>
+                    <input type="text" id="presetname" name="temp"><br>
+                </h2>
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <td>
+                                <label for="temp">Temperature (C):</label><br>
+                                <input type="text" id="temp" name="temp"><br>
+                            </td>
+                            <td>
+                                <label for="humid">Humidity (%):</label><br>
+                                <input type="text" id="humid" name="humid"><br>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <label for="moisture">Moisture (%):</label><br>
+                                <input type="text" id="moisture" name="moisture"><br>
+                            </td>
+                            <td>
+                                <label for="light">Light Exposure (l):</label><br>
+                                <input type="text" id="light" name="light"><br>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <label for="ir">IR Exposure (l):</label><br>
+                                <input type="text" id="ir" name="ir"><br>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table">
+                <h2>Assigned Devices</h2>
+                <table class="table">
+                    <tbody>
+                        <form id="device-selector">
+                            <tr>
+                                <td>
+                                    <label class="checkbox-button">
+                                        <input type="checkbox" id="test">
+                                        <span class="checkmark"></span> Option 1
+                                    </label>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label class="checkbox-button">
+                                        <input type="checkbox" id="test">
+                                        <span class="checkmark"></span> Option 1
+                                    </label>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label class="checkbox-button">
+                                        <input type="checkbox" id="test">
+                                        <span class="checkmark"></span> Option 1
+                                    </label>
+                                </td>
+                            </tr>
+                        </form>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button class="button very-wide-element">Create Preset</button>
+        </div>
+    </body>
+</html>
