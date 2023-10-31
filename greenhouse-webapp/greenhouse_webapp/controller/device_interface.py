@@ -1,7 +1,10 @@
 from fastapi import APIRouter
+from DBIntRouter import APIDRouter
 
-router = APIRouter()
-
+router = APIDRouter()
+"""
+this file interacts directly with the devices on the entwork
+"""
 @router.get()
 async def list_devices():
     """

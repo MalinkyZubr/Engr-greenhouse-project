@@ -1,5 +1,7 @@
 import os
 import sys
+import json
+import typing
 
 import mysql.connector
 from mysql.connector.cursor import MySQLCursorPrepared
@@ -8,6 +10,7 @@ from abc import ABC, abstractmethod
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sql_creation_path = os.path.join(script_dir, "create_db.sql")
+sql_config_path = os.path.join(script_dir, "dbconf.json")
 
 
 class DatabaseQuery(ABC):
@@ -32,10 +35,10 @@ class DatabaseQuery(ABC):
         "\\"
     ]
 
-    query = """"""
-
-    @absractmethod
-    def query(self, cursor):
+    query_str = """"""
+        
+    @abstractmethod
+    def query(self, cursor, *query_parameters):
         """cursor.execute should go in here, along with query parameters"""
         pass
 
@@ -53,227 +56,216 @@ class DatabaseQuery(ABC):
 
 
 class getProjectID(DatabaseQuery):
-    query = \
+    query_str = \
     f"""SELECT ProjectID FROM ActiveProjects WHERE ProjectName = %s;"""
     def query(self, cursor, project_name):
-        return cursor.execute(self.query, {"ProjectName":project_name})
+        return cursor.execute(self.query_str, (project_name,))
 
 
 class getArchiveProjectID(DatabaseQuery):
-    query = \
+    query_str = \
     f"""SELECT ProjectID FROM ArchivedProjects WHERE ProjectName = %s;"""
     def query(self, cursor, project_name):
-        return cursor.execute(self.query, {"ProjectName":project_name})
+        return cursor.execute(self.query_str, (project_name,))
 
 
 class getActiveProjects(DatabaseQuery):
-    query = \
+    query_str = \
     f"""SELECT * FROM ActiveProjects;"""
     def query(self, cursor):
-        return cursor.execute(self.query)
+        return cursor.execute(self.query_str)
 
 
 class getProject(DatabaseQuery):
-    query = \ 
+    query_str = \
     f"""SELECT * FROM ActiveProjects WHERE ProjectID = %s;"""
     def query(self, cursor, project_id):
-        return cursor.execute(self.query, {"ProjectID":project_id})
+        return cursor.execute(self.query_str, (project_id,))
 
 
 class getArchivedProjects(DatabaseQuery):
-    query = \ 
+    query_str = \
     f"""SELECT * FROM ArchivedProjects;"""
     def query(self, cursor):
-        return cursor.execute(self.query)
+        return cursor.execute(self.query_str)
 
 
 class getArchivedProject(DatabaseQuery):
-    query = \ 
+    query_str = \
     f"""SELECT * FROM ArchivedProjects
     WHERE ProjectID = %s;"""
     def query(self, cursor, project_id):
-        return cursor.execute(self.query, {"ProjectID":project_id})
+        return cursor.execute(self.query_str, (project_id,))
     
 
 class getProjectData(DatabaseQuery):
-    query = \
-    f"""SELECT * FROM DATA WHERE ProjectID = %s"""
+    query_str = \
+    f"""SELECT * FROM DATA WHERE ProjectID = %s;"""
     def query(self, cursor, project_id):
-        return cursor.execute(self.query, {"ProjectID":project_id})
+        return cursor.execute(self.query_str, (project_id,))
 
 
 class getDeviceData(DatabaseQuery):
-    query = \
-    f"""SELECT * FROM DATA WHERE DeviceID = %s"""
+    query_str = \
+    f"""SELECT * FROM DATA WHERE DeviceID = %s;"""
     def query(self, cursor, project_id):
-        return cursor.execute(self.query, {"DeviceID":project_id})
+        return cursor.execute(self.query_str, (project_id,))
 
 
 class addProject(DatabaseQuery):
-    query = \
-    f"""@name = %s;
-    INSERT INTO ActiveProjects (ProjectName)
-    VALUES (@name) WHERE NOT EXISTS (SELECT 1 FROM ArchivedProjects WHERE ProjectName = @name);"""
+    query_str = \
+    f"""INSERT INTO ActiveProjects (ProjectName)
+    VALUES (%s);"""
     def query(self, cursor, project_name):
-        return cursor.execute(self.query, {"name":project_name})
+        cursor.execute(f"""SELECT * FROM ArchivedProjects WHERE ProjectName = %s""", (project_name,))
+        if cursor.fetchall():
+            raise KeyError("The selected name already exists in the archive table")
+        return cursor.execute(self.query_str, (project_name,))#{"name":project_name})
 
 
 class updateProject(DatabaseQuery):
-    query = \
+    query_str = \
     f"""UPDATE ActiveProjects
-    SET ProjectName = %s
-    WHERE ProjectID = %s;"""
+    SET ProjectName = %(ProjectName)s
+    WHERE ProjectID = %(ProjectID)s;"""
     def query(self, cursor, project_name, project_id):
-        return cursor.execute(self.query, {"ProjectName":project_name, "ProjectID":project_id})
+        return cursor.execute(self.query_str, {"ProjectName":project_name, "ProjectID":project_id})
 
 
 class archiveProject(DatabaseQuery):
-    query = \
-    f"""SET @id = %s
-SET @requested_name = (SELECT ProjectName FROM ActiveProjects WHERE ProjectID = @id);
-SET @date = (SELECT DateStarted FROM ActiveProjects WHERE ProjectID = @id);
-IF EXISTS (SELECT 1 FROM ArchivedProjects WHERE ProjectName = @requested_name) THEN
-    SET @new_name = @desired_name;
-    SET @increment = 0;
-    WHILE EXISTS (SELECT 1 FROM ArchivedProjects WHERE ProjectName = @new_name) DO
-        SET @new_name = CONCAT(@new_name, @increment);
-        @increment = @increment + 1;
-    END WHILE;
-INSERT INTO ArchivedProjects (ProjectID, ProjectName, DateStarted)
-VALUES (@id, @requested_name, @date);
-DELETE FROM ActiveProjects WHERE ProjectID = @id;"""
+    query_str = \
+    f"""INSERT INTO ArchivedProjects
+    SELECT * FROM ActiveProjects
+    WHERE ProjectID = %s;
+    DELETE FROM ActiveProjects WHERE ProjectID = %s;"""
     def query(self, cursor, project_id):
-        return cursor.execute(self.query, (project_id,))
+        return cursor.execute(self.query_str, (project_id, project_id))
 
 
 class deleteProject(DatabaseQuery):
-    query = \
+    query_str = \
     f"""DELETE FROM ArchivedProjects WHERE ProjectID = %s"""
     def query(self, cursor, project_id):
-        return cursor.execute(self.query, {"ProjectID":project_id})
+        return cursor.execute(self.query_str, (project_id,))
 
 
 class insertData(DatabaseQuery):
-    query = \ 
+    query_str = \
     f"""INSERT INTO Data (DeviceID, ProjectID, Temperature, Humidity, Moisture, LightExposure, IRExposure, pHLevel)
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"""
     def query(self, cursor, device_id, project_id, temperature, humidity, moisture, light_exposure, ir_exposure, ph_level):
-        return cursor.execute(self.query, (device_id, project_id, temperature, humidity, moisture light_exposure, ir_exposure, ph_level))
+        return cursor.execute(self.query_str, (device_id, project_id, temperature, humidity, moisture, light_exposure, ir_exposure, ph_level))
 
 
 class getDeviceID(DatabaseQuery):
-    query = \
+    query_str = \
     f"""SELECT DeviceID FROM RegisteredDevices
     WHERE DeviceName = %s;"""
     def query(self, cursor, device_name):
-        return cursor.execute(self.query, {"DeviceName": device_name})
+        return cursor.execute(self.query_str, (device_name,))
 
 
 class getDevices(DatabaseQuery):
-    query = \
+    query_str = \
     """SELECT * FROM RegisteredDevices;"""
     def query(self, cursor):
-        return cursor.execute(self.query)
+        return cursor.execute(self.query_str)
 
 
 class getProjectDevices(DatabaseQuery):
-    query = \
+    query_str = \
     f"""SELECT * FROM RegisteredDevices WHERE ProjectID = %s;"""
     def query(self, cursor, project_id):
-        return cursor.execute(self.query, {"ProjectID":project_id})
+        return cursor.execute(self.query_str, (project_id,))
 
 
 class getDevice(DatabaseQuery):
-    query = \ 
+    query_str = \
     f"""SELECT * FROM RegisteredDevices
     WHERE DeviceID = %s;"""
     def query(self, cursor, device_id):
-        return cursor.execute(self.query, {"DeviceID":device_id})
+        return cursor.execute(self.query_str, (device_id,))
 
 
 class configureDevice(DatabaseQuery):
-    query = \
+    query_str = \
     f"""UPDATE RegisteredDevices
-    SET DeviceName = %s, PresetID = %s, ProjectID = %s, DeviceStatus = %s
-    WHERE DeviceID = %s;"""
+    SET DeviceName = %(DeviceName)s, PresetID = %(PresetID)s, ProjectID = %(ProjectID)s, DeviceStatus = %(DeviceStatus)s
+    WHERE DeviceID = %(DeviceID)s;"""
     def query(self, cursor, device_name, preset_id, project_id, status, device_id):
-        return cursor.execute(self.query, {"DeviceName":device_name, "ProjectID":project_id, "PresetID":preset_it, "DeviceStatus": status, "DeviceID":device_id})
+        return cursor.execute(self.query_str, {"DeviceName":device_name, "ProjectID":project_id, "PresetID":preset_id, "DeviceStatus": status, "DeviceID":device_id})
 
 
 class registerDevice(DatabaseQuery):
-    query = \
+    query_str = \
     f"""INSERT INTO RegisteredDevices (DeviceName, DeviceIP, DeviceMAC, PresetID, ProjectID, DeviceStatus)
     VALUES (%s, %s, %s, %s, %s, %s);"""
     def query(self, cursor, device_name, device_ip, device_mac, preset_id, project_id, device_status):
-        return cursor.execute(self.query, (device_name, device_ip, device_mac, preset_id, project_id, device_status))
+        return cursor.execute(self.query_str, (device_name, device_ip, device_mac, preset_id, project_id, device_status))
 
 
 class deleteDevice(DatabaseQuery):
-    query = \
+    query_str = \
     f"""DELETE FROM RegisteredDevices WHERE DeviceID = %s;"""
     def query(self, cursor, device_id):
-        return cursor.execute(self.query, {"DeviceID":device_id})
+        return cursor.execute(self.query_str, (device_id,))
 
 
 class getPresetID(DatabaseQuery):
-    query = \
+    query_str = \
     f"""SELECT PresetID FROM Presets WHERE PresetName = %s"""
     def query(self, cursor, preset_name):
-        return cursor.execute(self.query, {"PresetName":preset_name})
+        return cursor.execute(self.query_str, (preset_name,))
 
 
 class getPresets(DatabaseQuery):
-    query = \
+    query_str = \
     """SELECT * FROM Presets;"""
     def query(self, cursor):
-        return cursor.execute(self.query)
+        return cursor.execute(self.query_str)
 
 
 class getPreset(DatabaseQuery):
-    query = \
+    query_str = \
     f"""SELECT * FROM Presets WHERE PresetID = %s"""
     def query(self, cursor, preset_id):
-        return cursor.execute(self.query, {"PresetID":preset_id})
+        return cursor.execute(self.query_str, (preset_id,))
 
 
 class createPreset(DatabaseQuery):
-    query = \
+    query_str = \
     f"""INSERT INTO Presets (PresetName, Temperature, Humidity, Moisture, LightExposure, IRExposure)
     VALUES (%s, %s, %s, %s, %s, %s);"""
     def query(self, cursor, preset_name, temperature, humidity, moisture, light_exposure, ir_exposure):
-        return cursor.execute(self.query, (preset_name, temperature, humdidity, moisture, light_exposure, ir_exposure))
+        return cursor.execute(self.query_str, (preset_name, temperature, humidity, moisture, light_exposure, ir_exposure))
 
 
 class updatePreset(DatabaseQuery):
-    query = \
+    query_str = \
     f"""UPDATE Presets
-    SET PresetName = %s, Temperature = %s, Humidity = %s, Moisture = %s, LightExposure = %s, IRExposure = %s
-    WHERE PresetID = %s"""
+    SET PresetName = %(PresetName)s, Temperature = %(Temperature)s, Humidity = %(Humidity)s, Moisture = %(Moisture)s, LightExposure = %(LightExposure)s, IRExposure = %(IRExposure)s
+    WHERE PresetID = %(presetID)s"""
     def query(self, cursor, preset_name, temperature, humidity, moisture, light_exposure, ir_exposure, preset_id):
-        return cursor.execute(self.query, {"PresetName":preset_name, "Temperature":temperature, "Humidity":humidity, "Moisture":moisture, "LightExposure":light_exposure, "IRExposure":ir_exposure})
+        return cursor.execute(self.query_str, {"PresetName":preset_name, "Temperature":temperature, "Humidity":humidity, "Moisture":moisture, "LightExposure":light_exposure, "IRExposure":ir_exposure, "presetID":preset_id})
 
 
 class deletePreset(DatabaseQuery):
-    query = \
+    query_str = \
     f"""DELETE FROM Presets WHERE PresetID = %s"""
     def query(self, cursor, preset_id):
-        return cursor.execute(self.query, {"PresetID":preset_id})
-
+        return cursor.execute(self.query_str, (preset_id,))
+    
 
 # configure db to only connect via localhost so that no password needed
 class DatabaseInterface:
-    def __init__(self, user, password, host, database):
-        self.connector = mysql.connector.connect(
-            user="greenhouse_api",
-            host="127.0.0.1",
-            database="greenhouse_db"
+    def __init__(self):
+        with open(sql_config_path, 'r') as f:
+            config = json.loads(f.read()) # intiialization scripts shoild be run by dockerfile
+            
+        self.connection_pool = mysql.connector.connect(
+            **config,
         )
-        self.cursor = self.connector.cursor(cursor_class=MySQLCursorPrepared)
-
-        with open(sql_creation_path, 'r') as f:
-            sql_creation_script = f.read()
-            self.cursor.execute(sql_creation_script)
-
+                
         self.queries = {
             "getActiveProjects":getActiveProjects(),
             "getProjectID":getProjectID(),
@@ -301,9 +293,16 @@ class DatabaseInterface:
             "updatePreset":updatePreset(),
             "deletePreset":deletePreset()
         }
-    def execute(self, query, *query_parameters):
-        return self.queries[query](self.cursor, *query_parameters)
+        
+    def execute(self, query, *query_parameters)-> list[tuple | None]:
+        connection = mysql.connector.connect(pool_name="db_pool")
+        cursor = connection.cursor(prepared=True)
+        self.queries[query](cursor, *query_parameters)
+        result = cursor.fetchall()
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return result
 
     def shutdown(self):
-        self.cursor.close()
-        self.connector.close()
+        self.connection_pool.close()

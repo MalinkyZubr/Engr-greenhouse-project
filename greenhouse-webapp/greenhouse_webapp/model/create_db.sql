@@ -1,58 +1,46 @@
-CREATE TABLE ActiveProjects {
-    ProjectID INT IDENTITY,
-    ProjectName varchar(255),
-    DateStarted DATE DEFAULT GETDATE(),
-    PRIMARY KEY (ProjectID),
-    UNIQUE (ProjectName)
-}
+CREATE TABLE ActiveProjects(
+    ProjectID INT AUTO_INCREMENT PRIMARY KEY,
+    ProjectName VARCHAR(255) UNIQUE,
+    DateStarted DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-CREATE TABLE ArchivedProjects {
-    ProjectID int,
-    ProjectName varchar(255),
-    DateStarted DATE,
-    DateEnded DATE DEFAULT GETDATE(),
-    PRIMARY KEY (ProjectID),
-    UNIQUE (ProjectName)
-}
+CREATE TABLE ArchivedProjects (
+    ProjectID INT PRIMARY KEY,
+    ProjectName VARCHAR(255) UNIQUE,
+    DateStarted DATETIME,
+    DateEnded DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-CREATE TABLE Data {
+CREATE TABLE Data (
     DeviceID INT,
     ProjectID INT,
-    DateCollected DATE DEFAULT GETDATE(),
-    TimestampCollected TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    DateCollected DATETIME DEFAULT CURRENT_TIMESTAMP,
     Temperature FLOAT,
     Humidity FLOAT,
     Moisture FLOAT,
     LightExposure FLOAT,
     IRExposure FLOAT,
-    pHLevel FLOAT,
-}
+    pHLevel FLOAT
+);
 
-CREATE TABLE RegisteredDevices {
-    DeviceID INT IDENTITY,
-    DeviceName varchar(255),
-    DeviceIP varchar(255),
-    DeviceMAC varchar(255),
-    PresetID varchar(255),
-    ProjectID varchar(255),
-    CreationDate DATE DEFAULT GETDATE(),
-    CreationTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
-    DeviceStatus BOOLEAN,
-    PRIMARY KEY (DeviceID),
-    UNIQUE (DeviceName),
-    UNIQUE (DeviceIP),
-    UNIQUE (DeviceMAC)
-}
+CREATE TABLE RegisteredDevices (
+    DeviceID INT AUTO_INCREMENT PRIMARY KEY,
+    DeviceName VARCHAR(255) UNIQUE,
+    DeviceIP VARCHAR(255) UNIQUE,
+    DeviceMAC VARCHAR(255) UNIQUE,
+    PresetID VARCHAR(255),
+    ProjectID VARCHAR(255),
+    CreationDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    DeviceStatus BOOLEAN
+);
 
-CREATE TABLE Presets {
-    PresetID INT IDENTITY,
-    PresetName varchar(255),
+CREATE TABLE Presets (
+    PresetID INT AUTO_INCREMENT PRIMARY KEY,
+    PresetName VARCHAR(255) UNIQUE,
     Temperature FLOAT,
     Humidity FLOAT,
     Moisture FLOAT,
     LightExposure FLOAT,
-    IRExposure FLOAT,
-    PRIMARY KEY(PresetID),
-    UNIQUE (PresetName)
-}
+    IRExposure FLOAT
+);
 

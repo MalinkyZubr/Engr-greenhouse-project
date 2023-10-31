@@ -1,6 +1,6 @@
-from fastapi import APIRouter
+from DBIntRouter import APIDRouter
 
-router = APIRouter()
+router = APIDRouter()
 
 @router.post()
 async def create_project():
