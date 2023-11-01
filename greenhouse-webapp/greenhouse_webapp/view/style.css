@@ -146,3 +146,41 @@ body {
     border-color: green;
     transition: background-color 0.3s, border-color 0.3s;
 }
+
+/* Style the radio button container as a button */
+.radio-button {
+    display: block;
+    position: relative;
+    padding: 10px 20px;
+    background-color: #eee;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 10px;
+    user-select: none;
+}
+
+/* Hide the default radio input */
+.radio-button input {
+    display: none;
+}
+
+/* Style the custom radio button (radiomark) */
+.radio-button .radiomark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    background-color: #fff;
+    border: 2px solid #ccc;
+    border-radius: 50%;
+    margin: 5px;
+}
+
+/* Style the radiomark when the radio button is checked */
+.radio-button input:checked + .radiomark {
+    background-color: green; /* Change color to your desired color */
+    border-color: green;
+    transition: background-color 0.3s, border-color 0.3s;
+}

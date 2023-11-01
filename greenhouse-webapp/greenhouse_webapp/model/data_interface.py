@@ -282,7 +282,6 @@ class DatabaseInterface:
             "getArchivedProjects":getArchivedProjects(),
             "getArchivedProject":getArchivedProject(),
             "getProjectData":getProjectData(),
-            "getArchiveProjectData":getArchiveProjectData(),
             "getDeviceData":getDeviceData(),
             "addProject":addProject(),
             "updateProject":updateProject(),
