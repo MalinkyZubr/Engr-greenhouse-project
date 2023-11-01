@@ -11,7 +11,7 @@ class ReceivedPing:
         self.ip = ip
         self.name = name
         
-    def update_time():
+    def update_time(self):
         self.time_received = time.time()
         
     def check_time():
@@ -51,6 +51,9 @@ class DeviceManager:
             except:
                 scan_result = ReceivedPing(data['ip'], data['name'])
                 self.scans[data['mac']] = scan_result
+                
+    def get_scans(self):
+        return self.scans
     
     async def __call__(self):
         await asyncio.gather(

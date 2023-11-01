@@ -289,7 +289,7 @@ class DatabaseInterface:
             "getDeviceID":getDeviceID(),
             "getDevices":getDevices(),
             "getProjectDevices":getProjectDevices(),
-            "getDevices":getDevice(),
+            "getDevice":getDevice(),
             "configureDevice":configureDevice(),
             "registerDevice":registerDevice(),
             "deleteDevice":deleteDevice(),
