@@ -45,17 +45,37 @@ async def create_preset(preset_info: PresetSchema):
         preset_info.moisture,
         preset_info.light_exposure,
         preset_info.ir_exposure)
-
+    return "Successfully Created New Preset!"
+    
 @router.put("/{preset_name}")
-async def update_preset():
+async def update_preset(preset_name, preset_info):
     """
     update a preset's fields
     """
-    pass
+    router.database_connector.execute('updatePreset', 
+        router.database_connector.execute('getPresetID', preset_name),
+        preset_name=preset_name, 
+        temperature=preset_info.daytime_temp, 
+        humidity=preset_info.humidity,
+        moisture=preset_info.moisture,
+        light_exposure=preset_info.light_exposure,
+        ir_exposure=preset_info.ir_exposure)
+    return "Successful update"
 
-@router.delete()
-async def delete_preset():
+@router.delete("/{preset_name}")
+async def delete_preset(preset_name):
     """
     delete a specified preset
     """
-    pass
+    preset_id = router.database_connector.execute('getPresetID', preset_name)
+    router.database_connector.execute("deletePreset", preset_id)
+    return "Successfully deleted!"
+    
+@router.get("/{preset_name}/devices")
+async def get_associated_devices(preset_name):
+    """
+    get a list of all devices associated with the select preset
+    """
+    preset_id = router.database_connector.execute('getPresetID', preset_name)
+    devices = router.database_connector.execute("getPresetAssociatedDevices", preset_id)
+    return devices

@@ -38,7 +38,7 @@ class DatabaseQuery(ABC):
     query_str = """"""
         
     @abstractmethod
-    def query(self, cursor, *query_parameters):
+    def query(self, cursor, *query_parameters, **keyword_parameters):
         """cursor.execute should go in here, along with query parameters"""
         pass
 
@@ -126,9 +126,9 @@ class addProject(DatabaseQuery):
 class updateProject(DatabaseQuery):
     query_str = \
     f"""UPDATE ActiveProjects
-    SET ProjectName = %(ProjectName)s
+    SET ProjectName = COALESCE(%(ProjectName)s, ProjectName)
     WHERE ProjectID = %(ProjectID)s;"""
-    def query(self, cursor, project_name, project_id):
+    def query(self, cursor, project_id, project_name=None):
         return cursor.execute(self.query_str, {"ProjectName":project_name, "ProjectID":project_id})
 
 
@@ -190,9 +190,9 @@ class getDevice(DatabaseQuery):
 class configureDevice(DatabaseQuery):
     query_str = \
     f"""UPDATE RegisteredDevices
-    SET DeviceName = %(DeviceName)s, PresetID = %(PresetID)s, ProjectID = %(ProjectID)s, DeviceStatus = %(DeviceStatus)s
+    SET DeviceName = COALESCE(%(DeviceName)s, DeviceName), PresetID = COALESCE(%(PresetID)s, PresetID), ProjectID = COALESCE(%(ProjectID)s, ProjectID), DeviceStatus = COALESCE(%(DeviceStatus)s, DeviceStatus)
     WHERE DeviceID = %(DeviceID)s;"""
-    def query(self, cursor, device_name, preset_id, project_id, status, device_id):
+    def query(self, cursor, device_id, device_name=None, preset_id=None, project_id=None, status=None):
         return cursor.execute(self.query_str, {"DeviceName":device_name, "ProjectID":project_id, "PresetID":preset_id, "DeviceStatus": status, "DeviceID":device_id})
 
 
@@ -243,15 +243,22 @@ class createPreset(DatabaseQuery):
 class updatePreset(DatabaseQuery):
     query_str = \
     f"""UPDATE Presets
-    SET PresetName = %(PresetName)s, Temperature = %(Temperature)s, Humidity = %(Humidity)s, Moisture = %(Moisture)s, LightExposure = %(LightExposure)s, IRExposure = %(IRExposure)s
+    SET PresetName = COALESCE(%(PresetName)s, PresetName), Temperature = COALESCE(%(Temperature)s, Temperature), Humidity = COALESCE(%(Humidity)s, Humidity), Moisture = COALESCE(%(Moisture)s, Moisture), LightExposure = COALESCE(%(LightExposure)s, LightExposure), IRExposure = COALESCE(%(IRExposure)s, IRExposure)
     WHERE PresetID = %(presetID)s"""
-    def query(self, cursor, preset_name, temperature, humidity, moisture, light_exposure, ir_exposure, preset_id):
+    def query(self, cursor, preset_id, preset_name=None, temperature=None, humidity=None, moisture=None, light_exposure=None, ir_exposure=None):
         return cursor.execute(self.query_str, {"PresetName":preset_name, "Temperature":temperature, "Humidity":humidity, "Moisture":moisture, "LightExposure":light_exposure, "IRExposure":ir_exposure, "presetID":preset_id})
 
 
 class deletePreset(DatabaseQuery):
     query_str = \
     f"""DELETE FROM Presets WHERE PresetID = %s"""
+    def query(self, cursor, preset_id):
+        return cursor.execute(self.query_str, (preset_id,))
+    
+    
+class getPresetAssociatedDevices(DatabaseQuery):
+    query_str = \
+    f"""SELECT * FROM RegisteredDevices WHERE PresetID = %s"""
     def query(self, cursor, preset_id):
         return cursor.execute(self.query_str, (preset_id,))
     
@@ -291,13 +298,14 @@ class DatabaseInterface:
             "getPreset":getPreset(),
             "createPreset":createPreset(),
             "updatePreset":updatePreset(),
-            "deletePreset":deletePreset()
+            "deletePreset":deletePreset(),
+            "getPresetAssociatedDevices":getPresetAssociatedDevices()
         }
         
-    def execute(self, query, *query_parameters)-> list[tuple | None]:
+    def execute(self, query, *query_parameters, **keyword_parameters)-> list[tuple | None]:
         connection = mysql.connector.connect(pool_name="db_pool")
         cursor = connection.cursor(prepared=True)
-        self.queries[query](cursor, *query_parameters)
+        self.queries[query](cursor, *query_parameters, **keyword_parameters)
         result = cursor.fetchall()
         connection.commit()
         cursor.close()
