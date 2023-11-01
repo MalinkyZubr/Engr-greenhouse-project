@@ -3,6 +3,14 @@ import struct
 import asyncio
 import json
 import time
+import os
+import netifaces
+
+from udp_schemas import RegistrationSchema
+
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+manager_conf = os.path.join(script_dir, "conf/managerconf.json")
 
 
 class ReceivedPing:
@@ -22,9 +30,14 @@ class ReceivedPing:
 class DeviceManager:
     mutlicast_address = '224.0.2.4'
     port = 1337
-    def __init__(self, loop):
+    def __init__(self, loop: asyncio.BaseEventLoop):
+        with open(manager_conf, 'r') as f:
+            self.ip_address = json.loads(f.read())['host']
         self.loop = loop
-        self.scans = dict()
+        
+        self.scans: dict[str,asyncio.Event] = dict()
+        self.registration_queue = dict()
+        
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', self.port))
         
@@ -47,10 +60,17 @@ class DeviceManager:
             data = json.loads(data.decode())
             
             try:
-                self.scans[data['mac']].update_time()
+                self.scans[data['ip']].update_time()
             except:
-                scan_result = ReceivedPing(data['ip'], data['name'])
-                self.scans[data['mac']] = scan_result
+                scan_result = ReceivedPing(data['mac'], data['name'])
+                self.scans[data['ip']] = scan_result
+                
+    async def send_registration(self, device_ip):
+        if device_ip not in self.scans:
+            raise Exception("The IP has not been detected by any scan!")
+        message = RegistrationSchema(server_ip=self.ip_address).model_dump_json().encode()
+        await self.loop.sock_sendall(self.sock, message)
+        self.registration_queue[device_ip] = asyncio.Condition()
                 
     def get_scans(self):
         return self.scans

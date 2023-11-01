@@ -1,9 +1,12 @@
 from pydantic import BaseModel
 
 
-class BaseSchema(BaseModel):
+class ClientSchema(BaseModel):
     device_name: str
     src_ip: str
     src_mac: str
     
-class ServerSchema(BaseSchema):
+    
+class RegistrationSchema(BaseModel):
+    server_ip: str
+    

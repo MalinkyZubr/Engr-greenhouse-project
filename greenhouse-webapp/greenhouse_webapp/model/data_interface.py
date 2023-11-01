@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sql_creation_path = os.path.join(script_dir, "create_db.sql")
-sql_config_path = os.path.join(script_dir, "dbconf.json")
+sql_config_path = os.path.join(script_dir, "conf/dbconf.json")
 
 
 class DatabaseQuery(ABC):
@@ -100,11 +100,11 @@ class getArchivedProject(DatabaseQuery):
 
 class getProjectData(DatabaseQuery):
     query_str = \
-    f"""SELECT * FROM DATA WHERE ProjectID = %s;"""
+    f"""SELECT * FROM Data WHERE ProjectID = %s;"""
     def query(self, cursor, project_id):
         return cursor.execute(self.query_str, (project_id,))
-
-
+    
+    
 class getDeviceData(DatabaseQuery):
     query_str = \
     f"""SELECT * FROM DATA WHERE DeviceID = %s;"""
@@ -144,9 +144,10 @@ class archiveProject(DatabaseQuery):
 
 class deleteProject(DatabaseQuery):
     query_str = \
-    f"""DELETE FROM ArchivedProjects WHERE ProjectID = %s"""
+    f"""DELETE FROM ArchivedProjects WHERE ProjectID = %s;
+    DELETE FROM Data WHERE ProjectID = %s"""
     def query(self, cursor, project_id):
-        return cursor.execute(self.query_str, (project_id,))
+        return cursor.execute(self.query_str, (project_id,project_id))
 
 
 class insertData(DatabaseQuery):
@@ -279,7 +280,9 @@ class DatabaseInterface:
             "getArchiveProjectID":getArchiveProjectID(),
             "getProject":getProject(),
             "getArchivedProjects":getArchivedProjects(),
+            "getArchivedProject":getArchivedProject(),
             "getProjectData":getProjectData(),
+            "getArchiveProjectData":getArchiveProjectData(),
             "getDeviceData":getDeviceData(),
             "addProject":addProject(),
             "updateProject":updateProject(),

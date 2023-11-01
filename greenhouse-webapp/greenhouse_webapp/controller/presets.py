@@ -16,6 +16,15 @@ class PresetSchema(BaseModel):
     
     
 @router.get("/")
+async def load_webpage():
+    """
+    load the webpage for presets
+    """
+    presets = router.database_connector.execute('getPresets')
+    presets = [preset[2] for preset in presets]
+    return presets
+    
+@router.get("/list_presets")
 async def list_presets():
     """
     List the current presets loaded into the database

@@ -10,6 +10,14 @@ class ActiveProjectSchema(BaseModel):
     project_name: str
     devices: list[str]
     
+    
+@router.get("/")
+async def serve_webpage():
+    """
+    serve the webpage for the projects page
+    """
+    pass
+
 
 def reassign_devices(project_info: ActiveProjectSchema, project_id: int):
     for device_name in project_info.devices:
@@ -40,7 +48,7 @@ async def update_project(project_name: str, project_info: ActiveProjectSchema):
     reassign_devices(project_info, project_id)
     return "successfully updated"
     
-@router.get("/")
+@router.get("/list_projects")
 async def list_projects():
     """
     List currently available projects
@@ -57,6 +65,18 @@ async def get_project(project_name):
     project = router.database_connector.execute("getProject", project_id)
     return project
 
+@router.get("{project_name}/data")
+async def get_project_data(project_name):
+    project_id = router.database_connector.execute("getProjectID", project_name)
+    data_points = router.database_connector.execute("getProjectData", project_id)
+    return data_points
+
+@router.get("{project_name}/devices")
+async def get_associated_devices(project_name):
+    project_id = router.database_connector.execute("getProjectID", project_name)
+    devices = router.database_connector.execute("getProjectDevices", project_id)
+    return devices
+
 @router.patch("/{project_name}")
 async def archive_project(project_name):
     """
@@ -72,3 +92,27 @@ async def delete_project(project_name):
     """
     project_id = router.database_connector.execute("getProjectID", project_name)
     router.database_connector.execute("deleteProject", project_id)
+    return "successfully deleted project"
+    
+@router.get("/archived")
+async def get_archived_projects():
+    """
+    get as list of archived projects
+    """
+    return router.database_connector.execute("getArchivedProjects")
+
+@router.get("/archived/{archived_project_name}")
+async def get_archived_project(archived_project_name):
+    project_id = router.database_connector.execute("getArchiveProjectID", archived_project_name)
+    return router.database_connector.execute("getArchivedProject", project_id)
+    
+
+@router.get("/archived/{archived_project_name}/data")
+async def get_archived_data(archived_project_name):
+    """
+    get archived data of archived project
+    """
+    project_id = router.database_connector.execute("getArchiveProjectID", archived_project_name)
+    return router.database_connector.execute("getProjectData", project_id)
+    
+    
