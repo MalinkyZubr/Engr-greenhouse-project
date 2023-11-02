@@ -1,5 +1,8 @@
 from DBIntRouter import APIDRouter
 from pydantic import BaseModel, Field
+from starlette.responses import FileResponse
+
+from frontend_paths import PROJECT, CREATE_PROJECT
 
 router = APIDRouter(
     prefix="/projects"
@@ -11,32 +14,37 @@ class ActiveProjectSchema(BaseModel):
     devices: list[str]
     
     
-@router.get("/")
-async def serve_webpage():
-    """
-    serve the webpage for the projects page
-    """
-    pass
-
-
 def reassign_devices(project_info: ActiveProjectSchema, project_id: int):
     for device_name in project_info.devices:
         id = router.database_connector.execute('getDeviceID', device_name)
         router.database_connector.execute('configureDevice', 
             id,
             project_id=project_id)
+    
+@router.get("/{project_name}")
+async def serve_project_webpage(project_name):
+    """
+    serve the webpage for the projects page
+    """
+    return FileResponse(PROJECT) # find a way to integrate project name
 
-
-@router.post("/createProject")
-async def create_project(project_info: ActiveProjectSchema):
+@router.post("/createProject/{project_name}")
+async def create_project(project_name, project_info: ActiveProjectSchema): # add the description field to store in database
     """
     Create a new project and put it into the database
     """
     router.database_connector.execute('addProject',
-        project_info.project_name)
+        project_name)
     project_id=router.database_connector.execute('getProjectID', project_info.project_name)
     reassign_devices(project_info, project_id)
     return "successfully created"
+
+@router.get("/createProject")
+async def load_project_creation_page():
+    """
+    Load the page for project creation
+    """
+    return FileResponse(CREATE_PROJECT)
 
 @router.put("/{project_name}")
 async def update_project(project_name: str, project_info: ActiveProjectSchema):

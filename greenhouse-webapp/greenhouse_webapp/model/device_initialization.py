@@ -22,8 +22,8 @@ class ReceivedPing:
     def update_time(self):
         self.time_received = time.time()
         
-    def check_time():
-        if time.time() - time.received > 30:
+    def check_time(self):
+        if time.time() - self.time_received > 30:
             raise TimeoutError("The connection receive no pings for 30 seconds")
         
 
@@ -47,15 +47,17 @@ class DeviceManager:
         
         self.sock.setblocking(False)
         
+        self.active = True
+        
     async def check_for_dead(self):
-        while True:
+        while self.active:
             await asyncio.sleep(30)
             for mac, scan_object in self.scans.items():
                 try: scan_object.check_time()
                 except: self.scans.pop(mac)
         
     async def serve_management(self):
-        while True:
+        while self.active:
             data = await self.loop.sock_recv(self.sock, 1024)
             data = json.loads(data.decode())
             
@@ -80,7 +82,9 @@ class DeviceManager:
             self.serve_management(),
             self.check_for_dead()
         )
-            
+    
+    async def shutdown(self):
+        self.active = False
         
                 
             

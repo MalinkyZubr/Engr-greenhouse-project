@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional 
-import asyncio
+from starlette.responses import FileResponse
 import time
 
+from frontend_paths import DEVICE, SCAN
 from DBIntRouter import APIDRouter
 
 router = APIDRouter(
@@ -21,12 +22,12 @@ class DeviceRegistrationSchema(BaseModel):
     project_id: Optional[str]
     device_status: bool
 
-@router.get("/")
-async def serve_webpage():
+@router.get("{device_name}")
+async def serve_webpage(device_name):
     """
-    serve the device management webpage
-    """
-    pass
+    serve the device management webpage 
+    """ #integrate device name with this
+    return FileResponse(DEVICE)
 
 @router.get("/list_devices")
 async def list_devices():
@@ -36,7 +37,7 @@ async def list_devices():
     devices = router.database_connector.execute('getDevices')
     return devices
 
-@router.get("/{device_name}")
+@router.get("/{device_name}/device_info")
 async def get_device(device_name: str):
     """
     get a specific device
@@ -46,6 +47,13 @@ async def get_device(device_name: str):
     return device_information
     
 @router.get("/scan")
+async def serve_scan_page():
+    """
+    Serve the scanning page
+    """
+    return FileResponse(SCAN)
+
+@router.get("/scan/getscans")
 async def scan_devices():
     """
     Scan for available devices

@@ -1,5 +1,8 @@
 from pydantic import BaseModel, Field
+from starlette.responses import FileResponse
+
 from DBIntRouter import APIDRouter
+from frontend_paths import PRESET, CREATE_PRESET
 
 router = APIDRouter(
     prefix="/presets"
@@ -7,7 +10,6 @@ router = APIDRouter(
 
 
 class PresetSchema(BaseModel):
-    preset_name: str
     daytime_temp: float = Field(gt=0)
     humidity: float = Field(gt=0, lt=100)
     moisture: float = Field(gt=0, lt=100)
@@ -20,9 +22,7 @@ async def load_webpage():
     """
     load the webpage for presets
     """
-    presets = router.database_connector.execute('getPresets')
-    presets = [preset[2] for preset in presets]
-    return presets
+    return FileResponse(PRESET)
     
 @router.get("/list_presets")
 async def list_presets():
@@ -42,13 +42,20 @@ async def show_preset(preset_name: str):
     preset = router.database_connector.execute('getPreset', preset_id)
     return preset
 
-@router.post("/createPreset")
-async def create_preset(preset_info: PresetSchema):
+@router.get("/createPreset")
+async def get_creation_page():
+    """
+    display the preset creation page
+    """
+    return FileResponse(CREATE_PRESET)
+
+@router.post("/createPreset/{preset_name}")
+async def create_preset(preset_name: str, preset_info: PresetSchema):
     """
     Create a preset and load it into the database
     """
     router.database_connector.execute('createPreset', 
-        preset_info.preset_name, 
+        preset_name, 
         preset_info.daytime_temp, 
         preset_info.humidity,
         preset_info.moisture,
