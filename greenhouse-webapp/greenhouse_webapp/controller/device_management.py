@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional 
 from starlette.responses import FileResponse
 import time
 
-from frontend_paths import DEVICE, SCAN
-from DBIntRouter import APIDRouter
+from controller.frontend_paths import SCAN
+from controller.DBIntRouter import APIDRouter
+
 
 router = APIDRouter(
     prefix = "/devices",
@@ -22,12 +24,13 @@ class DeviceRegistrationSchema(BaseModel):
     project_id: Optional[str]
     device_status: bool
 
+
 @router.get("{device_name}")
-async def serve_webpage(device_name):
+async def serve_webpage(request: Request, device_name):
     """
     serve the device management webpage 
     """ #integrate device name with this
-    return FileResponse(DEVICE)
+    return router.template_paths.TemplateResponse("device.html", {"request":request,"device_name":device_name}) # assign the metavariable the device name so frontend can get the rest
 
 @router.get("/list_devices")
 async def list_devices():
@@ -37,7 +40,7 @@ async def list_devices():
     devices = router.database_connector.execute('getDevices')
     return devices
 
-@router.get("/{device_name}/device_info")
+@router.get("devices/{device_name}/device_info")
 async def get_device(device_name: str):
     """
     get a specific device

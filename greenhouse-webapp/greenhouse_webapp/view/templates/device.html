@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
   </head>
-</head>
 <body>
     <div class="header">
-        <h1>Device: <name></h1>
+        <h1 id="device_name">Device: {{ device_name }}</h1>
     </div>
 
     <div class="container">
@@ -50,6 +49,10 @@
         <button class="button">Unregister Device</button>
         <button class="button">Add To Project</button>
         <button class="button">Add Preset</button>
+    </div>
+    <br><br>
+    <div class="buttons">
+        <a href="/" class="button"><button class="button very-wide-element">Return to Dashboard</button></a>
     </div>
 </body>
 </html>

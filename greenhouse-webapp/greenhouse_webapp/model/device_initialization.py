@@ -6,7 +6,7 @@ import time
 import os
 import netifaces
 
-from udp_schemas import RegistrationSchema
+from model.udp_schemas import RegistrationSchema
 
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -28,7 +28,7 @@ class ReceivedPing:
         
 
 class DeviceManager:
-    mutlicast_address = '224.0.2.4'
+    multicast_address = '224.0.2.4'
     port = 1337
     def __init__(self, loop: asyncio.BaseEventLoop):
         with open(manager_conf, 'r') as f:
@@ -51,6 +51,7 @@ class DeviceManager:
         
     async def check_for_dead(self):
         while self.active:
+            print("checking for dead")
             await asyncio.sleep(30)
             for mac, scan_object in self.scans.items():
                 try: scan_object.check_time()
@@ -58,6 +59,7 @@ class DeviceManager:
         
     async def serve_management(self):
         while self.active:
+            print("waiting for connection")
             data = await self.loop.sock_recv(self.sock, 1024)
             data = json.loads(data.decode())
             
@@ -78,6 +80,7 @@ class DeviceManager:
         return self.scans
     
     async def __call__(self):
+        print("Now starting")
         await asyncio.gather(
             self.serve_management(),
             self.check_for_dead()

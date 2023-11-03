@@ -184,3 +184,8 @@ body {
     border-color: green;
     transition: background-color 0.3s, border-color 0.3s;
 }
+
+.metadata-helper {
+    visibility: hidden;
+    display: none;
+}

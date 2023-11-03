@@ -1,8 +1,9 @@
 from pydantic import BaseModel, Field
 from starlette.responses import FileResponse
+from fastapi import Request
 
-from DBIntRouter import APIDRouter
-from frontend_paths import PRESET, CREATE_PRESET
+from controller.DBIntRouter import APIDRouter
+from controller.frontend_paths import PRESET, CREATE_PRESET
 
 router = APIDRouter(
     prefix="/presets"
@@ -17,12 +18,12 @@ class PresetSchema(BaseModel):
     ir_exposure: float = Field(gt=0, lt=100000)
     
     
-@router.get("/")
-async def load_webpage():
+@router.get("presets/{preset_name}")
+async def load_webpage(request: Request, preset_name):
     """
     load the webpage for presets
     """
-    return FileResponse(PRESET)
+    return router.template_paths.TemplateResponse("preset.html", {"request":request, "preset_name":preset_name})
     
 @router.get("/list_presets")
 async def list_presets():
@@ -33,7 +34,7 @@ async def list_presets():
     presets = [preset[2] for preset in presets]
     return presets
 
-@router.get("/{preset_name}")
+@router.get("/{preset_name}/preset_info")
 async def show_preset(preset_name: str):
     """
     Retrieve all the features of a specific preset
@@ -63,7 +64,7 @@ async def create_preset(preset_name: str, preset_info: PresetSchema):
         preset_info.ir_exposure)
     return "Successfully Created New Preset!"
     
-@router.put("/{preset_name}")
+@router.put("presets/{preset_name}")
 async def update_preset(preset_name, preset_info):
     """
     update a preset's fields
@@ -78,7 +79,7 @@ async def update_preset(preset_name, preset_info):
         ir_exposure=preset_info.ir_exposure)
     return "Successful update"
 
-@router.delete("/{preset_name}")
+@router.delete("presets/{preset_name}")
 async def delete_preset(preset_name):
     """
     delete a specified preset

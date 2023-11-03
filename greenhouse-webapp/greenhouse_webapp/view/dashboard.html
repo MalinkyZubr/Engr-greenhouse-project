@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
   </head>
-</head>
 <body>
     <div class="header">
         <h1>Dashboard</h1>
@@ -76,10 +75,10 @@
     </div>
 
     <div class="buttons">
-        <button class="button">Create New Project</button>
-        <button class="button">Register Device</button>
-        <button class="button">Create Preset</button>
-        <button class="button">View Archived Projects</button>
+        <a href="http://localhost:8000/projects/createProject" class="button"><button class="button">Create New Project</button></a>
+        <a href="http://localhost:8000/devices/scan" class="button"><button class="button">Register Device</button></a>
+        <a href="http://localhost:8000/presets/createPreset" class="button"><button class="button">Create Preset</button></a>
+        <a href="http://localhost:8000/projects/archived" class="button"><button class="button">View Archived Projects</button></a>
     </div>
 </body>
 </html>

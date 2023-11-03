@@ -1,12 +1,17 @@
-from DBIntRouter import APIDRouter
 from pydantic import BaseModel, Field
+from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
+from fastapi import Request
+from fastapi.responses import HTMLResponse
 
-from frontend_paths import PROJECT, CREATE_PROJECT
+from controller.DBIntRouter import APIDRouter
+from controller.frontend_paths import PROJECT, CREATE_PROJECT, STATIC, CSS, ARCHIVE
 
 router = APIDRouter(
     prefix="/projects"
 )
+
+router.mount("/projects/static", StaticFiles(directory=STATIC), name="static")
 
 
 class ActiveProjectSchema(BaseModel):
@@ -21,12 +26,13 @@ def reassign_devices(project_info: ActiveProjectSchema, project_id: int):
             id,
             project_id=project_id)
     
-@router.get("/{project_name}")
-async def serve_project_webpage(project_name):
+@router.get("/projects/{project_name}")
+async def serve_project_webpage(request: Request, project_name):
     """
     serve the webpage for the projects page
     """
-    return FileResponse(PROJECT) # find a way to integrate project name
+    request.scope.pop("path_params")
+    return router.template_paths.TemplateResponse("project.html", {"request":request, "project_name":project_name}) # find a way to integrate project name
 
 @router.post("/createProject/{project_name}")
 async def create_project(project_name, project_info: ActiveProjectSchema): # add the description field to store in database
@@ -46,7 +52,7 @@ async def load_project_creation_page():
     """
     return FileResponse(CREATE_PROJECT)
 
-@router.put("/{project_name}")
+@router.put("/project/{project_name}")
 async def update_project(project_name: str, project_info: ActiveProjectSchema):
     """
     Update a project definition
@@ -64,7 +70,7 @@ async def list_projects():
     projects = router.database_connector.execute("getActiveProjects")
     return projects
 
-@router.get("/{project_name}")
+@router.get("/projects/{project_name}/projectinfo")
 async def get_project(project_name):
     """
     get a specified project
@@ -73,19 +79,19 @@ async def get_project(project_name):
     project = router.database_connector.execute("getProject", project_id)
     return project
 
-@router.get("{project_name}/data")
+@router.get("/project/{project_name}/data")
 async def get_project_data(project_name):
     project_id = router.database_connector.execute("getProjectID", project_name)
     data_points = router.database_connector.execute("getProjectData", project_id)
     return data_points
 
-@router.get("{project_name}/devices")
+@router.get("/projects/{project_name}/devices")
 async def get_associated_devices(project_name):
     project_id = router.database_connector.execute("getProjectID", project_name)
     devices = router.database_connector.execute("getProjectDevices", project_id)
     return devices
 
-@router.patch("/{project_name}")
+@router.patch("projects/{project_name}")
 async def archive_project(project_name):
     """
     archive a project so that it is inactive, but can still be used later
@@ -93,7 +99,7 @@ async def archive_project(project_name):
     project_id = router.database_connector.execute("getProjectID", project_name)
     router.database_connector.execute("archiveProject", project_id)
 
-@router.delete("/{project_name}")
+@router.delete("projects/{project_name}")
 async def delete_project(project_name):
     """
     permanently delete a project from the database (archived only)
@@ -103,6 +109,13 @@ async def delete_project(project_name):
     return "successfully deleted project"
     
 @router.get("/archived")
+async def serve_archived_webpage():
+    """
+    serve the archivist webpage
+    """
+    return FileResponse(ARCHIVE)
+
+@router.get("/archived/projects")
 async def get_archived_projects():
     """
     get as list of archived projects

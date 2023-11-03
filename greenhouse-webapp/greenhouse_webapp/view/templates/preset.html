@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
   </head>
-</head>
 <body>
     <div class="header">
-        <h1>Preset: <name></h1>
+        <h1 id="preset_name">Preset: {{ preset_name }}</h1>
     </div>
 
     <div class="container">
@@ -37,6 +36,10 @@
 
     <div class="buttons">
         <button class="button wide-element">Delete Preset</button>
+    </div>
+    <br><br>
+    <div class="buttons">
+        <a href="/" class="button"><button class="button very-wide-element">Return to Dashboard</button></a>
     </div>
 </body>
 </html>

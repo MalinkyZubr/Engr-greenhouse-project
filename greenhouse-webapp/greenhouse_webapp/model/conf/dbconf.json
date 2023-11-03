@@ -1,7 +1,7 @@
 {
     "user":"testing",
     "host":"127.0.0.1",
-    "database":"dbtesting",
+    "database":"silly",
     "pool_name":"db_pool",
     "password":"test",
     "pool_size":5,
