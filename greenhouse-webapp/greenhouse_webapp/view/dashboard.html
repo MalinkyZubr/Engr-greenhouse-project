@@ -2,6 +2,22 @@
 <html>
   <head>
     <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <template id="project-button">
+        <tr>
+            <td><button id="project-button-text">project_name</button></td>
+        </tr>
+    </template>
+    <template id="device-button">
+        <tr>
+            <td><button id="device-button-text">device_name</button></td>
+            <td id="device-status-text">activity</td>
+        </tr>
+    </template>
+    <template id="preset-button">
+        <tr>
+            <td><button id="preset-text">preset_name</button></td>
+        </tr>
+    </template>
   </head>
 <body>
     <div class="header">
@@ -17,14 +33,7 @@
                         <th>Project Name</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td><button>Project 1</button></td>
-                    </tr>
-                    <tr>
-                        <td><button>Project 2</button></td>
-                    </tr>
-                    
+                <tbody id="projects_table">                    
                     <!-- Add more rows with buttons as needed -->
                 </tbody>
             </table>
@@ -39,15 +48,7 @@
                         <th>Status</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td><button>Device 1</button></td>
-                        <td>Active</td>
-                    </tr>
-                    <tr>
-                        <td><button>Device 2</button></td>
-                        <td>Inactive</td>
-                    </tr>
+                <tbody id="devices_table">
                     <!-- Add more rows with buttons as needed -->
                 </tbody>
             </table>
@@ -61,13 +62,7 @@
                         <th>Preset Name</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td><button>Preset 1</button></td>
-                    </tr>
-                    <tr>
-                        <td><button>Preset 2</button></td>
-                    </tr>
+                <tbody id="presets_table">
                     <!-- Add more rows with buttons as needed -->
                 </tbody>
             </table>
