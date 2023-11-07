@@ -1,9 +1,11 @@
 export function load_project(project_name, project_template, project_table) {
-    var project_button = document.importNode(project_template.children.contentEditable, true);
-    var project_button_text = project_button.getElementById("project-button-text");
+    var project_button = document.importNode(project_template.content, true);
+    var project_button_text = project_button.querySelector("#project-button-text");
     project_button_text.textContent = project_name;
 
-    project_button.addEventListener("click", project_redirect(project_name));
+    project_button_text.addEventListener("click", function() {
+        project_redirect(project_name)();
+    });
 
     project_table.append(project_button);
 }
@@ -15,11 +17,12 @@ function project_redirect(project_name) {
 }
 
 export function load_preset(preset_name, preset_template, preset_table) {
+    console.log(preset_name)
     var preset_button = document.importNode(preset_template.content, true);
     var preset_button_text = preset_button.querySelector("#preset-text");
     preset_button_text.textContent = preset_name;
 
-    preset_button.addEventListener("click", function() {
+    preset_button_text.addEventListener("click", function() {
         preset_redirect(preset_name)();
     });
 
@@ -28,18 +31,29 @@ export function load_preset(preset_name, preset_template, preset_table) {
 
 function preset_redirect(preset_name) {
     return function() {
-        window.location.href = "/presets/presets/".concat(preset_name);
+        window.location.href = "/presets/availablePresets/".concat(preset_name);
     }
 }
 
 export function load_device(device_info, device_template, device_table) { // device_info should be in format name | status
-    var device_button = document.importNode(device_template.children.contentEditable, true);
-    var device_text = device_button.getElementById("device-button-text");
+    var device_button = document.importNode(device_template.content, true);
+    var device_text = device_button.querySelector("#device-button-text");
+    var device_status = device_button.querySelector("#device-status-button");
+    const status = device_info[1];
 
-    device_text.textContent = device_info;
+    device_text.textContent = device_info[0];
+    if(status === 1) {
+        device_status.textContent = "ACTIVE";
+        device_status.style.background = "green";
+    }
+    else {
+        device_status.textContent = "DISABLED";
+        device_status.style.background = "red";
+    }
 
-    device_button.addEventListener("click", device_redirect(device_name));
-
+    device_text.addEventListener("click", function() {
+        device_redirect(device_name)();
+    })
     device_table.append(device_button);
 }
 

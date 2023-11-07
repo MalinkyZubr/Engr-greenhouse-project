@@ -5,26 +5,24 @@ function get_data_from_request(request_content, data_needed) { // get specified 
     if(data_needed.length == 1) {
         return request_content[data_needed[0]];
     }
-    for(let index in data_needed) {
-        data = data.concat(request_content[index]).concat(" | ")
+    var data = [];
+    for(let x = 0; x < data_needed.length; x++) {
+        data.push(request_content[data_needed[x]]);
     }
-    return data.slice(0, -3)
+    return data
 }
 
 async function load_request_handler(data_needed, load_request, template_id, table_id, request_path) {
     const table = document.getElementById(table_id);
+    table.innerHTML = "";
     const template = document.getElementById(template_id);
 
     const response = await fetch(request_path)
     const request = await response.json()
     
-    if(request.status === 200) {
-
-        var response_content = request.responseText;
-        var data = JSON.parse(response_content);
-
-        for(let data_point in data) {
-            load_request(get_data_from_request(data_point, data_needed), template, table);
+    if(response.status === 200) {
+        for(let i = 0; i < request.length; i++) {
+            load_request(get_data_from_request(request[i], data_needed), template, table);
         }
     }
     else {

@@ -62,7 +62,7 @@ async def serve_dashboard():
 
 
 @app.get("/test")
-async def hi():
+async def test():
     return "hi"
 
 def load_config():

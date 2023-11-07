@@ -18,11 +18,12 @@ class PresetSchema(BaseModel):
     ir_exposure: float = Field(gt=0, lt=100000)
     
     
-@router.get("presets/{preset_name}")
+@router.get("/availablePresets/{preset_name}")
 async def load_webpage(request: Request, preset_name):
     """
     load the webpage for presets
     """
+    print("called")
     return router.template_paths.TemplateResponse("preset.html", {"request":request, "preset_name":preset_name})
     
 @router.get("/list_presets")
@@ -31,10 +32,9 @@ async def list_presets():
     List the current presets loaded into the database
     """
     presets = router.database_connector.execute('getPresets')
-    presets = [preset[2] for preset in presets]
     return presets
 
-@router.get("/{preset_name}/preset_info")
+@router.get("/availablePresets/{preset_name}/preset_info")
 async def show_preset(preset_name: str):
     """
     Retrieve all the features of a specific preset
@@ -64,7 +64,7 @@ async def create_preset(preset_name: str, preset_info: PresetSchema):
         preset_info.ir_exposure)
     return "Successfully Created New Preset!"
     
-@router.put("presets/{preset_name}")
+@router.put("/availablePresets/{preset_name}")
 async def update_preset(preset_name, preset_info):
     """
     update a preset's fields
@@ -79,7 +79,7 @@ async def update_preset(preset_name, preset_info):
         ir_exposure=preset_info.ir_exposure)
     return "Successful update"
 
-@router.delete("presets/{preset_name}")
+@router.delete("/availablePresets/{preset_name}")
 async def delete_preset(preset_name):
     """
     delete a specified preset
@@ -88,7 +88,7 @@ async def delete_preset(preset_name):
     router.database_connector.execute("deletePreset", preset_id)
     return "Successfully deleted!"
     
-@router.get("/{preset_name}/devices")
+@router.get("/availablePresets/{preset_name}/devices")
 async def get_associated_devices(preset_name):
     """
     get a list of all devices associated with the select preset
