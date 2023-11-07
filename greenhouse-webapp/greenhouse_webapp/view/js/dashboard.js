@@ -1,7 +1,5 @@
 import { load_device, load_project, load_preset } from "./shared/objectRequest.js";
 
-console.log("hehehehehe");
-
 function get_data_from_request(request_content, data_needed) { // get specified datapoints to be displayed on buttons
     var data = "";
     if(data_needed.length == 1) {
@@ -18,10 +16,10 @@ async function load_request_handler(data_needed, load_request, template_id, tabl
     const template = document.getElementById(template_id);
 
     const response = await fetch(request_path)
-    console.log(request_path);
     const request = await response.json()
     
     if(request.status === 200) {
+
         var response_content = request.responseText;
         var data = JSON.parse(response_content);
 

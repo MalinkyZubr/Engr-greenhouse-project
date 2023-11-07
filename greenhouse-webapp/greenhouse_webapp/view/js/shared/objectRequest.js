@@ -15,11 +15,13 @@ function project_redirect(project_name) {
 }
 
 export function load_preset(preset_name, preset_template, preset_table) {
-    var preset_button = document.importNode(preset_template.children.contentEditable, true);
-    var preset_button_text = preset_button.getElementById("preset-text");
+    var preset_button = document.importNode(preset_template.content, true);
+    var preset_button_text = preset_button.querySelector("#preset-text");
     preset_button_text.textContent = preset_name;
 
-    preset_button.addEventListener("click", preset_redirect(preset_name));
+    preset_button.addEventListener("click", function() {
+        preset_redirect(preset_name)();
+    });
 
     preset_table.append(preset_button);
 }
