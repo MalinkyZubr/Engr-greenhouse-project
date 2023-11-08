@@ -39,7 +39,7 @@ async def show_preset(preset_name: str):
     """
     Retrieve all the features of a specific preset
     """
-    preset_id = router.database_connector.execute("getPresetID", preset_name)
+    preset_id = router.database_connector.execute("getPresetID", preset_name)[0][0]
     preset = router.database_connector.execute('getPreset', preset_id)
     return preset
 
@@ -70,7 +70,7 @@ async def update_preset(preset_name, preset_info):
     update a preset's fields
     """
     router.database_connector.execute('updatePreset', 
-        router.database_connector.execute('getPresetID', preset_name),
+        router.database_connector.execute('getPresetID', preset_name)[0][0],
         preset_name=preset_name, 
         temperature=preset_info.daytime_temp, 
         humidity=preset_info.humidity,
@@ -84,7 +84,7 @@ async def delete_preset(preset_name):
     """
     delete a specified preset
     """
-    preset_id = router.database_connector.execute('getPresetID', preset_name)
+    preset_id = router.database_connector.execute('getPresetID', preset_name)[0][0]
     router.database_connector.execute("deletePreset", preset_id)
     return "Successfully deleted!"
     
@@ -93,6 +93,6 @@ async def get_associated_devices(preset_name):
     """
     get a list of all devices associated with the select preset
     """
-    preset_id = router.database_connector.execute('getPresetID', preset_name)
+    preset_id = router.database_connector.execute('getPresetID', preset_name)[0][0]
     devices = router.database_connector.execute("getPresetAssociatedDevices", preset_id)
     return devices

@@ -30,14 +30,20 @@ routers = {'device_interface':device_interface_router,
            'presets':preset_router,
            'projects':project_router}
 
+cors_middleware = {
+    "allow_origins":["*"],
+    "allow_credentials":True,
+    "allow_methods":["*"],
+    "allow_headers":["*"]
+}
+
 for router in routers.values():
     router.database_connector = database_connector
     router.device_manager = device_manager
-
+    
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 app.mount("/scripts", StaticFiles(directory=JS), name="js")
-app.mount("/config", StaticFiles(directory=CONFIG), name="config")
 app.mount("/favicon.ico", StaticFiles(directory=ICON), name="favicon.ico")
 
 app.include_router(device_interface_router)
@@ -47,27 +53,28 @@ app.include_router(project_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
+    **cors_middleware
 )
 # @app.exception_handler(404)
 # async def handle404(_, __):
 #     return RedirectResponse("/")
 
+def load_config():
+    with open(SERVER_CONFIG, 'r') as f:
+        return json.loads(f.read())
+
 @app.get("/")
 async def serve_dashboard():
     return FileResponse(DASHBOARD)
 
+@app.get("/config")
+async def serve_config():
+    # to deprecate when solidified
+    return load_config()
 
 @app.get("/test")
 async def test():
     return "hi"
-
-def load_config():
-    with open(SERVER_CONFIG, 'r') as f:
-        return json.loads(f.read())
 
 if __name__ == "__main__":
     config_data = load_config()

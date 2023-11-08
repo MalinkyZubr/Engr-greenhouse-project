@@ -40,6 +40,7 @@ export function load_device(device_info, device_template, device_table) { // dev
     var device_text = device_button.querySelector("#device-button-text");
     var device_status = device_button.querySelector("#device-status-button");
     const status = device_info[1];
+    const device_name = device_info[0];
 
     device_text.textContent = device_info[0];
     if(status === 1) {
@@ -59,6 +60,6 @@ export function load_device(device_info, device_template, device_table) { // dev
 
 function device_redirect(device_name) {
     return function() {
-        window.location.href = "/devices/".concat(device_name);
+        window.location.href = "/devices/devices/".concat(device_name);
     }
 }

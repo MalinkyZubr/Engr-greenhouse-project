@@ -25,11 +25,11 @@ class DeviceRegistrationSchema(BaseModel):
     device_status: bool
 
 
-@router.get("{device_name}")
+@router.get("/devices/{device_name}")
 async def serve_webpage(request: Request, device_name):
     """
     serve the device management webpage 
-    """ #integrate device name with this
+    """ #integrate device name with this # return 404 if the device name doesnt exsit
     return router.template_paths.TemplateResponse("device.html", {"request":request,"device_name":device_name}) # assign the metavariable the device name so frontend can get the rest
 
 @router.get("/list_devices")
@@ -40,12 +40,12 @@ async def list_devices():
     devices = router.database_connector.execute('getDevices')
     return devices
 
-@router.get("devices/{device_name}/device_info")
+@router.get("/devices/{device_name}/device_info")
 async def get_device(device_name: str):
     """
     get a specific device
     """
-    device_id = router.database_connector.execute('getDeviceID', device_name)
+    device_id = router.database_connector.execute('getDeviceID', device_name)[0][0]
     device_information = router.database_connector.execute('getDevice', device_id)
     return device_information
     

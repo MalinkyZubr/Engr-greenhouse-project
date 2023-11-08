@@ -50,9 +50,13 @@ class DatabaseQuery(ABC):
                 if character == element:
                     raise Exception(f"Invalid character {character} detected")
 
-    def __call__(self, cursor, *query_parameters: list):
+    def __call__(self, cursor, *query_parameters: list, **keyword_parameters):
         self.check_query(query_parameters)
-        return self.query(cursor, *query_parameters)
+        try:
+            return self.query(cursor, *query_parameters, **keyword_parameters)
+        except Exception as e:
+            print(e)
+            return None
 
 
 class getProjectID(DatabaseQuery):

@@ -11,6 +11,13 @@
             margin-right: 10px; /* Adjust the spacing between radio buttons */
         }
     </style>
+    <template id="device-button">
+        <tr>
+            <td><button id="device-button-text">device_name</button></td>
+            <td><button id="device-status-button">STATUS</button></td>
+        </tr>
+    </template>
+    <script type="module" src="/scripts/project.js"></script>
   </head>
 <body>
     <div class="header">
@@ -27,21 +34,11 @@
                         <th>Status</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td><button>Device 1</button></td>
-                        <td>Active</td>
-                    </tr>
-                    <tr>
-                        <td><button>Device 2</button></td>
-                        <td>Inactive</td>
-                    </tr>
-                    
+                <tbody id="devices_table">
                     <!-- Add more rows with buttons as needed -->
                 </tbody>
             </table>
         </div>
-
         <div class="table wide-element">
             <h2>Project Data</h2>
             <table class="table wide-element">
