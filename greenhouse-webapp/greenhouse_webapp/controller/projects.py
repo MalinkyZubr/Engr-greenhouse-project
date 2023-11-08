@@ -3,9 +3,17 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 from fastapi import Request
 from fastapi.responses import HTMLResponse
+import time
+from datetime import datetime
+from datetime import timedelta
 
 from controller.DBIntRouter import APIDRouter
 from controller.frontend_paths import PROJECT, CREATE_PROJECT, STATIC, CSS, ARCHIVE, CONFIG
+
+
+MAX_TIME = datetime.fromtimestamp(32536799990).strftime("%y-%m-%d")
+MIN_TIME = datetime.fromtimestamp(0).strftime("%y-%m-%d")
+
 
 router = APIDRouter(
     prefix="/projects"
@@ -18,6 +26,16 @@ class ActiveProjectSchema(BaseModel):
     project_name: str
     devices: list[str]
     
+    
+class DateQuerySchema(BaseModel): # add input validation here
+    start_date: str
+    end_date: str
+    
+    
+def get_today_tomorrow() -> tuple[str, str]:
+    today = datetime.today().strftime("%y-%m-%d")
+    tomorrow = (datetime.today()+timedelta(1)).strftime("%y-%m-%d")
+    return today, tomorrow
     
 def reassign_devices(project_info: ActiveProjectSchema, project_id: int):
     for device_name in project_info.devices:
@@ -79,11 +97,27 @@ async def get_project(project_name):
     project = router.database_connector.execute("getProject", project_id)
     return project
 
-@router.get("/project/{project_name}/data")
+@router.get("/projects/{project_name}/data")
 async def get_project_data(project_name):
     project_id = router.database_connector.execute("getProjectID", project_name)[0][0]
     data_points = router.database_connector.execute("getProjectData", project_id)
     return data_points
+
+@router.get("/projects/{project_name}/data_visualization/{data_type}")
+async def get_project_data_visualized(project_name, data_type, date_information: DateQuerySchema):
+    if not date_information.start_date and not date_information.end_date:
+        date_information.start_date, date_information.end_date = get_today_tomorrow()
+    else:
+        if not date_information.start_date:
+            date_information.start_date = MIN_TIME
+        if not date_information.end_date:
+            date_information.end_date = MAX_TIME
+    
+    project_id = router.database_connector.execute("getProjectID", project_name)[0][0]
+    data_points = router.database_connector.execute("getProjectDataInRange", project_id, date_information.start_date, date_information.end_date)
+    image_path = router.data_visualizer.generate_data_image(data_points, data_type, project_name, router.database_connector)
+    
+    return FileResponse(image_path)
 
 @router.get("/projects/{project_name}/devices")
 async def get_associated_devices(project_name):

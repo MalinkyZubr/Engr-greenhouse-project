@@ -109,11 +109,35 @@ class getProjectData(DatabaseQuery):
         return cursor.execute(self.query_str, (project_id,))
     
     
+class getProjectDataInRange(DatabaseQuery):
+    query_str = \
+    f"""SELECT * 
+    FROM Data
+    WHERE DateCollected 
+            BETWEEN  str_to_date(%s, '%Y-%m-%d')
+                AND   str_to_date(%s, '%Y-%m-%d')
+        AND ProjectID = %s;"""
+    def query(self, cursor, project_id, start_date, end_date):
+        return cursor.execute(self.query_str, (start_date, end_date, project_id))
+    
+    
 class getDeviceData(DatabaseQuery):
     query_str = \
     f"""SELECT * FROM DATA WHERE DeviceID = %s;"""
-    def query(self, cursor, project_id):
-        return cursor.execute(self.query_str, (project_id,))
+    def query(self, cursor, device_id):
+        return cursor.execute(self.query_str, (device_id,))
+    
+
+class getDeviceDataInRange(DatabaseQuery):
+    query_str = \
+    f"""SELECT * 
+    FROM Data
+    WHERE DateCollected 
+            BETWEEN  str_to_date(%s, '%Y-%m-%d')
+                AND   str_to_date(%s, '%Y-%m-%d')
+        AND DeviceID = %s;"""
+    def query(self, cursor, device_id, start_date, end_date):
+        return cursor.execute(self.query_str, (start_date, end_date, device_id))
 
 
 class addProject(DatabaseQuery):
@@ -168,6 +192,21 @@ class getDeviceID(DatabaseQuery):
     WHERE DeviceName = %s;"""
     def query(self, cursor, device_name):
         return cursor.execute(self.query_str, (device_name,))
+    
+
+class getDeviceName(DatabaseQuery):
+    query_str = \
+    f"""SELECT DeviceName FROM RegisteredDevices
+    WHERE DeviceID) = %s;"""
+    def query(self, cursor, device_id):
+        return cursor.execute(self.query_str, (device_id,))
+    
+class getProjectName(DatabaseQuery):
+    query_str = \
+    f"""SELECT ProjectName FROM ActiveProjects
+    WHERE ProjectID = %s;"""
+    def query(self, cursor, project_name):
+        return cursor.execute(self.query_str, (project_name,))
 
 
 class getDevices(DatabaseQuery):
@@ -283,9 +322,13 @@ class DatabaseInterface:
             "getProjectID":getProjectID(),
             "getArchiveProjectID":getArchiveProjectID(),
             "getProject":getProject(),
+            "getDeviceName":getDeviceName(),
+            "getProjectName":getProjectName(),
             "getArchivedProjects":getArchivedProjects(),
             "getArchivedProject":getArchivedProject(),
             "getProjectData":getProjectData(),
+            "getDeviceDataInRange":getDeviceDataInRange(),
+            "getProjectDataInRange":getProjectDataInRange(),
             "getDeviceData":getDeviceData(),
             "addProject":addProject(),
             "updateProject":updateProject(),

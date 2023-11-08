@@ -19,11 +19,13 @@ from controller.projects import router as project_router
 from controller.frontend_paths import DASHBOARD, CSS, STATIC, JS, CONFIG, ICON, LOCAL_DIR
 from model.data_interface import DatabaseInterface
 from model.device_initialization import DeviceManager
+from model.data_visualization import DataVisualizer
 
 SERVER_CONFIG = os.path.join(CONFIG, "controller.json")
 
 database_connector = DatabaseInterface()
 device_manager = DeviceManager("huehue")
+data_visualizer = DataVisualizer()
 
 routers = {'device_interface':device_interface_router,
            'device_manager':device_management_router,
@@ -40,6 +42,7 @@ cors_middleware = {
 for router in routers.values():
     router.database_connector = database_connector
     router.device_manager = device_manager
+    router.data_visualizer = data_visualizer
     
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
