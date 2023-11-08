@@ -5,7 +5,7 @@ from typing import Optional
 from starlette.responses import FileResponse
 import time
 
-from controller.frontend_paths import SCAN
+from controller.frontend_paths import SCAN, ASSIGN_PRES, ASSIGN_PROJ
 from controller.DBIntRouter import APIDRouter
 
 
@@ -31,6 +31,20 @@ async def serve_webpage(request: Request, device_name):
     serve the device management webpage 
     """ #integrate device name with this # return 404 if the device name doesnt exsit
     return router.template_paths.TemplateResponse("device.html", {"request":request,"device_name":device_name}) # assign the metavariable the device name so frontend can get the rest
+
+@router.get("/devices/{device_name}/assign_project")
+async def assign_project(request: Request, device_name):
+    """
+    Serve the project assignment webpage
+    """
+    return router.template_paths.TemplateResponse("assign_project.html", {"request":request,"device_name":device_name})
+
+@router.get("/devices/{device_name}/assign_preset")
+async def assign_preset(request: Request, device_name):
+    """
+    Serve the project assignment webpage
+    """
+    return router.template_paths.TemplateResponse("assign_preset.html", {"request":request,"device_name":device_name})
 
 @router.get("/list_devices")
 async def list_devices():

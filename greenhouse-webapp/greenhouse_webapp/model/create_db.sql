@@ -43,4 +43,3 @@ CREATE TABLE Presets (
     LightExposure FLOAT,
     IRExposure FLOAT
 );
-

@@ -10,6 +10,20 @@
         .radio-horizontal-container input[type="radio"] {
             margin-right: 10px; /* Adjust the spacing between radio buttons */
         }
+        .input-container {
+            display: flex;
+        }
+        .input-container input[type="text"] {
+            margin-right: 10px; /* Adjust the spacing between text inputs */
+        }
+        .input-container {
+            display: flex;
+            align-items: center;
+        }
+        .input-container input[type="text"] {
+            margin-right: 10px; /* Adjust the spacing between text inputs */
+            margin-left: 10px;
+        }
     </style>
     <template id="device-button">
         <tr>
@@ -54,19 +68,25 @@
     <div class="buttons">
         <button class="button">View Device Statistics</button>
         <button class="button wide-element">Download CSV</button>
-    </div>
-    <h3>Data Type Selector</h3>
-    <div class="radio-horizontal-container">
-        <input type="radio" id="temp" name="data-selected" value="1">
-        <label for="temp">Temperature (c)</label><br>
-        <input type="radio" id="humi" name="data-selected" value="2">
-        <label for="humi">Humidity (%)</label><br>
-        <input type="radio" id="moisture" name="data-selected" value="3">
-        <label for="moisture">Moisture (%)</label><br>
-        <input type="radio" id="light" name="data-selected" value="4">
-        <label for="light">Light (l)</label><br>
-        <input type="radio" id="ir" name="data-selected" value="5">
-        <label for="ir">IR Exposure (l)</label><br>
+        <div class="radio-horizontal-container wide-element">
+            <h3>Data Type Selector</h3>
+            <input type="radio" id="temp" name="data-selected" value="1">
+            <label for="temp">Temperature (c)</label><br>
+            <input type="radio" id="humi" name="data-selected" value="2">
+            <label for="humi">Humidity (%)</label><br>
+            <input type="radio" id="moisture" name="data-selected" value="3">
+            <label for="moisture">Moisture (%)</label><br>
+            <input type="radio" id="light" name="data-selected" value="4">
+            <label for="light">Light (l)</label><br>
+            <input type="radio" id="ir" name="data-selected" value="5">
+            <label for="ir">IR Exposure (l)</label><br>
+        </div>
+        <div class="input-container">
+            <h3>Select Data Display Interval (mm/dd/yy)</h3>
+            <input type="text" placeholder="start date">
+            <span>to </span>
+            <body> </body><input type="text" placeholder="end date">
+        </div>
     </div>
     <br><br>
     <div class="buttons">
