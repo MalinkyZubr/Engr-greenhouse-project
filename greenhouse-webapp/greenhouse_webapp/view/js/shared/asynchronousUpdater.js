@@ -32,7 +32,7 @@ async function load_request_handler(data_needed, load_request, template_id, tabl
     }
 }
 
-async function format_route(route_path) {
+export async function format_route(route_path) {
     var port;
     var host;
 

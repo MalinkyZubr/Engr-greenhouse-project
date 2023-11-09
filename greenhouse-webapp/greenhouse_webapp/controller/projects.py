@@ -1,19 +1,13 @@
 from pydantic import BaseModel, Field
+from typing import Optional
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 from fastapi import Request
 from fastapi.responses import HTMLResponse
-import time
-from datetime import datetime
-from datetime import timedelta
 
 from controller.DBIntRouter import APIDRouter
 from controller.frontend_paths import PROJECT, CREATE_PROJECT, STATIC, CSS, ARCHIVE, CONFIG
-
-
-MAX_TIME = datetime.fromtimestamp(32536799990).strftime("%y-%m-%d")
-MIN_TIME = datetime.fromtimestamp(0).strftime("%y-%m-%d")
-
+from model.timing import MAX_TIME, MIN_TIME, get_today_tomorrow
 
 router = APIDRouter(
     prefix="/projects"
@@ -28,14 +22,9 @@ class ActiveProjectSchema(BaseModel):
     
     
 class DateQuerySchema(BaseModel): # add input validation here
-    start_date: str
-    end_date: str
+    start_date: Optional[str]
+    end_date: Optional[str]
     
-    
-def get_today_tomorrow() -> tuple[str, str]:
-    today = datetime.today().strftime("%y-%m-%d")
-    tomorrow = (datetime.today()+timedelta(1)).strftime("%y-%m-%d")
-    return today, tomorrow
     
 def reassign_devices(project_info: ActiveProjectSchema, project_id: int):
     for device_name in project_info.devices:
@@ -117,7 +106,7 @@ async def get_project_data_visualized(project_name, data_type, date_information:
     data_points = router.database_connector.execute("getProjectDataInRange", project_id, date_information.start_date, date_information.end_date)
     image_path = router.data_visualizer.generate_data_image(data_points, data_type, project_name, router.database_connector)
     
-    return FileResponse(image_path)
+    return FileResponse(image_path, media_type="image/png")
 
 @router.get("/projects/{project_name}/devices")
 async def get_associated_devices(project_name):
