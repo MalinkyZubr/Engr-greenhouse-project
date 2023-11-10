@@ -16,7 +16,9 @@ body {
 .container {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
     grid-gap: 20px;
+    height: 600px;
 }
 
 .table {
@@ -24,8 +26,8 @@ body {
     padding: 10px;
     text-align: center; /* Center text in tables */
     overflow: auto; /* Add scrollbars to tables */
-    height: 350px;
-    max-height: 400px;
+    height: 700px;
+    max-height: 700px;
 }
 
 .table h2 {
@@ -110,6 +112,7 @@ body {
 .wide-element {
     grid-column: span 2;
 }
+
 .checkbox-button {
     display: block;
     position: relative;

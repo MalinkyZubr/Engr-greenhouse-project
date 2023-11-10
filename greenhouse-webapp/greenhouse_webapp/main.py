@@ -47,7 +47,6 @@ for router in routers.values():
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 app.mount("/scripts", StaticFiles(directory=JS), name="js")
-app.mount("/favicon.ico", StaticFiles(directory=ICON), name="favicon.ico")
 
 app.include_router(device_interface_router)
 app.include_router(device_management_router)

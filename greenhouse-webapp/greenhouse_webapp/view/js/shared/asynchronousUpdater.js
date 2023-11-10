@@ -14,8 +14,6 @@ function get_data_from_request(request_content, data_needed) { // get specified 
 
 async function load_request_handler(data_needed, load_request, template_id, table_id, request_path) {
     const table = document.getElementById(table_id);
-    console.log(table);
-    console.log(table_id);
     const template = document.getElementById(template_id);
     table.innerHTML = "";
 
@@ -42,10 +40,6 @@ export async function format_route(route_path) {
         port = config_data['port'];
         host = config_data['host'];
     });
-    console.log(host);
-    console.log(port);
-
-    console.log(`http://${host}:${port}${route_path}`)
     return `http://${host}:${port}${route_path}`
 }
 

@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 
 from controller.DBIntRouter import APIDRouter
 from controller.frontend_paths import PROJECT, CREATE_PROJECT, STATIC, CSS, ARCHIVE, CONFIG
-from model.timing import MAX_TIME, MIN_TIME, get_today_tomorrow
+from model.timing import MAX_TIME, MIN_TIME, get_today_tomorrow, convert_time_formats
 
 router = APIDRouter(
     prefix="/projects"
@@ -22,8 +22,8 @@ class ActiveProjectSchema(BaseModel):
     
     
 class DateQuerySchema(BaseModel): # add input validation here
-    start_date: Optional[str]
-    end_date: Optional[str]
+    start_date: str | int
+    end_date: str | int
     
     
 def reassign_devices(project_info: ActiveProjectSchema, project_id: int):
@@ -92,16 +92,13 @@ async def get_project_data(project_name):
     data_points = router.database_connector.execute("getProjectData", project_id)
     return data_points
 
-@router.get("/projects/{project_name}/data_visualization/{data_type}")
-async def get_project_data_visualized(project_name, data_type, date_information: DateQuerySchema):
+@router.post("/projects/{project_name}/data_visualization/{data_type}")
+async def get_project_data_visualized(project_name, data_type, date_information: DateQuerySchema) -> FileResponse:
     if not date_information.start_date and not date_information.end_date:
         date_information.start_date, date_information.end_date = get_today_tomorrow()
     else:
-        if not date_information.start_date:
-            date_information.start_date = MIN_TIME
-        if not date_information.end_date:
-            date_information.end_date = MAX_TIME
-    
+        date_information.start_date, date_information.end_date =  convert_time_formats(date_information.start_date), convert_time_formats(date_information.end_date)
+        
     project_id = router.database_connector.execute("getProjectID", project_name)[0][0]
     data_points = router.database_connector.execute("getProjectDataInRange", project_id, date_information.start_date, date_information.end_date)
     image_path = router.data_visualizer.generate_data_image(data_points, data_type, project_name, router.database_connector)

@@ -17,7 +17,6 @@ function project_redirect(project_name) {
 }
 
 export function load_preset(preset_name, preset_template, preset_table) {
-    console.log(preset_name)
     var preset_button = document.importNode(preset_template.content, true);
     var preset_button_text = preset_button.querySelector("#preset-text");
     preset_button_text.textContent = preset_name;

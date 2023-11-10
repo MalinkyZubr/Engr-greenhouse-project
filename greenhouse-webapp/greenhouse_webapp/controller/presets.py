@@ -65,7 +65,7 @@ async def create_preset(preset_name: str, preset_info: PresetSchema):
     return "Successfully Created New Preset!"
     
 @router.put("/availablePresets/{preset_name}")
-async def update_preset(preset_name, preset_info):
+async def update_preset(preset_name, preset_info: PresetSchema):
     """
     update a preset's fields
     """

@@ -162,8 +162,8 @@ class updateProject(DatabaseQuery):
 
 class archiveProject(DatabaseQuery):
     query_str = \
-    f"""INSERT INTO ArchivedProjects
-    SELECT * FROM ActiveProjects
+    f"""INSERT INTO ArchivedProjects(ProjectID, ProjectName, DateStarted)
+    VALUES SELECT * FROM ActiveProjects
     WHERE ProjectID = %s;
     DELETE FROM ActiveProjects WHERE ProjectID = %s;"""
     def query(self, cursor, project_id):
@@ -197,7 +197,7 @@ class getDeviceID(DatabaseQuery):
 class getDeviceName(DatabaseQuery):
     query_str = \
     f"""SELECT DeviceName FROM RegisteredDevices
-    WHERE DeviceID) = %s;"""
+    WHERE DeviceID = %s;"""
     def query(self, cursor, device_id):
         return cursor.execute(self.query_str, (device_id,))
     
