@@ -92,6 +92,14 @@ async def get_project_data(project_name):
     data_points = router.database_connector.execute("getProjectData", project_id)
     return data_points
 
+@router.get("/projects/{project_name}/download_csv")
+async def download_project_data_csv(project_name):
+    project_id = router.database_connector.execute("getProjectID", project_name)[0][0]
+    data_points = router.database_connector.execute("getProjectData", project_id)
+    csv_path = router.data_retriever.generate_csv(data_points, project_name)
+    
+    return FileResponse(path=csv_path, media_type="application/octet-stream", filename=f"{project_name}.csv")
+    
 @router.post("/projects/{project_name}/data_visualization/{data_type}")
 async def get_project_data_visualized(project_name, data_type, date_information: DateQuerySchema) -> FileResponse:
     if not date_information.start_date and not date_information.end_date:
@@ -101,7 +109,7 @@ async def get_project_data_visualized(project_name, data_type, date_information:
         
     project_id = router.database_connector.execute("getProjectID", project_name)[0][0]
     data_points = router.database_connector.execute("getProjectDataInRange", project_id, date_information.start_date, date_information.end_date)
-    image_path = router.data_visualizer.generate_data_image(data_points, data_type, project_name, router.database_connector)
+    image_path = router.data_retriever.generate_data_image(data_points, data_type, project_name, router.database_connector)
     
     return FileResponse(image_path, media_type="image/png")
 

@@ -14,7 +14,34 @@
             <table class="table">
                 <tbody>
                     <tr>
-                        <td></td>
+                        <td id="name">
+                            <input type="text" placeholder="start date" id="name-input">
+                            <button class="button" id="change_name">Change Name</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td id="id"></td>
+                    </tr>
+                    <tr>
+                        <td id="preset_name"></td>
+                    </tr>
+                    <tr>
+                        <td id="project_name"></td>
+                    </tr>
+                    <tr>
+                        <td id="ip"></td>
+                    </tr>
+                    <tr>
+                        <td id="mac"></td>
+                    </tr>
+                    <tr>
+                        <td id="registration_time"></td>
+                    </tr>
+                    <tr>
+                        <td id="status"></td>
+                    </tr>
+                    <tr>
+                        <td><button id="device-status-button">STATUS</button></td>
                     </tr>
                 </tbody>
             </table>
@@ -36,18 +63,40 @@
             <table class="table">
                 <tbody>
                     <tr>
-                        <td></td>
+                        <td>Uptime: </td>
+                        <td id="uptime"></td>
+                    </tr>
+                    <tr>
+                        <td>Temperature: </td>
+                        <td id="temperature"></td>
+                    </tr>
+                    <tr>
+                        <td>Humidity: </td>
+                        <td id="humidity"></td>
+                    </tr>
+                    <tr>
+                        <td>Moisture: </td>
+                        <td id="moisture"></td>
+                    </tr>
+                    <tr>
+                        <td>pH: </td>
+                        <td id="ph"></td>
+                    </tr>
+                    <tr>
+                        <td>Light: </td>
+                        <td id="light"></td>
                     </tr>
                 </tbody>
             </table>
         </div>
         <div class="very-wide-element">
             <div class="buttons">
-                <button class="button">View Device Statistics</button>
                 <button class="button">Download Logs</button>
                 <button class="button">Unregister Device</button>
                 <button class="button">Add To Project</button>
                 <button class="button">Add Preset</button>
+                <button class="button">Return to Project</button>
+                <button class="button" id="enable-disable"></button>
             </div>
             <br><br>
             <div class="buttons">

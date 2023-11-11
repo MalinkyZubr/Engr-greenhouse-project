@@ -9,6 +9,7 @@ let REGEX_ERROR = "must be mm-dd-yy"
 
 class ProjectManager {
     constructor() {
+        // declare the variables for datatype, data retrieval technique, and date interval
         this.data_type = "Temperature";
         this.update_type = "live";
         this.date_interval = [0, 0];
@@ -29,9 +30,37 @@ class ProjectManager {
         this.data_view_div = document.getElementById("data-view-type");
         this.data_view_buttons = document.getElementsByName("update-type");
 
+        this.csv_download_button = document.getElementById("download-csv");
+        this.pdf_download_button = document.getElementById("download-pdf");
+
+        this.add_device_button = document.getElementById("add-device");
+        this.add_device_button.addEventListener("click", async function() {
+            document.location.href = await format_route(`/devices/scan?=${project_name}`);
+        });
+
         this.set_data_type_events();
         this.set_interval_events();
         this.set_view_events();
+        this.configure_download_buttons(project_name);
+    }
+
+    configure_download_buttons(project_name) {
+        this.csv_download_button.addEventListener('click', async function() {
+            await this.download_csv(project_name);
+        }.bind(this));
+    }
+
+    async download_csv(project_name) {
+        console.log("CALLING HERE");
+        var csv_url = await format_route(`/projects/projects/${project_name}/download_csv`);
+        console.log(csv_url);
+        var download_link = document.createElement('a');
+        download_link.href = csv_url;
+        download_link.download = `${project_name}.csv`;
+
+        document.body.appendChild(download_link);
+        download_link.click();
+        document.body.removeChild(download_link);
     }
 
     set_data_type_events() {
@@ -106,7 +135,7 @@ class ProjectManager {
     async get_graph_image(project_name, in_loop=true) {
         var route = await format_route(`/projects/projects/${project_name}/data_visualization/${this.data_type}`);
         if((this.update_type === "live" && in_loop) || (this.update_type === "static" && !in_loop)) {
-            var x = await fetch(route, {
+            await fetch(route, {
                 method: 'POST',
                 headers: {
                     'Content-Type':'application/json'
@@ -126,6 +155,14 @@ class ProjectManager {
             )
             .catch(error => console.error('Error fetching .png file:', error));
         }
+    }
+
+    async get_data_csv(project_name) {
+        var route = await format_route(`/projects/projects/${project_name}/download_csv`)
+        await fetch(route, {
+            method: 'GET'
+        })
+        .then(response => response.text())
     }
 }
 

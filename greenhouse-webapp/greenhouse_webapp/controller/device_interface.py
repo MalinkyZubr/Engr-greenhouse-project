@@ -20,7 +20,7 @@ class DataSchema(BaseModel):
     
     
 class LogSchema(BaseModel):
-    project_id: int
+    log_level: int
     log_content: str
 
 

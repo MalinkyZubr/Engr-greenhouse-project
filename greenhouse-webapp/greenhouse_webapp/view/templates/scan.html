@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta id="source_project" content={{ source_project }}>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <script type="module" src="/scripts/scan.js"></script>
+
+    <template id="device-selection-template">
+        <tr>          
+            <td>
+                <script type="application/json" id="device-information"></script>  
+                <label class="radio-button" id="radio-button-label">
+                    <input type="radio" name="radio-options" value="option1">
+                    <span class="radiomark"></span>
+                </label>
+            </td>
+        </tr>
+    </template>
+  </head>
+    <body>
+        <div class="header">
+            <h1>Register Devices</h1>
+        </div>
+            <div class="table very-wide-element">
+                <h2>Available Devices To Register</h2>
+                <table class="table">
+                    <tbody>
+                        <form id="device-selector">
+                        </form>
+                    </tbody>
+                </table>
+            </div>
+            <div class="very-wide-element">
+                <div class="buttons">
+                    <button class="button very-wide-element" id="register-button">Register Device</button>
+                </div>
+                <br><br>
+                <div class="buttons">
+                    <a href="/" class="button"><button class="button very-wide-element">Return to Dashboard</button></a>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

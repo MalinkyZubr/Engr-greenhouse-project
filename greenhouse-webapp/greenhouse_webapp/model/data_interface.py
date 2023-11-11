@@ -193,6 +193,14 @@ class getDeviceID(DatabaseQuery):
     def query(self, cursor, device_name):
         return cursor.execute(self.query_str, (device_name,))
     
+    
+class getDeviceIDByIP(DatabaseQuery):
+    query_str = \
+    f"""SELECT DeviceID FROM RegisteredDevices
+    WHERE DeviceIP = %s;"""
+    def query(self, cursor, device_ip):
+        return cursor.execute(self.query_str, (device_ip,))
+    
 
 class getDeviceName(DatabaseQuery):
     query_str = \
@@ -246,6 +254,14 @@ class registerDevice(DatabaseQuery):
     VALUES (%s, %s, %s, %s, %s, %s);"""
     def query(self, cursor, device_name, device_ip, device_mac, preset_id, project_id, device_status):
         return cursor.execute(self.query_str, (device_name, device_ip, device_mac, preset_id, project_id, device_status))
+    
+    
+class reregisterDevice(DatabaseQuery):
+    query_str = \
+    f"""INSERT INTO RegisteredDevices (DeviceName, DeviceID, DeviceIP, DeviceMAC, PresetID, ProjectID, DeviceStatus)
+    VALUES (%s, %s %s, %s, %s, %s, %s);"""
+    def query(self, cursor, device_name, device_id, device_ip, device_mac, preset_id, project_id, device_status):
+        return cursor.execute(self.query_str, (device_name, device_id, device_ip, device_mac, preset_id, project_id, device_status))
 
 
 class deleteDevice(DatabaseQuery):
@@ -336,11 +352,13 @@ class DatabaseInterface:
             "deleteProject":deleteProject(),
             "insertData":insertData(),
             "getDeviceID":getDeviceID(),
+            "getDeviceIDByIP":getDeviceIDByIP(),
             "getDevices":getDevices(),
             "getProjectDevices":getProjectDevices(),
             "getDevice":getDevice(),
             "configureDevice":configureDevice(),
             "registerDevice":registerDevice(),
+            "reregisterDevice":reregisterDevice(),
             "deleteDevice":deleteDevice(),
             "getPresetID":getPresetID(),
             "getPresets":getPresets(),

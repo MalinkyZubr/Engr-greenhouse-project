@@ -192,3 +192,29 @@ body {
     visibility: hidden;
     display: none;
 }
+
+.radio-horizontal-container {
+    display: flex;
+    align-items: center;
+}
+.radio-horizontal-container input[type="radio"] {
+    margin-right: 10px; /* Adjust the spacing between radio buttons */
+}
+.input-container {
+    display: flex;
+}
+.input-container input[type="text"] {
+    margin-right: 10px; /* Adjust the spacing between text inputs */
+}
+.input-container {
+    display: flex;
+    align-items: center;
+}
+.input-container input[type="text"] {
+    margin-right: 10px; /* Adjust the spacing between text inputs */
+    margin-left: 10px;
+}
+.input-error {
+    align-content: center;
+    color: red;
+}

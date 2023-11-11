@@ -14,9 +14,9 @@ manager_conf = os.path.join(script_dir, "conf/managerconf.json")
 
 
 class ReceivedPing:
-    def __init__(self, ip, name):
+    def __init__(self, mac, name):
         self.time_received = self.update_time()
-        self.ip = ip
+        self.mac = mac
         self.name = name
         
     def update_time(self):
@@ -25,6 +25,9 @@ class ReceivedPing:
     def check_time(self):
         if time.time() - self.time_received > 30:
             raise TimeoutError("The connection receive no pings for 30 seconds")
+        
+    def json(self):
+        return {"mac":self.mac, "name":self.name}
         
 
 class DeviceManager:
@@ -35,7 +38,7 @@ class DeviceManager:
             self.ip_address = json.loads(f.read())['host']
         self.loop = loop
         
-        self.scans: dict[str,asyncio.Event] = dict()
+        self.scans: dict[str, ReceivedPing] = dict()
         self.registration_queue = dict()
         
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -53,9 +56,9 @@ class DeviceManager:
         while self.active:
             print("checking for dead")
             await asyncio.sleep(30)
-            for mac, scan_object in self.scans.items():
+            for ip, scan_object in self.scans.items():
                 try: scan_object.check_time()
-                except: self.scans.pop(mac)
+                except: self.scans.pop(ip)
         
     async def serve_management(self):
         while self.active:
@@ -75,17 +78,11 @@ class DeviceManager:
         message = RegistrationSchema(server_ip=self.ip_address).model_dump_json().encode()
         await self.loop.sock_sendall(self.sock, message)
         self.registration_queue[device_ip] = asyncio.Condition()
+        self.scans.pop(device_ip)
                 
     def get_scans(self):
         return self.scans
-    
-    async def __call__(self):
-        print("Now starting")
-        await asyncio.gather(
-            self.serve_management(),
-            self.check_for_dead()
-        )
-    
+
     async def shutdown(self):
         self.active = False
         
