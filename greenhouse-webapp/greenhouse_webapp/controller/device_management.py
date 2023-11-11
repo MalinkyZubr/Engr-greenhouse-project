@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
 import time
 import asyncio
+from datetime import datetime
 
 from controller.frontend_paths import SCAN, ASSIGN_PRES, ASSIGN_PROJ
 from controller.DBIntRouter import APIDRouter
@@ -23,6 +24,13 @@ class ClientDeviceRegSchema(BaseModel):
     device_name: Optional[str]
     device_ip: str
     device_mac: str
+    
+    
+class DeviceConfigSchema(BaseModel):
+    device_name: Optional[str]
+    preset_name: Optional[str]
+    project_name: Optional[str]
+    
 
 class DeviceRegistrationSchema(BaseModel):
     device_name: Optional[str]
@@ -32,6 +40,20 @@ class DeviceRegistrationSchema(BaseModel):
     preset_id: Optional[str]
     project_id: Optional[str]
     device_status: bool
+    
+class DeviceInformationSchema(BaseModel):
+    device_name: str
+    device_ip: str
+    device_mac: str
+    preset_name: Optional[str]
+    project_name: Optional[str]
+    device_status: bool
+    registration_time: datetime    
+
+class LogSchema(BaseModel):
+    log_level: int
+    log_timestamp: datetime
+    log_content: str
 
 
 @router.get("/devices/{device_name}")
@@ -64,13 +86,30 @@ async def list_devices():
     return devices
 
 @router.get("/devices/{device_name}/device_info")
-async def get_device(device_name: str):
+async def get_device(device_name: str) -> DeviceInformationSchema:
     """
     get a specific device
     """
     device_id = router.database_connector.execute('getDeviceID', device_name)[0][0]
     device_information = router.database_connector.execute('getDevice', device_id)
-    return device_information
+    
+    response = DeviceInformationSchema(
+        device_name = device_information[1],
+        device_ip = device_information[2],
+        device_mac = device_information[3],
+        project_name = router.database_connector.execute("getProjectName", device_information[5])[0][0],
+        preset_name = router.database_connector.execute("getPresetName", device_information[4])[0][0],
+        registration_time=device_information[6],
+        device_status=device_information[7]
+    )
+    return response
+
+@router.get("/devices/{device_name}/status")
+async def get_device_status(device_name: str):
+    device_id = router.database_connector.execute('getDeviceID', device_name)[0][0]
+    device_status = router.database_connector.execute("getDeviceStatus", device_id)[0][0]
+    
+    return device_status
     
 @router.get("/scan")
 async def serve_scan_page(request: Request, source_project):
@@ -87,6 +126,13 @@ async def scan_devices():
     scans = router.device_manager.get_scans()
     scans = {ip:scan_object.json() for ip, scan_object in scans.items()}
     return JSONResponse(content=scans)
+
+@router.put("/devices/{device_name}/update")
+async def configure_device(device_name, configuration_info: DeviceConfigSchema):
+    device_id = router.database_connector.execute('getDeviceID', device_name)[0][0]
+    router.database_connector.execute("configureDevice", device_id, device_name=configuration_info.device_name)
+    
+    return "Device update successful"
 
 @router.post("/scan/register_device")
 async def register_device(project_name, device_info: ClientDeviceRegSchema):
@@ -138,3 +184,11 @@ async def confirm_registration(device_info: DeviceRegistrationSchema):
         router.device_manager.registration_queue.pop(device_info.device_ip)
         device_id = router.database_connector.execute("getDeviceIDByIP", device_info.device_ip)
         router.database_connector.execute("configureDevice", device_id, device_name=device_info.device_mac, preset_id=device_info.preset_id, project_id=device_info.project_id)
+        
+@router.get("/devices/{device_name}/logs")
+async def get_logs(device_name) -> list[LogSchema]:
+    pass
+
+@router.get("/devices/{device_name}/downloadLogs")
+async def get_logs(device_name):
+    return FileResponse(path=log_path, media_type="application/octet-stream", filename=f"{device_name}.log")

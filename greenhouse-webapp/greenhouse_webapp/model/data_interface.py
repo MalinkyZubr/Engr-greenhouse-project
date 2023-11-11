@@ -209,12 +209,29 @@ class getDeviceName(DatabaseQuery):
     def query(self, cursor, device_id):
         return cursor.execute(self.query_str, (device_id,))
     
+    
 class getProjectName(DatabaseQuery):
     query_str = \
     f"""SELECT ProjectName FROM ActiveProjects
     WHERE ProjectID = %s;"""
-    def query(self, cursor, project_name):
-        return cursor.execute(self.query_str, (project_name,))
+    def query(self, cursor, project_id):
+        return cursor.execute(self.query_str, (project_id,))
+    
+
+class getPresetName(DatabaseQuery):
+    query_str = \
+    f"""SELECT PresetName FROM Presets
+    WHERE PresetID = %s;"""
+    def query(self, cursor, preset_id):
+        return cursor.execute(self.query_str, (preset_id,))
+    
+    
+class getDeviceStatus(DatabaseQuery):
+    query_str = \
+    f"""SELECT DeviceStatus FROM RegisteredDevices
+    WHERE DeviceID = %s"""
+    def query(self, cursor, device_id):
+        return cursor.execute(self.query_str, (device_id,))
 
 
 class getDevices(DatabaseQuery):
@@ -340,12 +357,14 @@ class DatabaseInterface:
             "getProject":getProject(),
             "getDeviceName":getDeviceName(),
             "getProjectName":getProjectName(),
+            "getPresetName":getPresetName(),
             "getArchivedProjects":getArchivedProjects(),
             "getArchivedProject":getArchivedProject(),
             "getProjectData":getProjectData(),
             "getDeviceDataInRange":getDeviceDataInRange(),
             "getProjectDataInRange":getProjectDataInRange(),
             "getDeviceData":getDeviceData(),
+            "getDeviceStatus":getDeviceStatus(),
             "addProject":addProject(),
             "updateProject":updateProject(),
             "archiveProject":archiveProject(),

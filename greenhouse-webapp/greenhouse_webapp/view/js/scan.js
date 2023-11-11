@@ -7,6 +7,11 @@ class DeviceSelector {
         this.device_selection_table = document.getElementById("device-selector");
         this.device_selector_template = document.getElementById("device-selection-template");
         this.radio_buttons;
+        this.register_button = document.getElementById("register-button");
+
+        this.register_button.addEventListener("click", async function() {
+            await this.get_selected_device();
+        }.bind(this));
     }
 
     async get_scan() {
@@ -25,7 +30,7 @@ class DeviceSelector {
     async display_scans() {
         var devices = await this.get_scan();
         for(let device in devices) {
-            var device_radio = document.importNode(this.device_selector_template, true);
+            var device_radio = document.importNode(this.device_selector_template.content, true);
             var radio_button_text = device_radio.querySelector("#radio-button-label");
             var radio_button_data = device_radio.querySelector("#device-information");
             if(device['name']) {
@@ -77,12 +82,24 @@ class DeviceSelector {
                         alert(`Failed to register device`);
                     }
                 }.bind(this))
-                break;
+                return;
             }
         }
+        alert("please select a device to register");
     }
 
     async device_page_redirect(device_name) {
         document.location.href = await format_route(`/devices/devices/${device_name}`);
     }
 }
+
+document_device_selector = DeviceSelector();
+
+
+functions = [
+    async function() {
+        await document_device_selector.display_scans();
+    }
+]
+
+asynchronous_updater(functions);

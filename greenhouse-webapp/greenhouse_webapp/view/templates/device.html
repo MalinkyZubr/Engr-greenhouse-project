@@ -2,6 +2,12 @@
 <html>
   <head>
     <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <template id="log-template">
+        <tr>
+            <td id="log-message"></td>
+        </tr>
+    </template>
+    <script type="module" src="/scripts/device.js"></script>
   </head>
 <body>
     <div class="header">
@@ -12,15 +18,13 @@
         <div class="table">
             <h2>Device</h2>
             <table class="table">
-                <tbody>
+                <tbody id="device-identifiers">
                     <tr>
                         <td id="name">
-                            <input type="text" placeholder="start date" id="name-input">
-                            <button class="button" id="change_name">Change Name</button>
+                            <input type="text" placeholder="device name" id="name-input">
+                            <button class="button" id="change-name">Change Name</button>
+                            <p id="error-text" class="input-error"></p>
                         </td>
-                    </tr>
-                    <tr>
-                        <td id="id"></td>
                     </tr>
                     <tr>
                         <td id="preset_name"></td>
@@ -41,7 +45,7 @@
                         <td id="status"></td>
                     </tr>
                     <tr>
-                        <td><button id="device-status-button">STATUS</button></td>
+                        <td><button id="device-status-button"></button></td>
                     </tr>
                 </tbody>
             </table>
@@ -50,7 +54,7 @@
         <div class="table">
             <h2>Active Logging Output</h2>
             <table class="table">
-                <tbody>
+                <tbody id="logging-output">
                     <tr>
                         <td></td>
                     </tr>
@@ -60,7 +64,7 @@
 
         <div class="table">
             <h2>Descriptive Statistics</h2>
-            <table class="table">
+            <table class="table" id="stats">
                 <tbody>
                     <tr>
                         <td>Uptime: </td>
@@ -91,7 +95,7 @@
         </div>
         <div class="very-wide-element">
             <div class="buttons">
-                <button class="button">Download Logs</button>
+                <button class="button" id="log-button">Download Logs</button>
                 <button class="button">Unregister Device</button>
                 <button class="button">Add To Project</button>
                 <button class="button">Add Preset</button>
