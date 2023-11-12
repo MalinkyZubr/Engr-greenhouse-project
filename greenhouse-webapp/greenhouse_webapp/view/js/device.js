@@ -15,6 +15,8 @@ class DescriptiveStats {
             ph : this.stats_table.querySelector("#ph"),
             light : this.stats_table.querySelector("#light"),
         };
+
+        this.change_fields(this.fields())
     }
 
     change_fields(data) {
@@ -191,3 +193,14 @@ class ProjectManager {
         this.project_button = get
     }
 }
+
+identifiers = new DeviceIdentifiers();
+logger = new DeviceLogging();
+stats = new DescriptiveStats();
+
+let functions = [
+    identifiers.get_status,
+    logger.retrieve_logs,
+];
+
+asynchronous_updater(functions);

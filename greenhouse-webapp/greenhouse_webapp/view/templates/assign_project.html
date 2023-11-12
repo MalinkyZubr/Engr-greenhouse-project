@@ -2,6 +2,17 @@
 <html>
   <head>
     <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <template id="assign-template">
+        <tr>
+            <td>
+                <label class="radio-button" id="radio-label">
+                    <input type="radio" name="options" value=1>
+                    <span class="radiomark"></span>
+                </label>
+            </td>
+        </tr>
+    </template>
+    <script type="module" src="/scripts/assign_project.js"></script>
   </head>
     <body>
         <div class="header">
@@ -11,22 +22,14 @@
                 <h2>Active Projects</h2>
                 <table class="table">
                     <tbody>
-                        <form id="project-selector">
-                            <tr>
-                                <td>
-                                    <label class="radio-button">
-                                        <input type="radio" name="options" value="option1">
-                                        <span class="radiomark"></span> Option 1
-                                    </label>
-                                </td>
-                            </tr>
+                        <form id="selector-table">
                         </form>
                     </tbody>
                 </table>
             </div>
             <div class="very-wide-element">
                 <div class="buttons">
-                    <button class="button very-wide-element">Assign To Project</button>
+                    <button class="button very-wide-element" id="assign">Assign To Project</button>
                 </div>
                 <br><br>
                 <div class="buttons">
