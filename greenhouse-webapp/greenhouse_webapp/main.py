@@ -24,7 +24,7 @@ from model.data_retrieving import DataRetriever
 SERVER_CONFIG = os.path.join(CONFIG, "controller.json")
 
 database_connector = DatabaseInterface()
-device_manager = DeviceManager("huehue")
+device_manager = DeviceManager("huehue", database_connector)
 data_visualizer = DataRetriever()
 
 routers = {'device_interface':device_interface_router,

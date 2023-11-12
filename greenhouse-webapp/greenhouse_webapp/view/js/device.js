@@ -84,6 +84,9 @@ class DeviceIdentifiers {
         this.name_field_error = name_field.querySelector("#error-text");
         this.name_field_button = name_field.querySelector("#change-name");
 
+        unregister_button = document.getElementById("unregister-button");
+        
+
         this.name_field_content.addEventListener('input', this.name_entry_field_event_handler);
         this.name_field_button.addEventListener('click', async function() {
             await this.change_name();

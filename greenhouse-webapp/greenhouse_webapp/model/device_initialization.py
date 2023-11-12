@@ -7,6 +7,7 @@ import os
 import netifaces
 
 from model.udp_schemas import RegistrationSchema
+from model.data_interface import DatabaseInterface
 
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -14,10 +15,14 @@ manager_conf = os.path.join(script_dir, "conf/managerconf.json")
 
 
 class ReceivedPing:
-    def __init__(self, mac, name):
+    def __init__(self, mac, name, id=None):
         self.time_received = self.update_time()
         self.mac = mac
         self.name = name
+        self.id = id
+        
+    def set_id(self, id):
+        self.id = id
         
     def update_time(self):
         self.time_received = time.time()
@@ -33,13 +38,15 @@ class ReceivedPing:
 class DeviceManager:
     multicast_address = '224.0.2.4'
     port = 1337
-    def __init__(self, loop: asyncio.BaseEventLoop):
+    def __init__(self, loop: asyncio.BaseEventLoop, database_interface: DatabaseInterface):
+        self.database_interface = database_interface
         with open(manager_conf, 'r') as f:
             self.ip_address = json.loads(f.read())['host']
         self.loop = loop
         
         self.scans: dict[str, ReceivedPing] = dict()
         self.registration_queue = dict()
+        self.active_device_list = dict()
         
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', self.port))
@@ -59,6 +66,11 @@ class DeviceManager:
             for ip, scan_object in self.scans.items():
                 try: scan_object.check_time()
                 except: self.scans.pop(ip)
+            for ip, scan_object in self.active_device_list.items():
+                try: scan_object.check_time()
+                except: 
+                    self.active_device_list.pop(ip)
+                    self.database_interface.execute("configureDevice", scan_object.id, status=False)
         
     async def serve_management(self):
         while self.active:

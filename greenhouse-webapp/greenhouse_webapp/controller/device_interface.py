@@ -1,8 +1,10 @@
 from fastapi import APIRouter
+from fastapi.requests import Request
 from pydantic import BaseModel, Field
 from datetime import datetime
 
 from controller.DBIntRouter import APIDRouter
+from controller.schemas.server_device_schemas import BaseSchema
 
 router = APIDRouter()
 """
@@ -23,8 +25,24 @@ class DataSchema(BaseModel):
 class LogSchema(BaseModel):
     log_level: int
     log_content: str
+    
 
-
+@router.middleware("http")
+async def check_aging(request: Request, next_call): # auto updates the device status
+    source_ip = request.client.host
+    device_info = router.device_manager.active_device_list[source_ip]
+    device_id = router.database_connector.execute("getDeviceIDByIP", source_ip)
+    
+    device_status = router.database_connector.execute("getDeviceStatus", device_id)
+    
+    if not device_status:
+        router.database_connector.execute("configureDevice", device_id, device_status=True)
+    device_info.update_time()
+    
+    response = await next_call(request)
+    
+    return response
+    
 @router.post("/data/{device_name}")
 async def post_data(device_name: str, data_info: DataSchema):
     """

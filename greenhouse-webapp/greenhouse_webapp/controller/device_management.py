@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-from typing import Optional 
+from typing import Optional, Literal
 from starlette.responses import FileResponse
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
 import time
 import asyncio
 from datetime import datetime
+import requests
 
 from controller.frontend_paths import SCAN, ASSIGN_PRES, ASSIGN_PROJ
 from controller.DBIntRouter import APIDRouter
@@ -129,6 +130,8 @@ async def scan_devices():
 
 @router.put("/devices/{device_name}/update")
 async def configure_device(device_name, configuration_info: DeviceConfigSchema):
+    
+    # MAKE SURE TO ACTUALLY SEND THE REQUEST TO THE DEVICE HERE!!!
     device_id = router.database_connector.execute('getDeviceID', device_name)[0][0]
     router.database_connector.execute("configureDevice", device_id, device_name=configuration_info.device_name)
     
@@ -152,10 +155,14 @@ async def register_device(project_name, device_info: ClientDeviceRegSchema):
         if device_info.device_ip in router.device_manager.registration_queue:
             router.device_manager.registration_queue.pop(device_info.device_ip)
             raise HTTPException(503, detail=f"Registration of Device {device_info.device_ip} failed!")
+        
+    device_id = router.database_connector.execute("getDeviceIDByIP", device_info.device_ip)
     if project_name:
         project_id = router.database_connector.execute("getProjectID", project_name)
-        device_id = router.database_connector.execute("getDeviceIDByIP", device_info.device_ip)
         router.database_connector.execute("configureDevice", device_id, project_id=project_id)
+        
+    router.device_manager.active_device_list[device_info.device_ip].set_id(device_id)
+    
     return "device registered successfully"
 
 @router.post("/confirm")
@@ -181,9 +188,31 @@ async def confirm_registration(device_info: DeviceRegistrationSchema):
                                                 None, None, False)
         
         router.device_manager.registration_queue[device_info.device_ip].notify_all()
-        router.device_manager.registration_queue.pop(device_info.device_ip)
+        scan_info = router.device_manager.registration_queue.pop(device_info.device_ip)
+
+        router.device_manager.active_device_list[device_info.device_ip] = scan_info
         device_id = router.database_connector.execute("getDeviceIDByIP", device_info.device_ip)
         router.database_connector.execute("configureDevice", device_id, device_name=device_info.device_mac, preset_id=device_info.preset_id, project_id=device_info.project_id)
+        
+@router.delete("/devices/{device_name}/unregister")
+async def unregister_device(device_name) -> Literal['successfully unregistered device']:
+    device_id = router.database_connector.execute('getDeviceID', device_name)[0][0]
+    device_information = router.database_connector.execute("getDevice", device_id)
+    
+    
+    for _ in range(3): # must make sure the device actually unregisters
+        response = requests.put(f"https://{device_information[2]}") # need to implement https and encryption for server -> device communication
+        response_code = response.status_code
+        if response_code == 200:
+            break
+        await asyncio.sleep(10)
+    else:
+        raise HTTPException(500, detail="unregistering failed") # MAKE SURE IT UNREGISTERES NO MATTER WHAT
+    
+    router.database_connector.execute("unregisterDevice", device_id)
+    router.device_manager.active_device_list.pop(device_information[2])
+    
+    return "successfully unregistered device"
         
 @router.get("/devices/{device_name}/logs")
 async def get_logs(device_name) -> list[LogSchema]:
