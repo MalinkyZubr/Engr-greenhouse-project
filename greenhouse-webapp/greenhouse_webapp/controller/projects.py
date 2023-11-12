@@ -41,6 +41,10 @@ async def serve_project_webpage(request: Request, project_name):
     request.scope.pop("path_params")
     return router.template_paths.TemplateResponse("project.html", {"request":request, "project_name":project_name}) # find a way to integrate project name
 
+@router.get("/projects/assignProject")
+async def serve_project_assignment_page(request: Request, device_name):
+    return router.template_paths.TemplateResponse("assign_project.html", {"request":request, "device_name": device_name})
+
 @router.post("/createProject/{project_name}")
 async def create_project(project_name, project_info: ActiveProjectSchema): # add the description field to store in database
     """

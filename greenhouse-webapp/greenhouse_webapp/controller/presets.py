@@ -25,6 +25,10 @@ async def load_webpage(request: Request, preset_name):
     """
     print("called")
     return router.template_paths.TemplateResponse("preset.html", {"request":request, "preset_name":preset_name})
+
+@router.get("/availablePresets/assignPreset")
+async def serve_preset_assignment_page(request: Request, device_name):
+    return router.template_paths.TemplateResponse("assign_preset.html", {"request":request, "device_name":device_name})
     
 @router.get("/list_presets")
 async def list_presets():

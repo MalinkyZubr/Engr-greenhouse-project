@@ -85,7 +85,20 @@ class DeviceIdentifiers {
         this.name_field_button = name_field.querySelector("#change-name");
 
         unregister_button = document.getElementById("unregister-button");
+        unregister_button.addEventListener("click", async function() {
+            await this.unregister();
+        }.bind(this));
         
+        this.project_button = document.getElementById("return-to-project");
+        if(this.static_fields['project_name']) {
+            this.project_button.style.display="block";
+            this.project_button.addEventListener("click", async function() {
+                this.return_to_project(this.static_fields['project_name']);
+            }.bind(this));
+        }
+        else {
+            this.project_button.style.display="none";
+        }
 
         this.name_field_content.addEventListener('input', this.name_entry_field_event_handler);
         this.name_field_button.addEventListener('click', async function() {
@@ -93,6 +106,23 @@ class DeviceIdentifiers {
         }.bind(this));
 
         this.get_static_fields();
+    }
+
+    async return_to_project(project) {
+        document.location.href = await format_route(`/projects/projects/${project}`);
+    }
+
+    async unregister() {
+        route = format_route(`/devices/devices/${device_name}/unregister`);
+        await fetch(route, {
+            method: "DELETE",
+        })
+        .then(res => res.status)
+        .then(status => {
+            if(status == 500) {
+                alert("Unregistration timed out");
+            }
+        })
     }
 
     async get_static_fields() {
@@ -152,5 +182,12 @@ class DeviceIdentifiers {
             this.name_field_error.textContent = "";
             this.name_field_button.style.display = "none";
         }
+    }
+}
+
+
+class ProjectManager {
+    constructor() {
+        this.project_button = get
     }
 }

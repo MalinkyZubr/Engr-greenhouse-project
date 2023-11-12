@@ -12,6 +12,7 @@ import requests
 
 from controller.frontend_paths import SCAN, ASSIGN_PRES, ASSIGN_PROJ
 from controller.DBIntRouter import APIDRouter
+from controller.schemas.server_device_schemas import BaseSchema
 
 
 router = APIDRouter(
@@ -55,6 +56,18 @@ class LogSchema(BaseModel):
     log_level: int
     log_timestamp: datetime
     log_content: str
+    
+    
+async def unregister_device_request(device_ip):
+    for _ in range(3): # must make sure the device actually unregisters
+        message = BaseSchema("unregister")
+        response = requests.put(f"https://{device_ip}", data=message.model_dump_json()) # need to implement https and encryption for server -> device communication
+        response_code = response.status_code
+        if response_code == 200:
+            break
+        await asyncio.sleep(10)
+    else:
+        raise HTTPException(500, detail="unregistering failed") # MAKE SURE IT UNREGISTERES NO MATTER WHAT
 
 
 @router.get("/devices/{device_name}")
@@ -199,15 +212,7 @@ async def unregister_device(device_name) -> Literal['successfully unregistered d
     device_id = router.database_connector.execute('getDeviceID', device_name)[0][0]
     device_information = router.database_connector.execute("getDevice", device_id)
     
-    
-    for _ in range(3): # must make sure the device actually unregisters
-        response = requests.put(f"https://{device_information[2]}") # need to implement https and encryption for server -> device communication
-        response_code = response.status_code
-        if response_code == 200:
-            break
-        await asyncio.sleep(10)
-    else:
-        raise HTTPException(500, detail="unregistering failed") # MAKE SURE IT UNREGISTERES NO MATTER WHAT
+    await unregister_device_request(device_information[2])
     
     router.database_connector.execute("unregisterDevice", device_id)
     router.device_manager.active_device_list.pop(device_information[2])
