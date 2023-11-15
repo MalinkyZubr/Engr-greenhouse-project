@@ -20,7 +20,8 @@ CREATE TABLE Data (
     Moisture FLOAT,
     LightExposure FLOAT,
     IRExposure FLOAT,
-    pHLevel FLOAT
+    pHLevel FLOAT,
+    Archived DEFAULT 0
 );
 
 CREATE TABLE RegisteredDevices (

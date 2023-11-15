@@ -20,6 +20,13 @@ class ReceivedPing:
         self.mac = mac
         self.name = name
         self.id = id
+        self.is_associated = False
+        
+    def associate(self):
+        self.associated = True
+        
+    def dissociate(self):
+        self.associated = False
         
     def set_id(self, id):
         self.id = id

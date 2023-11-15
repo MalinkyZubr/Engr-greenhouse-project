@@ -1,6 +1,11 @@
 import { asynchronous_updater, format_route } from "./asynchronousUpdater.js";
 
-let device_name = document.getElementById("device_name");
+try {
+    let device_name = document.getElementById("device_name");
+}
+catch {
+    let device_name = null;
+}
 
 
 export class Assigner {
@@ -13,15 +18,23 @@ export class Assigner {
         this.assignment_type = assignment_type
 
         this.assignment_button = document.getElementById("assign");
-        this.assignment_button.addEventListener("click", this.assign_to_device)
+        if(this.assignment_type != "archived") {
+            this.assignment_button.addEventListener("click", this.assign_to_device)
+        }
+        else {
+            this.assignment_button.addEventListener("click", this.load_archive_project)
+        }
     }
 
     async retrieve_elements() {
         if(this.assignment_type == "preset_name") {
-            var route = `/projects/projects/assignProject?device_name=${device_name}`;
+            var route = `/projects/projects/list_projects`;
+        }
+        else if(this.assignment_type == "project_name") {
+            var route = `/presets/list_presets`;
         }
         else {
-            var route = `/presets/availablePresets/assignPreset?device_name=${device_name}`;
+            var route = `/projects/archived/projects`
         }
         route = await format_route(route)
         .then(res => res.json())
@@ -29,7 +42,7 @@ export class Assigner {
             for(let data in json_res) {
                 button = document.importNode(this.button_template.content, true);
                 button_content = button.querySelector("#radio-label");
-                button_content.textContent = data['device_name'];
+                button_content.textContent = data[this.assignment_type];
                 this.selector_table.append(button);
             }
         })
@@ -42,7 +55,7 @@ export class Assigner {
                 var selected_element_content = button.textContent;
                 var body = {};
                 body[this.assignment_type] = selected_element_content;
-
+                
                 route = await format_route(`/devices/devices/${device_name}/update`);
                 await fetch(route, {
                     method: "PUT",
@@ -60,5 +73,19 @@ export class Assigner {
             }
         }
         alert(`please select one to assign to ${device_name}`);
+    }
+
+    async load_archive_project() {
+        for(let button in this.buttons) {
+            if(button.checked) {
+                var selected_element_content = button.textContent;
+                
+                route = await format_route(`/projects/archived/${selected_element_content}`);
+                await fetch(route);
+
+                return;
+            }
+        }
+        alert(`please select one to assign to view!`);
     }
 }

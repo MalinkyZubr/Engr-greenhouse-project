@@ -36,6 +36,8 @@ class DatabaseQuery(ABC):
     ]
 
     query_str = """"""
+    
+    single_element=False
         
     @abstractmethod
     def query(self, cursor, *query_parameters, **keyword_parameters):
@@ -53,13 +55,19 @@ class DatabaseQuery(ABC):
     def __call__(self, cursor, *query_parameters: list, **keyword_parameters):
         self.check_query(query_parameters)
         try:
-            return self.query(cursor, *query_parameters, **keyword_parameters)
+            self.query(cursor, *query_parameters, **keyword_parameters)
+            result = cursor.fetchall()
+            
+            if self.single_element:
+                return result[0][0]
+            return result
         except Exception as e:
             print(e)
             return None
 
 
 class getProjectID(DatabaseQuery):
+    single_element=True
     query_str = \
     f"""SELECT ProjectID FROM ActiveProjects WHERE ProjectName = %s;"""
     def query(self, cursor, project_name):
@@ -67,6 +75,7 @@ class getProjectID(DatabaseQuery):
 
 
 class getArchiveProjectID(DatabaseQuery):
+    single_element=True
     query_str = \
     f"""SELECT ProjectID FROM ArchivedProjects WHERE ProjectName = %s;"""
     def query(self, cursor, project_name):
@@ -165,9 +174,12 @@ class archiveProject(DatabaseQuery):
     f"""INSERT INTO ArchivedProjects(ProjectID, ProjectName, DateStarted)
     VALUES SELECT * FROM ActiveProjects
     WHERE ProjectID = %s;
-    DELETE FROM ActiveProjects WHERE ProjectID = %s;"""
+    DELETE FROM ActiveProjects WHERE ProjectID = %s;
+    UPDATE Data
+    SET Archived = 1
+    WHERE ProjectID = %s;"""
     def query(self, cursor, project_id):
-        return cursor.execute(self.query_str, (project_id, project_id))
+        return cursor.execute(self.query_str, (project_id, project_id, project_id))
 
 
 class deleteProject(DatabaseQuery):
@@ -187,6 +199,7 @@ class insertData(DatabaseQuery):
 
 
 class getDeviceID(DatabaseQuery):
+    single_element=True
     query_str = \
     f"""SELECT DeviceID FROM RegisteredDevices
     WHERE DeviceName = %s;"""
@@ -195,6 +208,7 @@ class getDeviceID(DatabaseQuery):
     
     
 class getDeviceIDByIP(DatabaseQuery):
+    single_element=True
     query_str = \
     f"""SELECT DeviceID FROM RegisteredDevices
     WHERE DeviceIP = %s;"""
@@ -203,6 +217,7 @@ class getDeviceIDByIP(DatabaseQuery):
     
 
 class getDeviceName(DatabaseQuery):
+    single_element=True
     query_str = \
     f"""SELECT DeviceName FROM RegisteredDevices
     WHERE DeviceID = %s;"""
@@ -211,6 +226,7 @@ class getDeviceName(DatabaseQuery):
     
     
 class getProjectName(DatabaseQuery):
+    single_element=True
     query_str = \
     f"""SELECT ProjectName FROM ActiveProjects
     WHERE ProjectID = %s;"""
@@ -219,6 +235,7 @@ class getProjectName(DatabaseQuery):
     
 
 class getPresetName(DatabaseQuery):
+    single_element=True
     query_str = \
     f"""SELECT PresetName FROM Presets
     WHERE PresetID = %s;"""
@@ -227,6 +244,7 @@ class getPresetName(DatabaseQuery):
     
     
 class getDeviceStatus(DatabaseQuery):
+    single_element=True
     query_str = \
     f"""SELECT DeviceStatus FROM RegisteredDevices
     WHERE DeviceID = %s"""
@@ -289,6 +307,7 @@ class deleteDevice(DatabaseQuery):
 
 
 class getPresetID(DatabaseQuery):
+    single_element=True
     query_str = \
     f"""SELECT PresetID FROM Presets WHERE PresetName = %s"""
     def query(self, cursor, preset_name):
@@ -378,7 +397,7 @@ class DatabaseInterface:
             "configureDevice":configureDevice(),
             "registerDevice":registerDevice(),
             "reregisterDevice":reregisterDevice(),
-            "deleteDevice":deleteDevice(),
+            "unregisterDevice":deleteDevice(),
             "getPresetID":getPresetID(),
             "getPresets":getPresets(),
             "getPreset":getPreset(),
@@ -391,8 +410,7 @@ class DatabaseInterface:
     def execute(self, query, *query_parameters, **keyword_parameters)-> list[tuple | None]:
         connection = mysql.connector.connect(pool_name="db_pool")
         cursor = connection.cursor(prepared=True)
-        self.queries[query](cursor, *query_parameters, **keyword_parameters)
-        result = cursor.fetchall()
+        result = self.queries[query](cursor, *query_parameters, **keyword_parameters)
         connection.commit()
         cursor.close()
         connection.close()

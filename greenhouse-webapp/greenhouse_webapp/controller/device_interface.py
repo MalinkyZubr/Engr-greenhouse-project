@@ -5,9 +5,11 @@ from datetime import datetime
 
 from controller.DBIntRouter import APIDRouter
 from controller.schemas.server_device_schemas import BaseSchema
-from controller.device_management import unregister_device_request
+from controller.device_management import unregister_device_request, configure_device_request
 
-router = APIDRouter()
+router = APIDRouter(
+    prefix="/interface"
+)
 """
 this file interacts directly with the devices on the entwork
 """
@@ -40,12 +42,16 @@ async def check_aging(request: Request, next_call): # auto updates the device st
     device_status = router.database_connector.execute("getDeviceStatus", device_id)
     
     if not device_status:
+        await configure_device_request(source_ip, device_name=device_info[1], 
+                                 device_project=router.database_connector.execute("getProjectName", device_info[5]),
+                                 device_preset=router.database_connector.execute("getPresetName", device_info[4])) # resync to the server data stored
         router.database_connector.execute("configureDevice", device_id, device_status=True)
+        
     device_info.update_time()
     
     response = await next_call(request)
     
-    return response
+    return response  
     
 @router.post("/data/{device_name}")
 async def post_data(device_name: str, data_info: DataSchema):

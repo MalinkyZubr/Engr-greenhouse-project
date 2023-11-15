@@ -3,6 +3,7 @@ import { asynchronous_updater, format_route } from "./shared/asynchronousUpdater
 
 let device_name = document.getElementById("device_name").textContent;
 
+// ADD DEVICE DISABLING!!!
 
 class DescriptiveStats {
     constructor() {
@@ -79,6 +80,7 @@ class DeviceIdentifiers {
             registration_time : this.identifiers_table.querySelector("registration_time"),
         }
         this.status_button = this.identifiers_table.querySelector("#device-status-button");
+        this.status;
         name_field = this.identifiers_table.querySelector("#name");
 
         this.name_field_content = name_field.querySelector("#name-input");
@@ -185,18 +187,41 @@ class DeviceIdentifiers {
             this.name_field_button.style.display = "none";
         }
     }
+
+    async disable
 }
 
 
 class ProjectManager {
     constructor() {
-        this.project_button = get
+        this.project_button = document.getElementById("add-to-project");
+        this.project_button.addEventListener(this.assign_to_project);
+    }
+
+    async assign_to_project() {
+        var route = format_route(`/projects/assignProject?device_name=${device_name}`);
+        document.location.href = route;
+    }
+}
+
+
+class PresetManager {
+    constructor() {
+        this.preset_button = document.getElementById("add-to-preset");
+        this.preset_button.addEventListener(this.assign_to_preset);
+    }
+
+    async assign_to_preset() {
+        var route = format_route(`/presets/availablePresets/assignPreset?device_name=${device_name}`);
+        document.location.href = route;
     }
 }
 
 identifiers = new DeviceIdentifiers();
 logger = new DeviceLogging();
 stats = new DescriptiveStats();
+projects = new ProjectManager();
+presets = new PresetManager();
 
 let functions = [
     identifiers.get_status,

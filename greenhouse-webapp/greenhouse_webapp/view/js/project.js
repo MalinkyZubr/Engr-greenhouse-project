@@ -7,8 +7,8 @@ let project_name = re.exec(document.getElementById("project_name").textContent)[
 let interval_regex = new RegExp("(?!00)\\d{2}-(?!00)\\d{2}-(?!00)\\d{2}");
 let REGEX_ERROR = "must be mm-dd-yy"
 
-class ProjectManager {
-    constructor() {
+export class ProjectManager {
+    constructor(archived=false) {
         // declare the variables for datatype, data retrieval technique, and date interval
         this.data_type = "Temperature";
         this.update_type = "live";
@@ -25,22 +25,25 @@ class ProjectManager {
         this.lower_interval_input.value = "";
         this.upper_interval_input.value = "";
 
-        this.interval_display.style.display="none";
+        if(!archived) {
+            this.archive_button = document.getElementById("archive-project");
+            this.update_type = "static";
+            this.interval_display.style.display="none";
+            this.data_view_div = document.getElementById("data-view-type");
+            this.data_view_buttons = document.getElementsByName("update-type");
 
-        this.data_view_div = document.getElementById("data-view-type");
-        this.data_view_buttons = document.getElementsByName("update-type");
+            this.add_device_button = document.getElementById("add-device");
+            this.add_device_button.addEventListener("click", async function() {
+                document.location.href = await format_route(`/devices/scan?=${project_name}`);
+            });
+        this.set_view_events();
+        }
 
         this.csv_download_button = document.getElementById("download-csv");
         this.pdf_download_button = document.getElementById("download-pdf");
 
-        this.add_device_button = document.getElementById("add-device");
-        this.add_device_button.addEventListener("click", async function() {
-            document.location.href = await format_route(`/devices/scan?=${project_name}`);
-        });
-
         this.set_data_type_events();
         this.set_interval_events();
-        this.set_view_events();
         this.configure_download_buttons(project_name);
     }
 
@@ -48,6 +51,17 @@ class ProjectManager {
         this.csv_download_button.addEventListener('click', async function() {
             await this.download_csv(project_name);
         }.bind(this));
+    }
+
+    async archive_project() {
+        var confirmation = prompt("You must confirm archiving of this project\nEnter the project name: ");
+        if(confirmation === project_name) {
+            var route = await format_route(`/projects/projects/${project_name}/archive`);
+            
+            await fetch(route, {
+                method: "PATCH"
+            })
+        }
     }
 
     async download_csv(project_name) {
