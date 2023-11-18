@@ -27,6 +27,7 @@
 #define SENSOR_INTERVAL 5 // in seconds
 #define SENSOR_ID 2
 
+ISR_Timer ISR_timer;
 
 CommonData common_data;
 TaskManager task_manager;
@@ -48,6 +49,8 @@ void setup() {
 
   ITimer1.init();
   while(!ITimer1.attachInterruptInterval(TIMER_INTERVAL_S * 1000, TimedTasks)){}
+
+  task_manager.execute_actions(ENABLE);
 }
 
 void loop() {
@@ -57,7 +60,7 @@ void loop() {
 void TimedTasks() // executes every 5 seconds
 {
   ISR_timer.run();
-  task_manager.execute()
+  task_manager.execute_actions(EXECUTE);
 }
 
 void enqueue_data() { // this should be called by sensor reader
