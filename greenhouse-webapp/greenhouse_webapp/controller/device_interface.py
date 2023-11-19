@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from fastapi.requests import Request
 from pydantic import BaseModel, Field
+from typing import Optional
 from datetime import datetime
 
 from controller.DBIntRouter import APIDRouter
@@ -16,13 +17,14 @@ this file interacts directly with the devices on the entwork
 
 
 class DataSchema(BaseModel):
-    project_id: int # the device should know its own project ID
+    project_name: str # the device should know its own project ID
+    device_name: str
     temperature: float
     humidity: float
     moisture: float
     light_exposure: float
-    ir_exposure: float
-    ph_level: float
+    ir_exposure: Optional[float]
+    ph_level: Optional[float]
     
     
 class LogSchema(BaseModel):

@@ -109,6 +109,10 @@ class DeviceIdentifiers {
             await this.change_name();
         }.bind(this));
 
+        this.enable_disable_button = document.getElementById("enable-disable");
+        this.enable_disable_button.addEventListener("click", this.enable_disable_button_handler)
+        this.can_press_disable_button = true;
+
         this.get_static_fields();
     }
 
@@ -151,29 +155,58 @@ class DeviceIdentifiers {
             if(!status) {
                 this.status_button.textContent = "DISABLED";
                 this.status_button.style.background = "RED";
+                this.status = false;
+
+                this.enable_disable_button.style.background = "GREEN";
+                this.enable_disable_button.textContent = "Enable";
             }
             else {
                 this.status_button.textContent = "ACTIVE";
                 this.status_button.style.background = "GREEN";
+                this.status = true;
+
+                this.enable_disable_button.style.background = "Red";
+                this.enable_disable_button.textContent = "Disable"
             }
         })
     }
 
+    async enable_disable_button_handler() {
+        if(this.can_press_disable_button) {
+            this.can_press_disable_button = false;
+            route = format_route(`/devices/${device_name}/update`);
+            await fetch(route, {
+                method: "PUT",
+                headers: {
+                    "Content-Type":"application/json"
+                },
+                body: JSON.stringify({
+                    device_status: this.status
+                })
+            })
+            await new Promise(function() {
+                setTimeout(function() {this.can_press_disable_button = true;}, 3000);
+            });
+        }
+    }
+
     async change_name() {
         route = format_route(`/devices/devices/${device_name}/update`);
+        var new_device_name = this.name_field_content.value
         await fetch(route, {
             method: "PUT",
             headers: {
                 "Content-Type":"application/json"
             },
             body: JSON.stringify({
-                device_name: this.name_field_content.value
+                device_name: new_device_name
             })
         })
         .then(res => res.json())
         .then(json_res => {
             alert("Device name successfully updated");
-            document.getElementById("device_name").textContent = this.name_field_content.value;
+            document.getElementById("device_name").textContent = new_device_name;
+            device_name = new_device_name;
         })
     }
 
@@ -182,13 +215,14 @@ class DeviceIdentifiers {
             this.name_field_error.textContent = "Name must be under 255 characters";
             this.name_field_button.style.display = "block";
         }
+        else if(this.name_field_content.value === device_name) {
+            return;
+        }
         else {
             this.name_field_error.textContent = "";
             this.name_field_button.style.display = "none";
         }
     }
-
-    async disable
 }
 
 
