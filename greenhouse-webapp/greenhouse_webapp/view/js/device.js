@@ -5,29 +5,6 @@ let device_name = document.getElementById("device_name").textContent;
 
 // ADD DEVICE DISABLING!!!
 
-class DescriptiveStats {
-    constructor() {
-        this.stats_table = document.getElementById("stats");
-        this.fields = {
-            uptime : this.stats_table.querySelector("#uptime"),
-            temperature : this.stats_table.querySelector("#temperature"),
-            humidity : this.stats_table.querySelector("#humidity"),
-            moisture : this.stats_table.querySelector("#moisture"),
-            ph : this.stats_table.querySelector("#ph"),
-            light : this.stats_table.querySelector("#light"),
-        };
-
-        this.change_fields(this.fields())
-    }
-
-    change_fields(data) {
-        for(let datapoint_key in data.keys()) {
-            this.fields[datapoint_key] = data[datapoint_key];
-        }
-    }
-}
-
-
 class DeviceLogging {
     constructor() {
         this.log_table = document.getElementById("logging-output");
@@ -113,6 +90,19 @@ class DeviceIdentifiers {
         this.enable_disable_button.addEventListener("click", this.enable_disable_button_handler)
         this.can_press_disable_button = true;
 
+
+        this.stats_table = document.getElementById("stats");
+        this.fields = {
+            uptime : this.stats_table.querySelector("#uptime"),  // how long has the device been active?
+            temperature : this.stats_table.querySelector("#temperature"), 
+            humidity : this.stats_table.querySelector("#humidity"),
+            moisture : this.stats_table.querySelector("#moisture"),
+            ph : this.stats_table.querySelector("#ph"),
+            light : this.stats_table.querySelector("#light"), // in lux
+        };
+
+        this.change_fields(this.fields())
+
         this.get_static_fields();
     }
 
@@ -120,8 +110,23 @@ class DeviceIdentifiers {
         document.location.href = await format_route(`/projects/projects/${project}`);
     }
 
+    change_fields(data) {
+        for(let datapoint_key in data.keys()) {
+            this.fields[datapoint_key] = data[datapoint_key];
+        }
+    }
+
+    async get_statistics() {
+        var route = format_route(`/devices/devices/${device_name}/recent_data`);
+        await fetch(route)
+        .then(res => res.json())
+        .then(res => {
+            this.change_fields(res)
+        });
+    }
+
     async unregister() {
-        route = format_route(`/devices/devices/${device_name}/unregister`);
+        var route = format_route(`/devices/devices/${device_name}/unregister`);
         await fetch(route, {
             method: "DELETE",
         })
@@ -134,7 +139,7 @@ class DeviceIdentifiers {
     }
 
     async get_static_fields() {
-        route = format_route(`/devices/devices/${device_name}/device_info`);
+        var route = format_route(`/devices/devices/${device_name}/device_info`);
         await fetch(route)
         .then(res => res.json())
         .then(json_response => {
@@ -147,7 +152,7 @@ class DeviceIdentifiers {
     }
 
     async get_status() {
-        route = format_route(`/devices/devices/${device_name}/status`);
+        var route = format_route(`/devices/devices/${device_name}/status`);
 
         await fetch(route)
         .then(res => res.json())
@@ -175,13 +180,19 @@ class DeviceIdentifiers {
         if(this.can_press_disable_button) {
             this.can_press_disable_button = false;
             route = format_route(`/devices/${device_name}/update`);
+            if(this.status) {
+                var set_status = false;
+            }
+            else {
+                var set_status = true;
+            }
             await fetch(route, {
                 method: "PUT",
                 headers: {
                     "Content-Type":"application/json"
                 },
                 body: JSON.stringify({
-                    device_status: this.status
+                    device_status: set_status
                 })
             })
             await new Promise(function() {
@@ -191,7 +202,7 @@ class DeviceIdentifiers {
     }
 
     async change_name() {
-        route = format_route(`/devices/devices/${device_name}/update`);
+        var route = format_route(`/devices/devices/${device_name}/update`);
         var new_device_name = this.name_field_content.value
         await fetch(route, {
             method: "PUT",
@@ -253,13 +264,13 @@ class PresetManager {
 
 identifiers = new DeviceIdentifiers();
 logger = new DeviceLogging();
-stats = new DescriptiveStats();
 projects = new ProjectManager();
 presets = new PresetManager();
 
 let functions = [
     identifiers.get_status,
     logger.retrieve_logs,
+    identifiers.get_statistics
 ];
 
 asynchronous_updater(functions);

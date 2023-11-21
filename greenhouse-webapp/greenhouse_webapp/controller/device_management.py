@@ -59,6 +59,15 @@ class LogSchema(BaseModel):
     log_content: str
     
     
+class ClientDataSchema(BaseModel):
+    uptime: str
+    temperature: float
+    humidity: float
+    moisture: float
+    ph: float
+    light: float
+    
+    
 async def unregister_device_request(device_ip): # should delete the proejct data from the device, as well as server IP. 
     for _ in range(3): # must make sure the device actually unregisters
         message = BaseSchema("unregister")
@@ -142,6 +151,22 @@ async def get_device(device_name: str) -> DeviceInformationSchema:
         device_status=device_information[7]
     )
     return response
+
+@router.get("/devices/{device_name}/recent_data") 
+async def get_most_recent_data(device_name: str) -> ClientDataSchema:
+    device_id = router.database_connector.execute('getDeviceID', device_name)
+    device_data = router.database_connector.execute('getLatestDeviceData', device_id)[0]
+    
+    device_start_time = router.database_connector.execute("getDevice", device_id)[0][6]
+    data = ClientDataSchema(
+        temperature=device_data[3], 
+        humidity=device_data[4],
+        moisture=device_data[5],
+        light=device_data[6],
+        ph=device_data[8],
+        uptime=device_start_time)
+    
+    return data
 
 @router.get("/devices/{device_name}/status")
 async def get_device_status(device_name: str):

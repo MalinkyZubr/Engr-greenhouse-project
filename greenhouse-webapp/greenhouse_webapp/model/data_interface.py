@@ -136,6 +136,13 @@ class getDeviceData(DatabaseQuery):
     def query(self, cursor, device_id):
         return cursor.execute(self.query_str, (device_id,))
     
+    
+class getLatestDeviceData(DatabaseQuery):
+    query = \
+    f"""SELECT * FROM Data WHERE DeviceID = %d ORDER BY DateCollected DESC limit 1;"""
+    def query(self, cursor, device_id):
+        return cursor.execute(self.query_str, (device_id,))
+    
 
 class getDeviceDataInRange(DatabaseQuery):
     query_str = \
@@ -384,6 +391,7 @@ class DatabaseInterface:
             "getProjectDataInRange":getProjectDataInRange(),
             "getDeviceData":getDeviceData(),
             "getDeviceStatus":getDeviceStatus(),
+            "getLatestDeviceData":getLatestDeviceData(),
             "addProject":addProject(),
             "updateProject":updateProject(),
             "archiveProject":archiveProject(),

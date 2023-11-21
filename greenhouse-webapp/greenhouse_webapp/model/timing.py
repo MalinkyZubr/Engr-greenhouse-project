@@ -15,3 +15,13 @@ def convert_time_formats(m_d_y):
 
 def matplot_times(desired_datetime: datetime):
     return datetime.strptime(datetime.strftime(desired_datetime, "%m-%d-%Y %H:%M:%S"), "%m-%d-%Y %H:%M:%S")
+
+def get_difference(start_datetime: datetime, end_datetime: datetime):
+    difference_delta = end_datetime - start_datetime
+    seconds = difference_delta.seconds
+    minutes = seconds / 60
+    seconds = seconds % 60
+    hours = minutes / 60
+    minutes = hours % 60
+    
+    return f"{hours}:{minutes}:{seconds}"

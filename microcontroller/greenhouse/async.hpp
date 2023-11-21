@@ -38,7 +38,7 @@ class TimedTask {
   public:
   int id;
   bool enabled;
-  TimedTask(){
+  TimedTask() {
     this->id = -1;
   }
   TimedTask(Callable *callback, int interval, int id);
