@@ -4,6 +4,7 @@
 #include "async.hpp"
 #include "storage.hpp"
 #include "environmentManagement.hpp"
+#include "wifi.hpp"
 
 #include "TimerInterrupt.h"
 #include "ISR_Timer.h"
@@ -34,8 +35,7 @@ TaskManager task_manager;
 Callable envmgr = EnvironmentManager(&common_data, (int) PUMP_PIN, HEAT_PIN, FAN_PIN, LED_PIN, 1.0, 2.0, 3.0, 6);
 Callable sensors = Sensors(&common_data, DHT_PIN, (int) MOISTURE_PIN);
 MessageQueue message_queue;
-ConfigManager config_manager;
-
+ConfigManager config_manager(CONFIG_ADDRESS);
 
 void setup() {
   Serial.begin(115200);

@@ -54,6 +54,7 @@ class TaskManager {
 
   public:
   bool add_task(Callable *callback, int interval, int id);
+  bool remove_task(int id);
   void execute_actions(Actions action);
 };
 

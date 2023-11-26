@@ -48,6 +48,16 @@ bool TaskManager::add_task(Callable *callback, int interval, int id) {
   return false;
 }
 
+bool TaskManager::remove_task(int id) {
+  for(int i = 0; i < MAX_TASKS; i++) {
+    if(this->task_list[i].id == id) {
+      this->task_list[i] = TimedTask();
+      return true;
+    }
+  }
+  return false;
+}
+
 void TaskManager::execute_actions(Actions action) {
   for(int i = 0; i < MAX_TASKS; i++) {
     if(this->task_list[i].id != -1)
