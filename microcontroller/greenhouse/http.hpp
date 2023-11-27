@@ -8,34 +8,28 @@
 #include "storage.hpp"
 
 
-Reg GET_JSON = Reg(R"(\{[^}]*\})");
-Reg GET_CONTENT_LENGTH = Reg(R"((?<=Content-Length: )\d+)");
-Reg GET_HOST = Reg(R"((?<=Host: )\S+)");
-Reg GET_ROUTE = Reg(R"(/([^ ]+)(?=\sHTTP))");
-Reg GET_STATUS = Reg(R"(\d\d\d)");
-Reg GET_METHOD = Reg(R"(^([A-Z]+)\b)");
-
-
-union methods {
-    GET = "GET";
-    POST = "POST";
-    PUT = "PUT";
-    DELETE = "DELETE";
-    PATCH = "PATCH";
+enum methods {
+  GET,
+  POST,
+  PUT,
+  DELETE,
+  PATCH
 };
 
+
+String return_method(methods method);
 
 typedef struct {
     methods method;
     String route;
     String host;
-    DynamicJsonDocument body(CONFIG_JSON_SIZE);
+    DynamicJsonDocument body;
 } parsed_request;
 
 
 typedef struct {
     int status;
-    DynamicJsonDocument body(CONFIG_JSON_SIZE);
+    DynamicJsonDocument body;
 } parsed_response;
 
 
@@ -47,22 +41,51 @@ class Reg {
 };
 
 
-class Requests {
-    public:
-    static String request(methods method, String route, String host);
-    static String request(methods method, String route, String host, DynamicJsonDocument body);
+union ParsedMessage {
+    parsed_request request;
+    parsed_response response;
+};
 
-    static parsed_request parse_request(String request);
+
+enum ReceiveType {
+    REQUEST,
+    RESPONSE
+};
+
+
+typedef struct {
+  Reg GET_JSON = Reg(R"(\{[^}]*\})");
+  Reg GET_CONTENT_LENGTH = Reg(R"((?<=Content-Length: )\d+)");
+  Reg GET_HOST = Reg(R"((?<=Host: )\S+)");
+  Reg GET_ROUTE = Reg(R"(/([^ ]+)(?=\sHTTP))");
+  Reg GET_STATUS = Reg(R"(\d\d\d)");
+  Reg GET_METHOD = Reg(R"(^([A-Z]+)\b)");
+} RegularExpressions;
+
+
+class Requests {
+  private:
+  RegularExpressions regex;
+
+  public:
+  static String request(methods method, String route, String host);
+  static String request(methods method, String route, String host, DynamicJsonDocument body);
+
+  static parsed_request parse_request(String request);
 };
 
 
 class Responses {
-    public:
-    static String response(int status);
-    static String response(int status, DynamicJsonDocument content);
-    static String html_response(int status);
+  private:
+  RegularExpressions regex;
+  
+  public:
+  static String response(int status);
+  static String response(int status, DynamicJsonDocument content);
+  static String html_response(int status, String content);
 
-    static parsed_response parse_response(String response);
+  static parsed_response parse_response(String response);
 };
+
 
 #endif

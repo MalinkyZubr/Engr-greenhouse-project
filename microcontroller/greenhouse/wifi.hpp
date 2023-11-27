@@ -7,6 +7,8 @@
 #include <ArduinoJson.h>
 #include <SPI.h>
 #include "async.hpp"
+#include "http.hpp"
+#include "storage.hpp"
 
 
 #define RECEPTION_PID 6
@@ -46,26 +48,35 @@ union Connection {
 };
 
 class ConnectionManager {
-    public:
-    States state = INITIALIZING;
-    WifiInfo wifi_information;
-    ConnectionInfo own_information;
-    ConnectionInfo server_information;
-    TaskManager task_manager;
-    Connection state_connection;
+  public:
+  States state = INITIALIZING;
 
-    ConnectionManager(TaskManager task_manager);
-    ConnectionManager(TaskManager task_manager, WifiInfo wifi_information);
-    ConnectionManager(TaskManager task_manager, WifiInfo wifi_information, ConnectionInfo server_information)
-    bool set_ssid_config();
-    bool initialization();
-    bool configuration(); // soft ap mode operations
-    ConnectionInfo association(); // to be run inside broadcast when receive confirmation
-    ConnectionInfo broadcast();
-    void connected();
-    bool send();
-    DynamicJsonDocument receive();
-    void run();
+  WifiInfo wifi_information;
+  ConnectionInfo own_information;
+  ConnectionInfo server_information;
+  TaskManager task_manager;
+  Connection state_connection;
+
+  ConfigManager storage;
+
+  ConnectionManager(TaskManager task_manager, ConfigManager storage);
+  ConnectionManager(TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information);
+  ConnectionManager(TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information, ConnectionInfo server_information);
+  
+  ParsedMessage rest_receive(ReceiveType type);
+  bool rest_send(String message);
+
+  bool set_ssid_config();
+  bool initialization();
+  bool configuration(); // soft ap mode operations
+
+  ConnectionInfo association(); // to be run inside broadcast when receive confirmation
+  ConnectionInfo broadcast();
+
+  void connected();
+  bool send();
+  DynamicJsonDocument receive();
+  void run();
 };
 
 #endif

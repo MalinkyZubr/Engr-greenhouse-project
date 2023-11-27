@@ -108,7 +108,7 @@
             async submit_form() {
                 var confirmation = confirm(`Confirm that this information is correct:\n${this.confirmation_message()}`);
                 if(confirmation) {
-                    await fetch(this.device_ip, {
+                    await fetch(this.device_ip + "/submit", {
                         method: "POST",
                         headers: {
                             'Content-Type':'application/json'

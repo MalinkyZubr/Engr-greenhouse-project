@@ -1,7 +1,7 @@
 #include "storage.hpp"
 
 
-ConfigManager::ConfigManager(int configAddr) : configAddr(configAddr) {
+ConfigManager::ConfigManager(int configAddr, int webpageAddr) : configAddr(configAddr), webpageAddr(webpageAddr) {
   this->flash.begin();
 }
 
@@ -22,4 +22,8 @@ bool ConfigManager::write_configuration(DynamicJsonDocument *document) {
   String serialized;
   serializeJson(*document, serialized);
   return this->flash.writeStr(this->configAddr, serialized);
+}
+
+bool ConfigManager::retrieve_webpage(String *output) {
+  return flash.readStr(this->webpageAddr, *output);
 }

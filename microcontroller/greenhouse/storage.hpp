@@ -1,45 +1,49 @@
 #ifndef STORAGE_HPP
-#define STORAGe_HPP
+#define STORAGE_HPP
 
 #include <ArduinoJson.h>
 #include <ArduinoJson.hpp>
 #include <Arduino.h>
 #include <SPIMemory.h>
 
-#define CONFIG_ADDRESS 5000
+#define CONFIG_ADDRESS 4000
 #define CONFIG_JSON_SIZE 256
+#define WEBPAGE_ADDRESS 5000
 
 
 class ConfigManager {
-    private:
-    int configAddr = CONFIG_ADDRESS;
-    SPIFlash flash;
+  private:
+  int configAddr = CONFIG_ADDRESS;
+  int webpageAddr = WEBPAGE_ADDRESS;
+  SPIFlash flash;
 
-    public:
-    typedef struct {
-        float Temperature;
-        float Humidity;
-        float Moisture;
-        float LightExposure;
-        float IRExposure;
-        String PresetName;
-    } Preset;
+  public:
+  typedef struct {
+      float Temperature;
+      float Humidity;
+      float Moisture;
+      float LightExposure;
+      float IRExposure;
+      String PresetName;
+  } Preset;
 
-    typedef struct {
-      int device_id;
-      String server_hostname;
-      String device_name;
-      String project_name;
-      Preset preset;
-    } Configuration;
+  typedef struct {
+    int device_id;
+    String server_hostname;
+    String device_name;
+    String project_name;
+    Preset preset;
+  } Configuration;
 
-    Configuration config;
+  Configuration config;
 
-    ConfigManager(int configAddr);
-    void de_power();
-    bool power(String *output);
-    bool retrieve_configuration(String *output);
-    bool write_configuration(DynamicJsonDocument *document);
+  ConfigManager(){};
+  ConfigManager(int configAddr, int webpageAddr);
+  void de_power();
+  bool power(String *output);
+  bool retrieve_configuration(String *output);
+  bool write_configuration(DynamicJsonDocument *document);
+  bool retrieve_webpage(String *output);
 };
 
 #endif

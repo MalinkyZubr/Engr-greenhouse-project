@@ -1,6 +1,28 @@
 #include "http.hpp"
 
 
+String return_method(methods method) {
+  String method_str;
+  switch(method) {
+    case GET:
+      method_str = "GET";
+      break;
+    case POST:
+      method_str = "POST";
+      break;
+    case PUT:
+      method_str = "PUT";
+      break;
+    case DELETE:
+      method_str = "DELETE";
+      break;
+    case PATCH:
+      method_str = "PATCH";
+      break;
+  }
+  return method_str;
+}
+
 Reg::Reg(char *pattern) {
   this->pattern.Match(pattern);
 }
@@ -25,10 +47,10 @@ String Reg::match(String content) {
 
 
 String Requests::request(methods method, String route, String host) {
-  String request = method;
+  String request = return_method(method);
   request.concat(" " + route);
   request.concat(" HTTP/1.1\n");
-  reqeust.concat("Host: " + host);
+  request.concat("Host: " + host);
 
   return request;
 }
@@ -46,10 +68,10 @@ String Requests::request(methods method, String route, String host, DynamicJsonD
 
 parsed_request Requests::parse_request(String request) {
   parsed_request request_struct;
-  request_struct.method = GET_METHOD.match(request);
-  request_struct.route = GET_ROUTE.match(request);
-  request_struct.host = GET_HOST.match(request);
-  String json = GET_JSON.match(request);
+  request_struct.method = Requests::regex.GET_METHOD.match(request);
+  request_struct.route = Requests::regex.GET_ROUTE.match(request);
+  request_struct.host = Requests::regex.GET_HOST.match(request);
+  String json = Requests::regex.GET_JSON.match(request);
   if(json.length()) {
     DynamicJsonDocument doc(CONFIG_JSON_SIZE);
     deserializeJson(doc, json);
@@ -92,14 +114,13 @@ String Responses::html_response(int status, String content) {
 parsed_response Responses::parse_response(String response) {
   parsed_response response_struct;
 
-  response_struct.status = GET_STATUS.match(response);
+  response_struct.status = Responses::regex.GET_STATUS.match(response);
 
-  String json = GET_JSON.match(response);
+  String json = Responses::regex.GET_JSON.match(response);
   if(json.length()) {
-    DynamicJsonDocument doc(JSON_CONFIG_SIZE);
+    DynamicJsonDocument doc(CONFIG_JSON_SIZE);
     deserializeJson(doc, json);
-    response_struct.body = json;
+    response_struct.body = doc;
   }
-
-  return response;
+  return response_struct;
 }
