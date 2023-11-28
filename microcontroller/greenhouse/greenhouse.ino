@@ -2,9 +2,9 @@
 #include <SPI.h>
 #include <ArduinoJson.h>
 #include "async.hpp"
-#include "storage.hpp"
 #include "environmentManagement.hpp"
 #include "wifi.hpp"
+#include "storage.hpp"
 
 #include "TimerInterrupt.h"
 #include "ISR_Timer.h"
@@ -35,7 +35,7 @@ TaskManager task_manager;
 Callable envmgr = EnvironmentManager(&common_data, (int) PUMP_PIN, HEAT_PIN, FAN_PIN, LED_PIN, 1.0, 2.0, 3.0, 6);
 Callable sensors = Sensors(&common_data, DHT_PIN, (int) MOISTURE_PIN);
 MessageQueue message_queue;
-ConfigManager config_manager(CONFIG_ADDRESS);
+ConfigManager config_manager(CONFIG_ADDRESS, WEBPAGE_ADDRESS);
 
 void setup() {
   Serial.begin(115200);
@@ -63,7 +63,7 @@ void TimedTasks() // executes every 5 seconds
   task_manager.execute_actions(EXECUTE);
 }
 
-void enqueue_data() { // this should be called by sensor reader
+void enqueue_data(ConfigManager config_manager) { // this should be called by sensor reader
   DynamicJsonDocument message_body(1024);
   message_body["project_name"] = config_manager.config.project_name;
   message_body["device_name"] = config_manager.config.device_name;

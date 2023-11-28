@@ -23,7 +23,3 @@ bool ConfigManager::write_configuration(DynamicJsonDocument *document) {
   serializeJson(*document, serialized);
   return this->flash.writeStr(this->configAddr, serialized);
 }
-
-bool ConfigManager::retrieve_webpage(String *output) {
-  return flash.readStr(this->webpageAddr, *output);
-}

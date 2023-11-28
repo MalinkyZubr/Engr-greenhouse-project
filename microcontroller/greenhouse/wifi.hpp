@@ -9,10 +9,11 @@
 #include "async.hpp"
 #include "http.hpp"
 #include "storage.hpp"
+#include "webpage.hpp"
 
 
 #define RECEPTION_PID 6
-#define LOCAL_PORT 2211
+#define PORT 2211
 
 
 enum NetworkTypes {
@@ -21,7 +22,6 @@ enum NetworkTypes {
 };
 
 typedef struct {
-    NetworkTypes network_type;
     String ssid;
     String username;
     String password;
@@ -41,15 +41,19 @@ enum States {
     DOWN
 };
 
-union Connection {
-    WiFiUDP udp;
-    WiFiSSLClient standard;
-    WiFiServer server(LOCAL_PORT);
+class Connection {
+  public:
+  WiFiUDP UDPserver;
+  WiFiSSLClient SSLclient;
+  WiFiServer Startupserver;
+
+  Connection() : Startupserver(PORT){};
 };
 
 class ConnectionManager {
   public:
   States state = INITIALIZING;
+  NetworkTypes type = HOME;
 
   WifiInfo wifi_information;
   ConnectionInfo own_information;
@@ -59,15 +63,17 @@ class ConnectionManager {
 
   ConfigManager storage;
 
-  ConnectionManager(TaskManager task_manager, ConfigManager storage);
-  ConnectionManager(TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information);
-  ConnectionManager(TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information, ConnectionInfo server_information);
+  ConnectionManager(NetworkTypes type, TaskManager task_manager, ConfigManager storage);
+  ConnectionManager(NetworkTypes type, TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information);
+  ConnectionManager(NetworkTypes type, TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information, ConnectionInfo server_information);
   
-  ParsedMessage rest_receive(ReceiveType type);
+  ParsedMessage rest_receive(WiFiClient client);
   bool rest_send(String message);
 
   bool set_ssid_config();
   bool initialization();
+  WifiInfo receive_credentials(WiFiClient &client);
+  bool check_credentials(WifiInfo &wifi_information);
   bool configuration(); // soft ap mode operations
 
   ConnectionInfo association(); // to be run inside broadcast when receive confirmation

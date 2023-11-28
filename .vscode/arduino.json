@@ -1,3 +1,6 @@
 {
-    "board": "arduino:avr:uno"
+    "board": "arduino:avr:uno",
+    "programmer": "avrisp",
+    "port": "/dev/ttyS0",
+    "sketch": "microcontroller/greenhouse/greenhouse.ino"
 }

@@ -19,19 +19,36 @@ enum methods {
 
 String return_method(methods method);
 
-typedef struct {
-    methods method;
-    String route;
-    String host;
-    DynamicJsonDocument body;
-} parsed_request;
 
+class ParsedRequest {
+  public:
+  String method;
+  String route;
+  String host;
+  DynamicJsonDocument body;
+  ParsedRequest() : body(DynamicJsonDocument(0)) {};
+  ParsedRequest(DynamicJsonDocument body) : body(body) {};
+};
 
-typedef struct {
-    int status;
-    DynamicJsonDocument body;
-} parsed_response;
+class ParsedResponse {
+  public:
+  int status;
+  DynamicJsonDocument body;
+  ParsedResponse() : body(DynamicJsonDocument(0)) {};
+  ParsedResponse(DynamicJsonDocument body) : body(body) {};
+};
 
+enum ReceiveType {
+  REQUEST,
+  RESPONSE
+};
+
+class ParsedMessage {
+  public:
+  ReceiveType type;
+  ParsedResponse response;
+  ParsedRequest request;
+};
 
 class Reg {
     public:
@@ -40,51 +57,39 @@ class Reg {
     String match(String content);
 };
 
-
-union ParsedMessage {
-    parsed_request request;
-    parsed_response response;
-};
-
-
-enum ReceiveType {
-    REQUEST,
-    RESPONSE
-};
-
-
 typedef struct {
   Reg GET_JSON = Reg(R"(\{[^}]*\})");
   Reg GET_CONTENT_LENGTH = Reg(R"((?<=Content-Length: )\d+)");
   Reg GET_HOST = Reg(R"((?<=Host: )\S+)");
   Reg GET_ROUTE = Reg(R"(/([^ ]+)(?=\sHTTP))");
-  Reg GET_STATUS = Reg(R"(\d\d\d)");
+  Reg GET_STAT = Reg(R"(\d\d\d)");
   Reg GET_METHOD = Reg(R"(^([A-Z]+)\b)");
 } RegularExpressions;
 
+enum FileType {
+  HTML,
+  CSS,
+  JS
+};
 
 class Requests {
-  private:
-  RegularExpressions regex;
-
   public:
+  static RegularExpressions regex;
   static String request(methods method, String route, String host);
   static String request(methods method, String route, String host, DynamicJsonDocument body);
 
-  static parsed_request parse_request(String request);
+  static ParsedRequest parse_request(String request);
 };
 
 
 class Responses {
-  private:
-  RegularExpressions regex;
-  
   public:
+  static RegularExpressions regex;
   static String response(int status);
   static String response(int status, DynamicJsonDocument content);
-  static String html_response(int status, String content);
+  static String file_response(String content, FileType type);
 
-  static parsed_response parse_response(String response);
+  static ParsedResponse parse_response(String response);
 };
 
 

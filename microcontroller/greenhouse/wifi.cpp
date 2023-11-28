@@ -1,29 +1,29 @@
 #include "wifi.hpp"
 
 
-ConnectionManager::ConnectionManager(TaskManager task_manager, ConfigManager storage) : task_manager(task_manager), storage(storage) {
+ConnectionManager::ConnectionManager(NetworkTypes type, TaskManager task_manager, ConfigManager storage) : type(type), task_manager(task_manager), storage(storage) {
   this->state = INITIALIZING;
   this->run();
 }
 
-ConnectionManager::ConnectionManager(TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information) : wifi_information(wifi_information), storage(storage), task_manager(task_manager) {
-  this->state = BROADCAST;
+ConnectionManager::ConnectionManager(NetworkTypes type, TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information) : type(type), wifi_information(wifi_information), storage(storage), task_manager(task_manager) {
+  this->state = BROADCASTING;
   this->run();
 }
 
-ConnectionManager::ConnectionManager(TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information, ConnectionInfo connection_information) : wifi_information(wifi_information), storage(storage), server_information(connection_information), task_manager(task_manager) {
+ConnectionManager::ConnectionManager(NetworkTypes type, TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information, ConnectionInfo connection_information) : type(type), wifi_information(wifi_information), storage(storage), server_information(connection_information), task_manager(task_manager) {
   this->state = CONNECTED;
   this->run();
 }
 
-ParsedMessage ConnectionManager::rest_receive(WiFiClient client, ReceiveType type) {
+ParsedMessage ConnectionManager::rest_receive(WiFiClient client) {
   String message;
   String current_line = "";
   while(client.connected()) {
     if(client.available()) {
       char c = client.read();
 
-      if(c == "\n") {
+      if(c == *"\n") {
         if(current_line.length() == 0) {
           break;
         }
@@ -33,20 +33,20 @@ ParsedMessage ConnectionManager::rest_receive(WiFiClient client, ReceiveType typ
         }
       }
 
-      else if(c != "\r") {
+      else if(c != *"\r") {
         current_line.concat(c);
       }
     }
   }
 
   ParsedMessage received;
-  switch(type) {
-    case REQUEST:
-      received.request = Requests::parse_request(message);
-      break;
-    case RESPONSE:
-      received.response = Responses::parse_response(message);
-      break;
+  if(message.startsWith("HTTP")) {
+    received.response = Responses::parse_response(message);
+    received.type = RESPONSE;
+  }
+  else {
+    received.request = Requests::parse_request(message);
+    received.type = REQUEST;
   }
   return received;
 }
@@ -74,8 +74,48 @@ bool ConnectionManager::set_ssid_config() {
   return true;
 }
 
+WifiInfo ConnectionManager::receive_credentials(WiFiClient &client) {
+  bool credentials_received = false;
+  WifiInfo temporary_wifi_information;
+  while(!credentials_received) {
+    ParsedMessage message = this->rest_receive(client);
+    switch(message.type) {
+      case(REQUEST):
+        ParsedRequest& request = message.request;
+        String& route = request.route;
+        if(route.equals("/submit")) { // there should probably be some validation here!
+          temporary_wifi_information.ssid = request.body["ssid"].as<String>();
+          temporary_wifi_information.password = request.body["password"].as<String>();
+          if(strcmp(request.body["type"], "enterprise")) {
+            temporary_wifi_information.username = request.body["username"].as<String>();
+          }
+          credentials_received = true;
+        }
+        else if(route.equals("/")) {
+          String html_response = Responses::file_response(webpage_html, HTML);
+        }
+        else if(route.equals("/styles.css")) {
+          String css_response = Responses::file_response(webpage_css, CSS);
+        }
+        else if(route.equals("/app.js")) {
+          String js_response = Responses::file_response(webpage_js, JS);
+        }
+        else {
+          String not_found_response = Responses::response(404);
+        }
+        break;
+      case(RESPONSE):
+        break;
+    }
+  }
+  return temporary_wifi_information;
+}
+
+bool ConnectionManager::check_credentials(WifiInfo &wifi_information) {
+
+}
+
 bool ConnectionManager::initialization() {
-  this->state_connection.server = WiFiServer(LOCAL_PORT);
   if (WiFi.status() == WL_NO_SHIELD) {
     Serial.println("WiFi shield not present");
     return false;
@@ -83,19 +123,30 @@ bool ConnectionManager::initialization() {
   this->set_ssid_config();
   int status = WL_IDLE_STATUS;
 
-  status = WiFi.beginAP(this->wifi_information.ssid);
+  int size = this->wifi_information.ssid.length() * sizeof(char);
+
+  void* temp = malloc(size);
+  char* converted = static_cast<char*>(temp);
+
+  this->wifi_information.ssid.toCharArray(converted, size);
+
+  status = WiFi.beginAP(converted);
   if (status != WL_AP_LISTENING) {
     return false;
   }
   delay(2000);
-  this->state_connection.server.begin(); // start the web server
+  this->state_connection.Startupserver.begin(); // start the web server
   WiFiClient client; 
-  while(!client) {
-    client = server.available();
-  }
+  bool success = false;
+  while(!success) {
+    while(!client) {
+      client = this->state_connection.Startupserver.available();
+    }
+    WifiInfo temporary_wifi_information = this->receive_credentials(client);
 
-  ParsedMessage request = this->rest_receive(REQUEST);
-  
+  }
+  free(temp);
+  free(converted);
 }
 
 ConnectionInfo ConnectionManager::association() {

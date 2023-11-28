@@ -29,7 +29,10 @@ Reg::Reg(char *pattern) {
 
 String Reg::match(String content) {
   int size = content.length() * sizeof(char);
-  char* converted = malloc(size);
+
+  void* temp = malloc(size);
+  char* converted = static_cast<char*>(temp);
+
   content.toCharArray(converted, size);
 
   this->pattern.Target(converted);
@@ -42,15 +45,18 @@ String Reg::match(String content) {
     result.concat(converted[x]);
   }
 
+  free(converted);
   return result;
 }
 
 
 String Requests::request(methods method, String route, String host) {
   String request = return_method(method);
-  request.concat(" " + route);
+  request.concat(" ");
+  request.concat(route);
   request.concat(" HTTP/1.1\n");
-  request.concat("Host: " + host);
+  request.concat("Host: ");
+  request.concat(host);
 
   return request;
 }
@@ -58,16 +64,19 @@ String Requests::request(methods method, String route, String host) {
 String Requests::request(methods method, String route, String host, DynamicJsonDocument body) {
   String json;
   serializeJson(body, json);
-  String request = Requests::request(method, route, host) + "\n";
+  String request = Requests::request(method, route, host);
+  request.concat("\n");
   request.concat("Content-Type: application/json\n");
-  request.concat("Content-Length: " += json.length() + "\n\n");
+  request.concat("Content-Length: ");
+  request.concat(json.length());
+  request.concat("\n");
   request.concat(json);
 
   return request;
 }
 
-parsed_request Requests::parse_request(String request) {
-  parsed_request request_struct;
+ParsedRequest Requests::parse_request(String request) {
+  ParsedRequest request_struct(DynamicJsonDocument(0));
   request_struct.method = Requests::regex.GET_METHOD.match(request);
   request_struct.route = Requests::regex.GET_ROUTE.match(request);
   request_struct.host = Requests::regex.GET_HOST.match(request);
@@ -95,30 +104,45 @@ String Responses::response(int status, DynamicJsonDocument content) {
   serializeJson(content, json);
 
   response.concat("Content-Type: application/json\n");
-  response.concat("Content-Length: " + json.length() + "\n\n");
+  response.concat("Content-Length: ");
+  response.concat(json.length()); 
+  response.concat("\n\n");
   response.concat(json);
 
   return response;
 }
 
-String Responses::html_response(int status, String content) {
-  String response = Responses::response(status);
+String Responses::file_response(String content, FileType type) {
+  String response = Responses::response(200);
 
-  response.concat("Content-Type: text/html\n");
-  response.concat("Content-Length: " + content.length() + "\n\n");
+  switch(type) {
+    case HTML:
+      response.concat("Content-Type: text/html\n");
+      break;
+    case CSS:
+      response.concat("Content-Type: text/css\n");
+      break;
+    case JS:
+      response.concat("Content-Type: application/javascript\n");
+      break;
+  }
+
+  response.concat("Content-Length: ");
+  response.concat(content.length());
+  response.concat("\n");
   response.concat(content);
 
   return response;
 }
 
-parsed_response Responses::parse_response(String response) {
-  parsed_response response_struct;
+ParsedResponse Responses::parse_response(String response) {
+  ParsedResponse response_struct(DynamicJsonDocument(CONFIG_JSON_SIZE));
 
-  response_struct.status = Responses::regex.GET_STATUS.match(response);
+  response_struct.status = Responses::regex.GET_STAT.match(response).toInt();
 
   String json = Responses::regex.GET_JSON.match(response);
   if(json.length()) {
-    DynamicJsonDocument doc(CONFIG_JSON_SIZE);
+    DynamicJsonDocument doc = DynamicJsonDocument(CONFIG_JSON_SIZE);
     deserializeJson(doc, json);
     response_struct.body = doc;
   }

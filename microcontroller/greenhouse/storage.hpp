@@ -37,13 +37,12 @@ class ConfigManager {
 
   Configuration config;
 
-  ConfigManager(){};
+  ConfigManager(void){};
   ConfigManager(int configAddr, int webpageAddr);
   void de_power();
   bool power(String *output);
   bool retrieve_configuration(String *output);
   bool write_configuration(DynamicJsonDocument *document);
-  bool retrieve_webpage(String *output);
 };
 
 #endif

@@ -1,46 +1,46 @@
-import { asynchronous_updater, get_project_associated_devices, format_route } from "./shared/asynchronousUpdater.js"
+import { asynchronous_updater, get_project_associated_devices, format_route } from './shared/asynchronousUpdater.js'
 
-let re = new RegExp("(?<=Project: ).*");
+let re = new RegExp('(?<=Project: ).*');
 
-let project_name = re.exec(document.getElementById("project_name").textContent)[0];
+let project_name = re.exec(document.getElementById('project_name').textContent)[0];
 
-let interval_regex = new RegExp("(?!00)\\d{2}-(?!00)\\d{2}-(?!00)\\d{2}");
-let REGEX_ERROR = "must be mm-dd-yy"
+let interval_regex = new RegExp('(?!00)\\d{2}-(?!00)\\d{2}-(?!00)\\d{2}');
+let REGEX_ERROR = 'must be mm-dd-yy'
 
 export class ProjectManager {
     constructor(archived=false) {
         // declare the variables for datatype, data retrieval technique, and date interval
-        this.data_type = "Temperature";
-        this.update_type = "live";
+        this.data_type = 'Temperature';
+        this.update_type = 'live';
         this.date_interval = [0, 0];
 
         this.data_type_radio_buttons = document.getElementsByName('data-selected');
 
-        this.interval_display = document.getElementById("display-interval");
-        this.lower_interval_input = this.interval_display.querySelector("#start-interval"); 
-        this.upper_interval_input = this.interval_display.querySelector("#end-interval");
-        this.refresh_button = this.interval_display.querySelector("#image-refresh");
-        this.refresh_button.addEventListener("click", () => this.get_graph_image(project_name, false));
+        this.interval_display = document.getElementById('display-interval');
+        this.lower_interval_input = this.interval_display.querySelector('#start-interval'); 
+        this.upper_interval_input = this.interval_display.querySelector('#end-interval');
+        this.refresh_button = this.interval_display.querySelector('#image-refresh');
+        this.refresh_button.addEventListener('click', () => this.get_graph_image(project_name, false));
 
-        this.lower_interval_input.value = "";
-        this.upper_interval_input.value = "";
+        this.lower_interval_input.value = '';
+        this.upper_interval_input.value = '';
 
         if(!archived) {
-            this.archive_button = document.getElementById("archive-project");
-            this.update_type = "static";
-            this.interval_display.style.display="none";
-            this.data_view_div = document.getElementById("data-view-type");
-            this.data_view_buttons = document.getElementsByName("update-type");
+            this.archive_button = document.getElementById('archive-project');
+            this.update_type = 'static';
+            this.interval_display.style.display='none';
+            this.data_view_div = document.getElementById('data-view-type');
+            this.data_view_buttons = document.getElementsByName('update-type');
 
-            this.add_device_button = document.getElementById("add-device");
-            this.add_device_button.addEventListener("click", async function() {
+            this.add_device_button = document.getElementById('add-device');
+            this.add_device_button.addEventListener('click', async function() {
                 document.location.href = await format_route(`/devices/scan?=${project_name}`);
             });
         this.set_view_events();
         }
 
-        this.csv_download_button = document.getElementById("download-csv");
-        this.pdf_download_button = document.getElementById("download-pdf");
+        this.csv_download_button = document.getElementById('download-csv');
+        this.pdf_download_button = document.getElementById('download-pdf');
 
         this.set_data_type_events();
         this.set_interval_events();
@@ -54,18 +54,18 @@ export class ProjectManager {
     }
 
     async archive_project() {
-        var confirmation = prompt("You must confirm archiving of this project\nEnter the project name: ");
+        var confirmation = prompt('You must confirm archiving of this project\nEnter the project name: ');
         if(confirmation === project_name) {
             var route = await format_route(`/projects/projects/${project_name}/archive`);
             
             await fetch(route, {
-                method: "PATCH"
+                method: 'PATCH'
             })
         }
     }
 
     async download_csv(project_name) {
-        console.log("CALLING HERE");
+        console.log('CALLING HERE');
         var csv_url = await format_route(`/projects/projects/${project_name}/download_csv`);
         console.log(csv_url);
         var download_link = document.createElement('a');
@@ -94,24 +94,24 @@ export class ProjectManager {
 
     set_interval_events() {
         this.lower_interval_input.addEventListener('input', function() {
-            this.interval_change_event_handler(this.lower_interval_input, "start-interval-error", 0);
+            this.interval_change_event_handler(this.lower_interval_input, 'start-interval-error', 0);
         }.bind(this))
         this.upper_interval_input.addEventListener('input', function() {
-            this.interval_change_event_handler(this.upper_interval_input, "end-interval-error", 1);
+            this.interval_change_event_handler(this.upper_interval_input, 'end-interval-error', 1);
         }.bind(this))
     }
 
     check_match_date(lower_date, upper_date) {
         if(interval_regex.test(lower_date) && interval_regex.test(upper_date)) {
-            this.refresh_button.style.display="block";
+            this.refresh_button.style.display='block';
         }
         else {
-            this.refresh_button.style.display="none";
+            this.refresh_button.style.display='none';
         }
     }
 
     interval_change_event_handler(interval_input, interval_input_error_id, is_end_interval) {
-        if(interval_input.value != "" && !interval_regex.test(interval_input.value)) {
+        if(interval_input.value != '' && !interval_regex.test(interval_input.value)) {
             this.interval_display.querySelector(`#${interval_input_error_id}`).textContent=REGEX_ERROR;
         }
         else {
@@ -130,16 +130,16 @@ export class ProjectManager {
 
     view_change_event() {
         for(let x = 0; x < this.data_view_buttons.length; x++) {
-            if(this.data_view_buttons[x].checked && this.data_view_buttons[x].value === "hide") {
-                this.interval_display.style.display="none";
+            if(this.data_view_buttons[x].checked && this.data_view_buttons[x].value === 'hide') {
+                this.interval_display.style.display='none';
                 this.date_interval = [0, 0];
-                this.lower_interval_input.value = "";
-                this.upper_interval_input.value = "";
+                this.lower_interval_input.value = '';
+                this.upper_interval_input.value = '';
                 this.update_type = 'live';
                 break;
             }
             else {
-                this.interval_display.style.display="block";
+                this.interval_display.style.display='block';
                 this.update_type = 'static';
                 break;
             }
@@ -148,7 +148,7 @@ export class ProjectManager {
 
     async get_graph_image(project_name, in_loop=true) {
         var route = await format_route(`/projects/projects/${project_name}/data_visualization/${this.data_type}`);
-        if((this.update_type === "live" && in_loop) || (this.update_type === "static" && !in_loop)) {
+        if((this.update_type === 'live' && in_loop) || (this.update_type === 'static' && !in_loop)) {
             await fetch(route, {
                 method: 'POST',
                 headers: {
@@ -163,7 +163,7 @@ export class ProjectManager {
             .then(blob =>
                 {
                     const imageUrl = URL.createObjectURL(blob);
-                    const image_element = document.getElementById("graph-image");
+                    const image_element = document.getElementById('graph-image');
                     image_element.src = imageUrl;
                 }    
             )
