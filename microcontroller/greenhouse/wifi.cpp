@@ -16,7 +16,7 @@ ConnectionManager::ConnectionManager(NetworkTypes type, TaskManager task_manager
   this->run();
 }
 
-ParsedMessage ConnectionManager::rest_receive(WiFiClient client) {
+ParsedMessage ConnectionManager::rest_receive(WiFiClient &client) {
   String message;
   String current_line = "";
   while(client.connected()) {
@@ -74,11 +74,23 @@ bool ConnectionManager::set_ssid_config() {
   return true;
 }
 
+int ConnectionManager::get_ap_channel(String &ssid) {
+  int num_networks = WiFi.scanNetworks();
+
+  for(int network = 0; network < num_networks; network++) {
+    if(ssid.equals(WiFi.SSID(network))) {
+      return WiFi.channel(network);
+    }
+  }
+  return -1;
+}
+
 WifiInfo ConnectionManager::receive_credentials(WiFiClient &client) {
   bool credentials_received = false;
   WifiInfo temporary_wifi_information;
   while(!credentials_received) {
     ParsedMessage message = this->rest_receive(client);
+    String response;
     switch(message.type) {
       case(REQUEST):
         ParsedRequest& request = message.request;
@@ -88,31 +100,63 @@ WifiInfo ConnectionManager::receive_credentials(WiFiClient &client) {
           temporary_wifi_information.password = request.body["password"].as<String>();
           if(strcmp(request.body["type"], "enterprise")) {
             temporary_wifi_information.username = request.body["username"].as<String>();
+            temporary_wifi_information.type = ENTERPRISE;
           }
-          credentials_received = true;
+          temporary_wifi_information.type = HOME;
+          int channel = this->get_ap_channel(temporary_wifi_information.ssid);
+          if(channel == -1) {
+            response = Responses::response(503); // if the network isnt found, return 503 error
+          }
+          else {
+            temporary_wifi_information.channel = channel;
+            response = Responses::response(200); // otherwise tell the client everything worked
+            credentials_received = true;
+          }
         }
         else if(route.equals("/")) {
-          String html_response = Responses::file_response(webpage_html, HTML);
+          response = Responses::file_response(webpage_html, HTML);
         }
         else if(route.equals("/styles.css")) {
-          String css_response = Responses::file_response(webpage_css, CSS);
+          response = Responses::file_response(webpage_css, CSS);
         }
         else if(route.equals("/app.js")) {
-          String js_response = Responses::file_response(webpage_js, JS);
+          response = Responses::file_response(webpage_js, JS);
         }
         else {
-          String not_found_response = Responses::response(404);
+          response = Responses::response(404);
         }
         break;
       case(RESPONSE):
         break;
+      client.println(response);
     }
   }
   return temporary_wifi_information;
 }
 
-bool ConnectionManager::check_credentials(WifiInfo &wifi_information) {
+bool ConnectionManager::enterprise_connect(WifiInfo &info) {
+  int ssid_size = info.ssid.length() * sizeof(char);
 
+  void* ssid_temp = malloc(ssid_size);
+  char* ssid_converted = static_cast<char*>(ssid_temp);
+
+  info.ssid.toCharArray(ssid_converted, ssid_size);
+
+  tstr1xAuthCredentials auth;
+  strcpy((char *) auth.au8UserName, info.username.c_str());
+  strcpy((char *) auth.au8Passwd, info.password.c_str());
+
+  bool wifi_status = m2m_wifi_connect_sc(ssid_converted, ssid_size, M2M_WIFI_SEC_802_1X, &auth, info.channel, true);
+
+  free(ssid_temp);
+  free(ssid_converted);
+
+  return wifi_status;
+}
+
+bool ConnectionManager::home_connect(WifiInfo &info) {
+  bool status = WiFi.begin(info.ssid, info.password);
+  return status;
 }
 
 bool ConnectionManager::initialization() {
@@ -135,15 +179,26 @@ bool ConnectionManager::initialization() {
     return false;
   }
   delay(2000);
-  this->state_connection.Startupserver.begin(); // start the web server
-  WiFiClient client; 
+
   bool success = false;
   while(!success) {
+    WiFiClient client; 
+    this->state_connection.Startupserver.begin(); // start the web server
     while(!client) {
       client = this->state_connection.Startupserver.available();
     }
-    WifiInfo temporary_wifi_information = this->receive_credentials(client);
 
+    WifiInfo temporary_wifi_information = this->receive_credentials(client);
+    WiFi.end();
+
+    switch(temporary_wifi_information.type) {
+      case ENTERPRISE:
+        success = this->enterprise_connect(temporary_wifi_information);
+        break;
+      case HOME:
+        success = this->home_connect(temporary_wifi_information);
+        break;
+    }
   }
   free(temp);
   free(converted);

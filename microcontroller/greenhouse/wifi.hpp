@@ -18,13 +18,16 @@
 
 enum NetworkTypes {
     HOME,
-    ENTERPRISE
+    ENTERPRISE,
+    NONE
 };
 
 typedef struct {
-    String ssid;
-    String username;
-    String password;
+  NetworkTypes type;
+  String ssid;
+  String username;
+  String password;
+  int channel;
 } WifiInfo;
 
 typedef struct {
@@ -70,10 +73,15 @@ class ConnectionManager {
   ParsedMessage rest_receive(WiFiClient client);
   bool rest_send(String message);
 
+  // initialization
   bool set_ssid_config();
+
+  int get_ap_channel(String &ssid);
+
+  bool enterprise_connect(WifiInfo &enterprise_wifi_info);
+  bool home_connect(WifiInfo &home_wifi_info);
   bool initialization();
   WifiInfo receive_credentials(WiFiClient &client);
-  bool check_credentials(WifiInfo &wifi_information);
   bool configuration(); // soft ap mode operations
 
   ConnectionInfo association(); // to be run inside broadcast when receive confirmation
