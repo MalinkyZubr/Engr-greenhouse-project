@@ -28,7 +28,6 @@ class Callable {
   virtual void callback(){}
 };
 
-
 class TimedTask {
   private:
   Callable *callback;
@@ -83,6 +82,7 @@ typedef struct {
     float light_level;
     long long light_increment;
     bool nighttime;
+    bool connected;
 } CommonData;
 
 #endif

@@ -1,17 +1,46 @@
 #include "wifi.hpp"
 
 
-ConnectionManager::ConnectionManager(NetworkTypes type, TaskManager task_manager, ConfigManager storage) : type(type), task_manager(task_manager), storage(storage) {
+WiFiWatchdog::WiFiWatchdog(CommonData *common_data, ConnectionManager *connected_manager) : common_data(common_data), connected_manager(connected_manager) {}
+
+void WiFiWatchdog::check_wifi_status() {
+  int Wifi_status = WiFi.status();
+  bool connected;
+
+  // check if the wifi is disconnected, first and foremost
+  if((Wifi_status == WL_CONNECTION_LOST || Wifi_status == WL_DISCONNECTED) && (this->connected_manager->state != DOWN && this->connected_manager->state != INITIALIZING)) {
+    connected = this->handle_wifi_down();
+  }
+}
+
+bool WiFiWatchdog::handle_wifi_down() {
+  bool wifi_connected = this->connected_manager->connect_wifi(this->connected_manager->wifi_information);
+  if(!wifi_connected) {
+    this->common_data->connected = false;
+    this->connected_manager->state = DOWN;
+    this->wifi_fail_counter++;
+  }
+  else {
+    return true;
+  }
+  if(this->wifi_fail_counter == 10) {
+    this->wifi_fail_counter = 0;
+    this->connected_manager->state = INITIALIZING;
+  }
+  return false;
+}
+
+ConnectionManager::ConnectionManager(TaskManager *task_manager, ConfigManager *storage) : task_manager(task_manager), storage(storage) {
   this->state = INITIALIZING;
   this->run();
 }
 
-ConnectionManager::ConnectionManager(NetworkTypes type, TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information) : type(type), wifi_information(wifi_information), storage(storage), task_manager(task_manager) {
+ConnectionManager::ConnectionManager(TaskManager *task_manager, ConfigManager *storage, WifiInfo wifi_information) : wifi_information(wifi_information), storage(storage), task_manager(task_manager) {
   this->state = BROADCASTING;
   this->run();
 }
 
-ConnectionManager::ConnectionManager(NetworkTypes type, TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information, ConnectionInfo connection_information) : type(type), wifi_information(wifi_information), storage(storage), server_information(connection_information), task_manager(task_manager) {
+ConnectionManager::ConnectionManager(TaskManager *task_manager, ConfigManager *storage, WifiInfo wifi_information, ConnectionInfo connection_information) : wifi_information(wifi_information), storage(storage), server_information(connection_information), task_manager(task_manager) {
   this->state = CONNECTED;
   this->run();
 }
@@ -88,9 +117,11 @@ int ConnectionManager::get_ap_channel(String &ssid) {
 WifiInfo ConnectionManager::receive_credentials(WiFiClient &client) {
   bool credentials_received = false;
   WifiInfo temporary_wifi_information;
+
   while(!credentials_received) {
     ParsedMessage message = this->rest_receive(client);
     String response;
+
     switch(message.type) {
       case(REQUEST):
         ParsedRequest& request = message.request;
@@ -126,11 +157,14 @@ WifiInfo ConnectionManager::receive_credentials(WiFiClient &client) {
           response = Responses::response(404);
         }
         break;
+
       case(RESPONSE):
         break;
+
       client.println(response);
     }
   }
+
   return temporary_wifi_information;
 }
 
@@ -151,15 +185,30 @@ bool ConnectionManager::enterprise_connect(WifiInfo &info) {
   free(ssid_temp);
   free(ssid_converted);
 
-  return wifi_status;
+  return wifi_status == M2M_SUCCESS;
 }
 
 bool ConnectionManager::home_connect(WifiInfo &info) {
   bool status = WiFi.begin(info.ssid, info.password);
-  return status;
+  return status == WL_CONNECTED;
 }
 
-bool ConnectionManager::initialization() {
+bool ConnectionManager::connect_wifi(WifiInfo &info) {
+  bool result;
+  switch(info.type) {
+    case ENTERPRISE:
+      result = this->enterprise_connect(info);
+      break;
+    case HOME:
+      result = this->home_connect(info);
+      break;
+    case OPEN:
+      break;
+  }
+  return result;
+}
+
+bool ConnectionManager::initialization() { 
   if (WiFi.status() == WL_NO_SHIELD) {
     Serial.println("WiFi shield not present");
     return false;
@@ -189,26 +238,68 @@ bool ConnectionManager::initialization() {
     }
 
     WifiInfo temporary_wifi_information = this->receive_credentials(client);
+    client.stop();
     WiFi.end();
 
-    switch(temporary_wifi_information.type) {
-      case ENTERPRISE:
-        success = this->enterprise_connect(temporary_wifi_information);
-        break;
-      case HOME:
-        success = this->home_connect(temporary_wifi_information);
-        break;
-    }
+    success = this->connect_wifi(temporary_wifi_information);
   }
+  this->state = BROADCASTING;
   free(temp);
   free(converted);
+
+  return true;
 }
 
-ConnectionInfo ConnectionManager::association() {
+bool ConnectionManager::send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &receive_json) {
+  this->state_connection.UDPserver.beginPacket(address, 1337);
+  this->state_connection.UDPserver.write(json_data.c_str());
+  this->state_connection.UDPserver.endPacket();
 
+  delay(3000);
+  int packet_size = this->state_connection.UDPserver.parsePacket();
+  if(packet_size) {
+    this->state_connection.UDPserver.read(receive_buffer, buff_size);
+    deserializeJson(receive_json, receive_buffer);
+    String server_ip = receive_json["server_ip"];
+    this->server_information.ip = server_ip;
+    return true;
+  }
+  return false;
 }
 
-ConnectionInfo ConnectionManager::broadcast() {
+bool ConnectionManager::broadcast() {
+  this->state_connection.UDPserver;
+  this->state_connection.UDPserver.begin(LOCAL_PORT);
+
+  DynamicJsonDocument doc(sizeof(this->own_information) + 20);
+  doc["ip"] = this->own_information.ip;
+  doc["mac"] = this->own_information.mac;
+  doc["name"] = this->storage->config.device_name;
+
+  DynamicJsonDocument received(32);
+
+  String json_data;
+
+  IPAddress external_address_object;
+  external_address_object.fromString(UDPMulticastAddress);
+
+  serializeJson(doc, json_data);
+
+  char receive_buffer[UDPReceiveBuffSize];
+
+  bool discovered = false;
+
+  while(!discovered) {
+    discovered = this->send_broadcast(json_data, external_address_object, receive_buffer, UDPReceiveBuffSize, received);
+    delay(10000);
+  }
+
+  this->state_connection.UDPserver.stop();
+  this->state = ASSOCIATING;
+  return true;
+}
+
+bool ConnectionManager::association() { // make first ssl request to associate with server
 
 }
 

@@ -13,13 +13,15 @@
 
 
 #define RECEPTION_PID 6
-#define PORT 2211
+#define LOCAL_PORT 2211
+#define UDPMulticastAddress "224.0.2.4"
+#define UDPReceiveBuffSize 30
 
 
 enum NetworkTypes {
-    HOME,
-    ENTERPRISE,
-    NONE
+  HOME,
+  ENTERPRISE,
+  OPEN
 };
 
 typedef struct {
@@ -50,28 +52,26 @@ class Connection {
   WiFiSSLClient SSLclient;
   WiFiServer Startupserver;
 
-  Connection() : Startupserver(PORT){};
+  Connection() : Startupserver(LOCAL_PORT){};
 };
 
 class ConnectionManager {
   public:
   States state = INITIALIZING;
-  NetworkTypes type = HOME;
 
   WifiInfo wifi_information;
   ConnectionInfo own_information;
   ConnectionInfo server_information;
-  TaskManager task_manager;
+  TaskManager *task_manager;
   Connection state_connection;
 
-  ConfigManager storage;
+  ConfigManager *storage;
 
-  ConnectionManager(NetworkTypes type, TaskManager task_manager, ConfigManager storage);
-  ConnectionManager(NetworkTypes type, TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information);
-  ConnectionManager(NetworkTypes type, TaskManager task_manager, ConfigManager storage, WifiInfo wifi_information, ConnectionInfo server_information);
-  
-  ParsedMessage rest_receive(WiFiClient client);
-  bool rest_send(String message);
+  ConnectionManager(TaskManager *task_manager, ConfigManager *storage);
+  ConnectionManager(TaskManager *task_manager, ConfigManager *storage, WifiInfo wifi_information);
+  ConnectionManager(TaskManager *task_manager, ConfigManager *storage, WifiInfo wifi_information, ConnectionInfo server_information);
+
+  ParsedMessage rest_receive(WiFiClient &client);
 
   // initialization
   bool set_ssid_config();
@@ -80,17 +80,36 @@ class ConnectionManager {
 
   bool enterprise_connect(WifiInfo &enterprise_wifi_info);
   bool home_connect(WifiInfo &home_wifi_info);
+
+  bool connect_wifi(WifiInfo &wifi_info);
+
   bool initialization();
   WifiInfo receive_credentials(WiFiClient &client);
   bool configuration(); // soft ap mode operations
 
-  ConnectionInfo association(); // to be run inside broadcast when receive confirmation
-  ConnectionInfo broadcast();
+  bool association(); // to be run inside broadcast when receive confirmation
+  
+  bool send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &received); 
+  bool broadcast();
 
   void connected();
   bool send();
   DynamicJsonDocument receive();
   void run();
+};
+
+class WiFiWatchdog : public Callable {
+  private:
+  int wifi_fail_counter = 0;
+  void check_wifi_status();
+  bool handle_wifi_down();
+
+  public:
+  ConnectionManager *connected_manager;
+  CommonData *common_data;
+
+  WiFiWatchdog(CommonData *common_data, ConnectionManager *connected_manager);
+  void callback();
 };
 
 #endif
