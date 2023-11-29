@@ -16,6 +16,7 @@
 #define LOCAL_PORT 2211
 #define UDPMulticastAddress "224.0.2.4"
 #define UDPReceiveBuffSize 30
+#define EXTERNAL_PORT 1337
 
 
 enum NetworkTypes {
@@ -86,11 +87,15 @@ class ConnectionManager {
   bool initialization();
   WifiInfo receive_credentials(WiFiClient &client);
   bool configuration(); // soft ap mode operations
-
-  bool association(); // to be run inside broadcast when receive confirmation
   
   bool send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &received); 
   bool broadcast();
+
+  bool connect_to_server();
+  void package_identifying_info(DynamicJsonDocument &to_package);
+  const char* prepare_identifier_field(String &field_value);
+  int* prepare_identifier_field(int &field_value);
+  bool association(); // to be run inside broadcast when receive confirmation
 
   void connected();
   bool send();

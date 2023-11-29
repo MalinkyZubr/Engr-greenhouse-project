@@ -251,7 +251,7 @@ bool ConnectionManager::initialization() {
 }
 
 bool ConnectionManager::send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &receive_json) {
-  this->state_connection.UDPserver.beginPacket(address, 1337);
+  this->state_connection.UDPserver.beginPacket(address, EXTERNAL_PORT);
   this->state_connection.UDPserver.write(json_data.c_str());
   this->state_connection.UDPserver.endPacket();
 
@@ -268,7 +268,6 @@ bool ConnectionManager::send_broadcast(String &json_data, IPAddress &address, ch
 }
 
 bool ConnectionManager::broadcast() {
-  this->state_connection.UDPserver;
   this->state_connection.UDPserver.begin(LOCAL_PORT);
 
   DynamicJsonDocument doc(sizeof(this->own_information) + 20);
@@ -299,8 +298,54 @@ bool ConnectionManager::broadcast() {
   return true;
 }
 
-bool ConnectionManager::association() { // make first ssl request to associate with server
+bool ConnectionManager::connect_to_server() {
+  for(int x = 0; x < 5; x++) {
+    if(this->state_connection.SSLclient.connect(this->server_information.ip.c_str(), EXTERNAL_PORT)) {
+      return true;
+    }
+    delay(5000);
+  }
+  return false;
+}
 
+const char* ConnectionManager::prepare_identifier_field(String &field_value) {
+  if(field_value.equals("")) {
+    return nullptr;
+  }
+  return field_value.c_str();
+}
+
+int* ConnectionManager::prepare_identifier_field(int &field_value) {
+  if(!field_value) {
+    return nullptr;
+  }
+  return &field_value;
+}
+
+void ConnectionManager::package_identifying_info(DynamicJsonDocument &to_package) {
+  to_package["device_name"] = this->prepare_identifier_field(this->storage->config.device_name);
+  to_package["device_id"] = *this->prepare_identifier_field(this->storage->config.device_id);
+  to_package["device_ip"] = this->own_information.ip;
+  to_package["device_mac"] = this->own_information.mac;
+  to_package["preset_name"] = this->prepare_identifier_field(this->storage->config.preset.PresetName);
+  to_package["project_name"] = this->prepare_identifier_field(this->storage->config.project_name);
+  to_package["device_status"] = true;
+}
+
+bool ConnectionManager::association() { // make first ssl request to associate with server
+  if(!this->connect_to_server()) {
+    this->state = BROADCASTING; // if server connection fails, go back to broadcasting
+    return false;
+  }
+
+  DynamicJsonDocument doc(CONFIG_JSON_SIZE);
+  this->package_identifying_info(doc);
+
+  String data = Requests::request(POST, String("/devices/confirm"), this->server_information.ip, doc);
+  this->state_connection.SSLclient.println(data);
+
+  // READ SERVER RESPONSE
+  return true;
 }
 
 void ConnectionManager::connected() {

@@ -1,1 +1,3 @@
 server should be able to issue a hard reset call so that the device can be reconfigured
+
+if conneciton is lost, all the sensor intervals should be increased singificantly to prevent saturation of ram/flash
