@@ -17,6 +17,14 @@ enum methods {
 };
 
 
+enum ReturnErrors {
+  OKAY,
+  CONNECTION_FAILURE,
+  WIFI_FAILURE,
+  TIMEOUT
+};
+
+
 String return_method(methods method);
 
 
@@ -40,11 +48,12 @@ class ParsedResponse {
 
 enum ReceiveType {
   REQUEST,
-  RESPONSE
+  RESPONSE,
 };
 
 class ParsedMessage {
   public:
+  ReturnErrors error = OKAY;
   ReceiveType type;
   ParsedResponse response;
   ParsedRequest request;

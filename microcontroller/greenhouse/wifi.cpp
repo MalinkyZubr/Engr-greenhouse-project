@@ -30,6 +30,10 @@ bool WiFiWatchdog::handle_wifi_down() {
   return false;
 }
 
+void WiFiWatchdog::callback() {
+  this->check_wifi_status();
+}
+
 ConnectionManager::ConnectionManager(TaskManager *task_manager, ConfigManager *storage) : task_manager(task_manager), storage(storage) {
   this->state = INITIALIZING;
   this->run();
@@ -45,13 +49,26 @@ ConnectionManager::ConnectionManager(TaskManager *task_manager, ConfigManager *s
   this->run();
 }
 
-ParsedMessage ConnectionManager::rest_receive(WiFiClient &client) {
+ParsedMessage ConnectionManager::rest_receive(WiFiClient &client, int timeout=30000) {
   String message;
   String current_line = "";
-  while(client.connected()) {
+  ParsedMessage received;
+
+  if(!client.connected()) {
+    received.error = CONNECTION_FAILURE;
+    return received;
+  }
+
+  long start_time = millis();
+  while(client.connected() && ((millis() - start_time) < timeout)) {
+    if(this->state == DOWN) {
+      received.error = WIFI_FAILURE;
+      return received;
+    }
     if(client.available()) {
       char c = client.read();
 
+      start_time = millis();
       if(c == *"\n") {
         if(current_line.length() == 0) {
           break;
@@ -67,8 +84,11 @@ ParsedMessage ConnectionManager::rest_receive(WiFiClient &client) {
       }
     }
   }
+  if(millis() - start_time > timeout) {
+    received.error = TIMEOUT;
+    return received;
+  }
 
-  ParsedMessage received;
   if(message.startsWith("HTTP")) {
     received.response = Responses::parse_response(message);
     received.type = RESPONSE;
@@ -118,8 +138,18 @@ WifiInfo ConnectionManager::receive_credentials(WiFiClient &client) {
   bool credentials_received = false;
   WifiInfo temporary_wifi_information;
 
-  while(!credentials_received) {
-    ParsedMessage message = this->rest_receive(client);
+  while(!credentials_received && this->state != DOWN) {
+    ParsedMessage message = this->rest_receive(client, 10000);
+
+    if(message.type == CONNECTION_FAILURE) {
+      temporary_wifi_information.error = CONNECTION_FAILURE;
+      break;
+    }
+    else if(message.error == WIFI_FAILURE) {
+      temporary_wifi_information.error = WIFI_FAILURE;
+      break;
+    }
+
     String response;
 
     switch(message.type) {
@@ -163,6 +193,10 @@ WifiInfo ConnectionManager::receive_credentials(WiFiClient &client) {
 
       client.println(response);
     }
+  }
+
+  if(!credentials_received) {
+    temporary_wifi_information.error = WIFI_FAILURE;
   }
 
   return temporary_wifi_information;
@@ -223,48 +257,74 @@ bool ConnectionManager::initialization() {
 
   this->wifi_information.ssid.toCharArray(converted, size);
 
-  status = WiFi.beginAP(converted);
+  status = WiFi.beginAP(converted, AP_CONFIG_PASSWORD);
   if (status != WL_AP_LISTENING) {
     return false;
   }
   delay(2000);
 
   bool success = false;
-  while(!success) {
-    WiFiClient client; 
-    this->state_connection.Startupserver.begin(); // start the web server
+  WiFiClient client; 
+  WifiInfo temporary_wifi_information;
+
+  this->state_connection.Startupserver.begin(); // start the web server
+  
+  while(!success && this->state != DOWN) {
     while(!client) {
       client = this->state_connection.Startupserver.available();
     }
 
-    WifiInfo temporary_wifi_information = this->receive_credentials(client);
+    temporary_wifi_information = this->receive_credentials(client);
+
+    switch(temporary_wifi_information.error) {
+      case CONNECTION_FAILURE:
+      case WIFI_FAILURE:
+        client.stop();
+        continue;
+    }
+
     client.stop();
     WiFi.end();
 
     success = this->connect_wifi(temporary_wifi_information);
   }
-  this->state = BROADCASTING;
+
   free(temp);
   free(converted);
+
+  if(!success) {
+    return false;
+  }
+
+  this->wifi_information = temporary_wifi_information;
+  this->state = BROADCASTING;
 
   return true;
 }
 
-bool ConnectionManager::send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &receive_json) {
+ReturnErrors ConnectionManager::send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &receive_json, int timeout = 10000) {
   this->state_connection.UDPserver.beginPacket(address, EXTERNAL_PORT);
   this->state_connection.UDPserver.write(json_data.c_str());
   this->state_connection.UDPserver.endPacket();
 
-  delay(3000);
-  int packet_size = this->state_connection.UDPserver.parsePacket();
-  if(packet_size) {
+  ReturnErrors return_code;
+
+  long start = millis();
+  while(!this->state_connection.UDPserver.parsePacket() && this->state != DOWN && (millis() - start < timeout)) {}
+  if(this->state == DOWN) {
+    return_code = WIFI_FAILURE;
+  }
+  else if(timeout < millis() - start) {
+    return_code = TIMEOUT;
+  }
+  else {
     this->state_connection.UDPserver.read(receive_buffer, buff_size);
     deserializeJson(receive_json, receive_buffer);
     String server_ip = receive_json["server_ip"];
     this->server_information.ip = server_ip;
-    return true;
+    return_code = OKAY;
   }
-  return false;
+  return return_code;
 }
 
 bool ConnectionManager::broadcast() {
@@ -287,10 +347,25 @@ bool ConnectionManager::broadcast() {
   char receive_buffer[UDPReceiveBuffSize];
 
   bool discovered = false;
+  ReturnErrors return_value;
 
-  while(!discovered) {
-    discovered = this->send_broadcast(json_data, external_address_object, receive_buffer, UDPReceiveBuffSize, received);
+  while(!discovered && this->state != DOWN) {
+    return_value = this->send_broadcast(json_data, external_address_object, receive_buffer, UDPReceiveBuffSize, received);
+
+    switch(return_value) {
+      case OKAY:
+        discovered = true;
+        break;
+      case TIMEOUT:
+        continue;
+      case WIFI_FAILURE:
+        break;
+    }
     delay(10000);
+  }
+
+  if(!discovered) {
+    return false;
   }
 
   this->state_connection.UDPserver.stop();
@@ -332,19 +407,47 @@ void ConnectionManager::package_identifying_info(DynamicJsonDocument &to_package
   to_package["device_status"] = true;
 }
 
+void ConnectionManager::write_identifying_info(ParsedResponse &response) {
+
+}
+
 bool ConnectionManager::association() { // make first ssl request to associate with server
-  if(!this->connect_to_server()) {
-    this->state = BROADCASTING; // if server connection fails, go back to broadcasting
+  bool associated = false;
+  int fail_counter = 0;
+  
+  while(!associated && fail_counter < 3) {
+    if(!this->state_connection.SSLclient.connected() && !this->connect_to_server()) {
+      this->state = BROADCASTING; // if server connection fails, go back to broadcasting
+      return false;
+    }
+
+    DynamicJsonDocument doc(CONFIG_JSON_SIZE);
+    this->package_identifying_info(doc);
+
+    String data = Requests::request(POST, String("/devices/confirm"), this->server_information.ip, doc);
+    this->state_connection.SSLclient.println(data);
+
+    ParsedMessage message = this->rest_receive(this->state_connection.SSLclient, 10000);
+
+    switch(message.error) {
+      case WIFI_FAILURE:
+        return false;
+        break;
+      case CONNECTION_FAILURE:
+      case TIMEOUT:
+        fail_counter++;
+        continue;
+      case OKAY:
+        // REMEMBER TO WRITE TO CONFIG HERE
+        
+        associated = true;
+    }
+  }
+
+  if(!associated) {
     return false;
   }
 
-  DynamicJsonDocument doc(CONFIG_JSON_SIZE);
-  this->package_identifying_info(doc);
-
-  String data = Requests::request(POST, String("/devices/confirm"), this->server_information.ip, doc);
-  this->state_connection.SSLclient.println(data);
-
-  // READ SERVER RESPONSE
   return true;
 }
 
@@ -372,6 +475,8 @@ void ConnectionManager::run() {
       case ASSOCIATING:
         break;
       case CONNECTED:
+        break;
+      case DOWN:
         break;
     }
   }

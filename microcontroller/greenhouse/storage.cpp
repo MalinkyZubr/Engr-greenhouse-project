@@ -1,6 +1,6 @@
 #include "storage.hpp"
 
-
+// MUST MODERNIZE ALL THIS SO THAT IT WORKS BETTER IN CONJUNCTION WITH THE STRUCT MEMBERS
 ConfigManager::ConfigManager(int configAddr, int webpageAddr) : configAddr(configAddr), webpageAddr(webpageAddr) {
   this->flash.begin();
 }
