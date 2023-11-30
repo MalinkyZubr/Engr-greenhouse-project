@@ -214,13 +214,13 @@ class getDeviceID(DatabaseQuery):
         return cursor.execute(self.query_str, (device_name,))
     
     
-class getDeviceIDByIP(DatabaseQuery):
+class getDeviceIDByMAC(DatabaseQuery):
     single_element=True
     query_str = \
     f"""SELECT DeviceID FROM RegisteredDevices
-    WHERE DeviceIP = %s;"""
-    def query(self, cursor, device_ip):
-        return cursor.execute(self.query_str, (device_ip,))
+    WHERE DeviceMAC = %s;"""
+    def query(self, cursor, device_mac):
+        return cursor.execute(self.query_str, (device_mac,))
     
 
 class getDeviceName(DatabaseQuery):
@@ -284,10 +284,10 @@ class getDevice(DatabaseQuery):
 class configureDevice(DatabaseQuery):
     query_str = \
     f"""UPDATE RegisteredDevices
-    SET DeviceName = COALESCE(%(DeviceName)s, DeviceName), PresetID = COALESCE(%(PresetID)s, PresetID), ProjectID = COALESCE(%(ProjectID)s, ProjectID), DeviceStatus = COALESCE(%(DeviceStatus)s, DeviceStatus)
+    SET DeviceName = COALESCE(%(DeviceName)s, DeviceName), PresetID = COALESCE(%(PresetID)s, PresetID), ProjectID = COALESCE(%(ProjectID)s, ProjectID), DeviceStatus = COALESCE(%(DeviceStatus)s, DeviceStatus), DeviceIP = COALESCE(%(DeviceIP)s, DeviceIP)
     WHERE DeviceID = %(DeviceID)s;"""
-    def query(self, cursor, device_id, device_name=None, preset_id=None, project_id=None, status=None):
-        return cursor.execute(self.query_str, {"DeviceName":device_name, "ProjectID":project_id, "PresetID":preset_id, "DeviceStatus": status, "DeviceID":device_id})
+    def query(self, cursor, device_id, device_name=None, preset_id=None, project_id=None, status=None, device_ip=None):
+        return cursor.execute(self.query_str, {"DeviceName":device_name, "ProjectID":project_id, "PresetID":preset_id, "DeviceStatus": status, "DeviceID":device_id, "DeviceIP":device_ip})
 
 
 class registerDevice(DatabaseQuery):
@@ -398,7 +398,7 @@ class DatabaseInterface:
             "deleteProject":deleteProject(),
             "insertData":insertData(),
             "getDeviceID":getDeviceID(),
-            "getDeviceIDByIP":getDeviceIDByIP(),
+            "getDeviceIDByMAC":getDeviceIDByMAC(),
             "getDevices":getDevices(),
             "getProjectDevices":getProjectDevices(),
             "getDevice":getDevice(),

@@ -15,8 +15,9 @@ manager_conf = os.path.join(script_dir, "conf/managerconf.json")
 
 
 class ReceivedPing:
-    def __init__(self, mac, name, id=None):
+    def __init__(self, ip, mac, name=None, id=None):
         self.time_received = self.update_time()
+        self.ip = ip
         self.mac = mac
         self.name = name
         self.id = id
@@ -39,7 +40,7 @@ class ReceivedPing:
             raise TimeoutError("The connection receive no pings for 30 seconds")
         
     def json(self):
-        return {"mac":self.mac, "name":self.name}
+        return {"ip":self.ip, "mac":self.mac, "name":self.name}
         
 
 class DeviceManager:
@@ -70,13 +71,13 @@ class DeviceManager:
         while self.active:
             print("checking for dead")
             await asyncio.sleep(30)
-            for ip, scan_object in self.scans.items():
+            for mac, scan_object in self.scans.items():
                 try: scan_object.check_time()
-                except: self.scans.pop(ip)
-            for ip, scan_object in self.active_device_list.items():
+                except: self.scans.pop(mac)
+            for mac, scan_object in self.active_device_list.items():
                 try: scan_object.check_time()
                 except: 
-                    self.active_device_list.pop(ip)
+                    self.active_device_list.pop(mac)
                     self.database_interface.execute("configureDevice", scan_object.id, status=False)
         
     async def serve_management(self):
@@ -86,18 +87,18 @@ class DeviceManager:
             data = json.loads(data.decode())
             
             try:
-                self.scans[data['ip']].update_time()
+                self.scans[data['mac']].update_time()
             except:
-                scan_result = ReceivedPing(data['mac'], data['name'])
-                self.scans[data['ip']] = scan_result
+                scan_result = ReceivedPing(data['ip'], data['mac'], name=data['name'])
+                self.scans[data['mac']] = scan_result
                 
-    async def send_registration(self, device_ip):
-        if device_ip not in self.scans:
+    async def send_registration(self, device_mac):
+        if device_mac not in self.scans:
             raise Exception("The IP has not been detected by any scan!")
         message = RegistrationSchema(server_ip=self.ip_address).model_dump_json().encode()
         await self.loop.sock_sendall(self.sock, message)
-        self.registration_queue[device_ip] = asyncio.Condition()
-        self.scans.pop(device_ip)
+        self.registration_queue[device_mac] = asyncio.Condition()
+        self.scans.pop(device_mac)
                 
     def get_scans(self):
         return self.scans

@@ -34,17 +34,17 @@ void WiFiWatchdog::callback() {
   this->check_wifi_status();
 }
 
-ConnectionManager::ConnectionManager(TaskManager *task_manager, ConfigManager *storage) : task_manager(task_manager), storage(storage) {
+ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue) : task_manager(task_manager), routes(routes), storage(storage), message_queue(message_queue) {
   this->state = INITIALIZING;
   this->run();
 }
 
-ConnectionManager::ConnectionManager(TaskManager *task_manager, ConfigManager *storage, WifiInfo wifi_information) : wifi_information(wifi_information), storage(storage), task_manager(task_manager) {
+ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, WifiInfo wifi_information) : wifi_information(wifi_information), routes(routes), storage(storage), message_queue(message_queue), task_manager(task_manager) {
   this->state = BROADCASTING;
   this->run();
 }
 
-ConnectionManager::ConnectionManager(TaskManager *task_manager, ConfigManager *storage, WifiInfo wifi_information, ConnectionInfo connection_information) : wifi_information(wifi_information), storage(storage), server_information(connection_information), task_manager(task_manager) {
+ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, WifiInfo wifi_information, ConnectionInfo connection_information) : wifi_information(wifi_information), storage(storage), message_queue(message_queue), server_information(connection_information), task_manager(task_manager) {
   this->state = CONNECTED;
   this->run();
 }
@@ -408,7 +408,7 @@ void ConnectionManager::package_identifying_info(DynamicJsonDocument &to_package
 }
 
 void ConnectionManager::write_identifying_info(ParsedResponse &response) {
-
+  
 }
 
 bool ConnectionManager::association() { // make first ssl request to associate with server
@@ -448,10 +448,16 @@ bool ConnectionManager::association() { // make first ssl request to associate w
     return false;
   }
 
+  this->state = CONNECTED;
+
   return true;
 }
 
-void ConnectionManager::connected() {
+ReturnErrors ConnectionManager::handle_requests() {
+
+}
+
+bool ConnectionManager::connected() {
 
 }
 
@@ -459,25 +465,20 @@ bool ConnectionManager::send() {
 
 }
 
-DynamicJsonDocument ConnectionManager::receive() {
-
-}
-
-void ConnectionManager::run() {
-  while(this->state != DOWN) {
-    switch(this->state) {
-      case INITIALIZING:
-        this->initialization();
-        break;
-      case BROADCASTING:
-        this->broadcast();
-        break;
-      case ASSOCIATING:
-        break;
-      case CONNECTED:
-        break;
-      case DOWN:
-        break;
-    }
+void ConnectionManager::run() { // goes in void_loop
+  switch(this->state) {
+    case INITIALIZING:
+      this->initialization();
+      break;
+    case BROADCASTING:
+      this->broadcast();
+      break;
+    case ASSOCIATING:
+      this->association();
+      break;
+    case CONNECTED:
+      break;
+    case DOWN:
+      break;
   }
 }

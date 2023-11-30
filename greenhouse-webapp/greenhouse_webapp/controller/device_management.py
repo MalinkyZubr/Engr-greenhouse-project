@@ -23,7 +23,6 @@ router = APIDRouter(
 
 class ClientDeviceRegSchema(BaseModel):
     device_name: Optional[str]
-    device_ip: str
     device_mac: str
     
     
@@ -36,10 +35,9 @@ class DeviceConfigSchema(BaseModel):
     
 
 class DeviceRegistrationSchema(BaseModel):
+    source_mac: str
     device_name: Optional[str]
     device_id: Optional[int]
-    device_ip: str
-    device_mac: str
     preset_name: Optional[str]
     project_name: Optional[str]
     device_status: Optional[bool]
@@ -67,12 +65,19 @@ class ClientDataSchema(BaseModel):
     ph: float
     light: float
     
+
+class DevicePreset(BaseModel):
+    temperature: float
+    moisture: float
+    humidity: float
+    light: float
+    
     
 async def unregister_device_request(device_ip): # should delete the proejct data from the device, as well as server IP. 
     for _ in range(3): # must make sure the device actually unregisters
         message = BaseSchema("unregister")
         try:
-            response = requests.put(f"https://{device_ip}", data=message.model_dump_json(), timeout=3) # need to implement https and encryption for server -> device communication
+            response = requests.put(f"{device_ip}/unregister", data=message.model_dump_json(), timeout=3) # need to implement https and encryption for server -> device communication
         except Exception as e:
             await asyncio.sleep(10)
             continue
@@ -93,7 +98,7 @@ async def configure_device_request(device_ip, device_name=None, device_id=None, 
             project_name= device_project
         ))
         try:
-            response = requests.put(f"https://{device_ip}", data=message.model_dump_json(), timeout=3) # need to implement https and encryption for server -> device communication
+            response = requests.put(f"{device_ip}/configure", data=message.model_dump_json(), timeout=3) # need to implement https and encryption for server -> device communication
         except Exception as e:
             await asyncio.sleep(10)
             continue
@@ -102,8 +107,20 @@ async def configure_device_request(device_ip, device_name=None, device_id=None, 
             break
     else:
         raise HTTPException(500, detail="configuration failed") # MAKE SURE IT UNREGISTERES NO MATTER WHAT
-
-
+    
+async def configure_device_preset(device_ip, preset_data: DevicePreset):
+    for _ in range(3):
+        try:
+            response = requests.put(f"{device_ip}/preset_config", data=preset_data.model_dump_json(), timeout=3)
+        except Exception as e:
+            await asyncio.sleep(10)
+            continue
+        response_code = response.status_code
+        if response_code == 200:
+            break
+    else:
+        raise HTTPException(500, detail="configuration failed") # MAKE SURE IT UNREGISTERES NO MATTER WHAT
+    
 @router.get("/devices/{device_name}")
 async def serve_webpage(request: Request, device_name):
     """
@@ -249,29 +266,47 @@ async def register_device(project_name, device_info: ClientDeviceRegSchema):
     return "device registered successfully"
 
 @router.post("/confirm")
-async def confirm_registration(device_info: DeviceRegistrationSchema):
+async def confirm_registration(stored_device_info: DeviceRegistrationSchema, request: Request): # figure this shit out, I doubt it works
     """
-    trigger event to finish device registration. This is confirmation via https. THIS IS A REQUEST FROM THE DEVICE IN QUESTION
+    trigger event to finish device registration. This is confirmation via https. THIS IS A REQUEST FROM THE DEVICE IN QUESTION. AKA the most disgusting function
     """
-    if device_info.device_ip in router.device_manager.registration_queue:
-        existing_device_info = router.database_connector.execute("getDevice", device_info.device_id)
-        if device_info.device_id and not existing_device_info:
-            if device_info.preset_name:
-                preset_name = router.database_connector.execute("getPresetID", device_info.preset_name)
-            if device_info.project_name:
-                project_name = router.database_connector.execute("getProjectID", device_info.project_name)
-            if not preset_name or not project_name:
-                await configure_device_request(device_info.device_ip, device_project=project_name, device_preset=preset_name)
+    source_ip = request.client.host
+    source_mac = stored_device_info.source_mac
+    device_id = stored_device_info.device_id
+    
+    # check to see if the device id is in the database
+    if device_id:
+        
+    # all this needs to be rewritten because some dumbass was in a rush and got too excited to write code (wasnt me)
+    
+    
+    if device_info.device_ip in router.device_manager.registration_queue: # if the device has been detected by scans
+        if device_info.device_id:
+            existing_device_info = router.database_connector.execute("getDevice", device_info.device_id) # info about the device already in the database
+            
+            preset_id = None
+            project_id = None
+            
+            if device_info.preset_name: # if the device knows its preset name
+                preset_id = router.database_connector.execute("getPresetID", device_info.preset_name) 
+            if device_info.project_name: # if the device knows its project name
+                project_id = router.database_connector.execute("getProjectID", device_info.project_name)
                 
-            router.database_connector.execute("reregisterDevice",
-                                            device_info.device_name,
-                                            device_info.device_id,
-                                            device_info.device_ip,
-                                            device_info.device_mac,
-                                            router.database_connector.execute("getPresetID", preset_name),
-                                            router.database_connector.execute("getProjectID", project_name),
-                                            False)
-        else:
+            if not existing_device_info: # if the device knows its ID, but the ID isnt in the database, that means it was previously removed     
+                router.database_connector.execute("reregisterDevice", # save the data the device knows to the database
+                                                device_info.device_name,
+                                                device_info.device_id,
+                                                device_info.device_ip,
+                                                device_info.device_mac,
+                                                preset_id,
+                                                project_id,
+                                                False)
+            else: # if the database has an entry 
+                await configure_device_request(device_info.device_ip, 
+                                               device_name=existing_device_info[1],
+                                               device_id=existing_device_info[0],
+                                               device_preset=router.database_connector.execute())
+        else: # if the device knows nothing about who it is
             router.database_connector.execute("registerDevice", None, 
                                                 device_info.device_ip, 
                                                 device_info.device_mac,

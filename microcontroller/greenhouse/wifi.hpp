@@ -10,6 +10,7 @@
 #include "http.hpp"
 #include "storage.hpp"
 #include "webpage.hpp"
+#include "router.hpp"
 
 
 #define RECEPTION_PID 6
@@ -68,12 +69,15 @@ class ConnectionManager {
   ConnectionInfo server_information;
   TaskManager *task_manager;
   Connection state_connection;
+  MessageQueue *message_queue;
+
+  Router *routes;
 
   ConfigManager *storage;
 
-  ConnectionManager(TaskManager *task_manager, ConfigManager *storage);
-  ConnectionManager(TaskManager *task_manager, ConfigManager *storage, WifiInfo wifi_information);
-  ConnectionManager(TaskManager *task_manager, ConfigManager *storage, WifiInfo wifi_information, ConnectionInfo server_information);
+  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue);
+  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, WifiInfo wifi_information);
+  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, WifiInfo wifi_information, ConnectionInfo server_information);
 
   ParsedMessage rest_receive(WiFiClient &client, int timeout);
 
@@ -100,7 +104,8 @@ class ConnectionManager {
   void write_identifying_info(ParsedResponse &response);
   bool association(); // to be run inside broadcast when receive confirmation
 
-  void connected();
+  ReturnErrors handle_requests();
+  bool connected();
   bool send();
   DynamicJsonDocument receive();
   void run();

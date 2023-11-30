@@ -21,7 +21,8 @@ enum ReturnErrors {
   OKAY,
   CONNECTION_FAILURE,
   WIFI_FAILURE,
-  TIMEOUT
+  TIMEOUT,
+  NOT_FOUND
 };
 
 

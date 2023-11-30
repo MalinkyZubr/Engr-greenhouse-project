@@ -10,6 +10,22 @@
 #define CONFIG_JSON_SIZE 256
 #define WEBPAGE_ADDRESS 5000
 
+typedef struct {
+  float Temperature;
+  float Humidity;
+  float Moisture;
+  float LightExposure;
+  float IRExposure;
+  String PresetName;
+} Preset;
+
+typedef struct {
+  int device_id;
+  String server_hostname;
+  String device_name;
+  String project_name;
+  Preset preset;
+} Configuration;
 
 class ConfigManager {
   private:
@@ -17,32 +33,19 @@ class ConfigManager {
   int webpageAddr = WEBPAGE_ADDRESS;
   SPIFlash flash;
 
+  bool retrieve_configuration_flash(String *output);
+  bool write_configuration_flash(DynamicJsonDocument &document);
+
+  String *check_data(String *arriving_data, String *existing_data);
+  int *check_data(int *arriving_data, int *existing_data);
+
   public:
-  typedef struct {
-      float Temperature;
-      float Humidity;
-      float Moisture;
-      float LightExposure;
-      float IRExposure;
-      String PresetName;
-  } Preset;
-
-  typedef struct {
-    int device_id;
-    String server_hostname;
-    String device_name;
-    String project_name;
-    Preset preset;
-  } Configuration;
-
   Configuration config;
 
   ConfigManager(void){};
   ConfigManager(int configAddr, int webpageAddr);
-  void de_power();
-  bool power(String *output);
-  bool retrieve_configuration(String *output);
-  bool write_configuration(DynamicJsonDocument *document);
+
+
 };
 
 #endif

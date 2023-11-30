@@ -5,21 +5,32 @@ ConfigManager::ConfigManager(int configAddr, int webpageAddr) : configAddr(confi
   this->flash.begin();
 }
 
-void ConfigManager::de_power() {
-  this->flash.powerDown();
+bool ConfigManager::retrieve_configuration_flash(String *output) {
+  return this->flash.readStr(this->configAddr, *output);
 }
 
-bool ConfigManager::power(String *output) {
-  this->flash.powerUp();
-  return retrieve_configuration(output);
+String *ConfigManager::check_data(String *arriving_data, String *existing_data) {
+  if(arriving_data == nullptr) {
+    return existing_data;
+  }
+  return arriving_data;
 }
 
-bool ConfigManager::retrieve_configuration(String *output) {
-  return flash.readStr(this->configAddr, *output);
+int *ConfigManager::check_data(int *arriving_data, int *existing_data) {
+  if(arriving_data == nullptr) {
+    return existing_data;
+  }
+  return arriving_data;
 }
 
-bool ConfigManager::write_configuration(DynamicJsonDocument *document) {
+bool ConfigManager::write_configuration_flash(DynamicJsonDocument &document) {
+  this->config.device_name = *this->check_data(document["device_name"], &this->config.device_name);
+  this->config.device_name = *this->check_data(document["device_id"], &this->config.device_id);
+  this->config.device_name = *this->check_data(document["project_name"], &this->config.project_name);
+  this->config.device_name = *this->check_data(document["preset_name"], &this->config.preset.PresetName);
+
   String serialized;
-  serializeJson(*document, serialized);
+  serializeJson(document, serialized);
+  this.flash.eraseSector(this->configAddr);
   return this->flash.writeStr(this->configAddr, serialized);
 }
