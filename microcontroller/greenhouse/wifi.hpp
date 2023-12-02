@@ -11,6 +11,8 @@
 #include "storage.hpp"
 #include "webpage.hpp"
 #include "router.hpp"
+#include "machine_state.hpp"
+#include "wifi_info.hpp"
 
 
 #define RECEPTION_PID 6
@@ -21,30 +23,16 @@
 #define AP_CONFIG_PASSWORD "GREENHOUSE_CONFIG"
 
 
-enum NetworkTypes {
-  HOME,
-  ENTERPRISE,
-  OPEN,
-};
-
-typedef struct {
-  NetworkTypes type;
-  String ssid;
-  String username;
-  String password;
-  int channel;
-  ReturnErrors error;
-} WifiInfo;
-
 typedef struct {
     String ip;
     String mac;
     int port;
-    ReturnErrors error;
+    NetworkReturnErrors error;
 } ConnectionInfo;
 
 enum States {
     INITIALIZING, 
+    WIFI_RECOVERY,
     BROADCASTING,
     ASSOCIATING,
     CONNECTED, 
@@ -54,15 +42,17 @@ enum States {
 class Connection {
   public:
   WiFiUDP UDPserver;
-  WiFiSSLClient SSLclient;
-  WiFiServer Startupserver;
+  WiFiServer Startupserver; 
+  WiFiSSLClient SSLclient; // for sending requests to the server
+  WiFiServer SSLlistener; // you should use beginSSL on this for receiving https connections
 
-  Connection() : Startupserver(LOCAL_PORT){};
+  Connection() : Startupserver(LOCAL_PORT), SSLlistener(LOCAL_PORT) {};
 };
 
 class ConnectionManager {
   public:
-  States state = INITIALIZING;
+  MachineState *machine_state;
+  States network_state = INITIALIZING;
 
   WifiInfo wifi_information;
   ConnectionInfo own_information;
@@ -71,13 +61,13 @@ class ConnectionManager {
   Connection state_connection;
   MessageQueue *message_queue;
 
-  Router *routes;
+  Router *router;
 
   ConfigManager *storage;
 
-  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue);
-  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, WifiInfo wifi_information);
-  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, WifiInfo wifi_information, ConnectionInfo server_information);
+  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state);
+  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state, WifiInfo wifi_information);
+  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state, WifiInfo wifi_information, ConnectionInfo server_information);
 
   ParsedMessage rest_receive(WiFiClient &client, int timeout);
 
@@ -94,8 +84,8 @@ class ConnectionManager {
   bool initialization();
   WifiInfo receive_credentials(WiFiClient &client);
   
-  ReturnErrors send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &received, int timeout); 
-  bool broadcast();
+  NetworkReturnErrors send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &received, int timeout); 
+  bool broadcast(bool expidited);
 
   bool connect_to_server();
   void package_identifying_info(DynamicJsonDocument &to_package);
@@ -104,10 +94,10 @@ class ConnectionManager {
   void write_identifying_info(ParsedResponse &response);
   bool association(); // to be run inside broadcast when receive confirmation
 
-  ReturnErrors handle_requests();
-  bool connected();
-  bool send();
-  DynamicJsonDocument receive();
+  NetworkReturnErrors listener();
+  void listener_error_handler(NetworkReturnErrors error);
+  ParsedResponse connected_send(String &request);
+
   void run();
 };
 
@@ -116,12 +106,13 @@ class WiFiWatchdog : public Callable {
   int wifi_fail_counter = 0;
   void check_wifi_status();
   bool handle_wifi_down();
+  MachineState *machine_state;
 
   public:
   ConnectionManager *connected_manager;
   CommonData *common_data;
 
-  WiFiWatchdog(CommonData *common_data, ConnectionManager *connected_manager);
+  WiFiWatchdog(CommonData *common_data, ConnectionManager *connected_manager, MachineState *machine_state);
   void callback();
 };
 

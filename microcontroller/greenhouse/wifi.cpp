@@ -1,51 +1,47 @@
 #include "wifi.hpp"
 
 
-WiFiWatchdog::WiFiWatchdog(CommonData *common_data, ConnectionManager *connected_manager) : common_data(common_data), connected_manager(connected_manager) {}
+WiFiWatchdog::WiFiWatchdog(CommonData *common_data, ConnectionManager *connected_manager, MachineState *machine_state) : common_data(common_data), connected_manager(connected_manager), machine_state(machine_state) {}
 
 void WiFiWatchdog::check_wifi_status() {
   int Wifi_status = WiFi.status();
-  bool connected;
 
   // check if the wifi is disconnected, first and foremost
-  if((Wifi_status == WL_CONNECTION_LOST || Wifi_status == WL_DISCONNECTED) && (this->connected_manager->state != DOWN && this->connected_manager->state != INITIALIZING)) {
-    connected = this->handle_wifi_down();
+  if((Wifi_status == WL_CONNECTION_LOST || Wifi_status == WL_DISCONNECTED) && (this->connected_manager->network_state != DOWN && this->connected_manager->network_state != INITIALIZING)) {
+    this->machine_state->connection_state = MACHINE_DISCONNECTED;
+    this->common_data->connected = this->handle_wifi_down();
   }
 }
 
 bool WiFiWatchdog::handle_wifi_down() {
   bool wifi_connected = this->connected_manager->connect_wifi(this->connected_manager->wifi_information);
   if(!wifi_connected) {
-    this->common_data->connected = false;
-    this->connected_manager->state = DOWN;
-    this->wifi_fail_counter++;
+    this->connected_manager->network_state = DOWN;
   }
-  else {
-    return true;
-  }
-  if(this->wifi_fail_counter == 10) {
-    this->wifi_fail_counter = 0;
-    this->connected_manager->state = INITIALIZING;
-  }
-  return false;
+  return wifi_connected;
 }
 
 void WiFiWatchdog::callback() {
   this->check_wifi_status();
 }
 
-ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue) : task_manager(task_manager), routes(routes), storage(storage), message_queue(message_queue) {
-  this->state = INITIALIZING;
+ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state) : task_manager(task_manager), router(routes), storage(storage), message_queue(message_queue), machine_state(machine_state) {
+  this->network_state = INITIALIZING;
   this->run();
 }
 
-ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, WifiInfo wifi_information) : wifi_information(wifi_information), routes(routes), storage(storage), message_queue(message_queue), task_manager(task_manager) {
-  this->state = BROADCASTING;
+ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state, WifiInfo wifi_information) : wifi_information(wifi_information), router(routes), storage(storage), message_queue(message_queue), machine_state(machine_state), task_manager(task_manager) {
+  this->network_state = BROADCASTING;
   this->run();
 }
 
-ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, WifiInfo wifi_information, ConnectionInfo connection_information) : wifi_information(wifi_information), storage(storage), message_queue(message_queue), server_information(connection_information), task_manager(task_manager) {
-  this->state = CONNECTED;
+ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state, WifiInfo wifi_information, ConnectionInfo connection_information) : wifi_information(wifi_information), storage(storage), message_queue(message_queue), machine_state(machine_state), server_information(connection_information), task_manager(task_manager) {
+  if(this->storage->config.device_id == -1) {
+    this->network_state = BROADCASTING;
+  }
+  else {
+    this->network_state = CONNECTED;
+  }
   this->run();
 }
 
@@ -61,7 +57,7 @@ ParsedMessage ConnectionManager::rest_receive(WiFiClient &client, int timeout=30
 
   long start_time = millis();
   while(client.connected() && ((millis() - start_time) < timeout)) {
-    if(this->state == DOWN) {
+    if(this->network_state == DOWN) {
       received.error = WIFI_FAILURE;
       return received;
     }
@@ -138,15 +134,11 @@ WifiInfo ConnectionManager::receive_credentials(WiFiClient &client) {
   bool credentials_received = false;
   WifiInfo temporary_wifi_information;
 
-  while(!credentials_received && this->state != DOWN) {
+  while(!credentials_received && this->network_state != DOWN) {
     ParsedMessage message = this->rest_receive(client, 10000);
 
-    if(message.type == CONNECTION_FAILURE) {
-      temporary_wifi_information.error = CONNECTION_FAILURE;
-      break;
-    }
-    else if(message.error == WIFI_FAILURE) {
-      temporary_wifi_information.error = WIFI_FAILURE;
+    if(message.error == CONNECTION_FAILURE || message.error == WIFI_FAILURE) {
+      temporary_wifi_information.error = message.error;
       break;
     }
 
@@ -269,7 +261,7 @@ bool ConnectionManager::initialization() {
 
   this->state_connection.Startupserver.begin(); // start the web server
   
-  while(!success && this->state != DOWN) {
+  while(!success && this->network_state != DOWN) {
     while(!client) {
       client = this->state_connection.Startupserver.available();
     }
@@ -297,21 +289,21 @@ bool ConnectionManager::initialization() {
   }
 
   this->wifi_information = temporary_wifi_information;
-  this->state = BROADCASTING;
+  this->network_state = BROADCASTING;
 
   return true;
 }
 
-ReturnErrors ConnectionManager::send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &receive_json, int timeout = 10000) {
+NetworkReturnErrors ConnectionManager::send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &receive_json, int timeout = 10000) {
   this->state_connection.UDPserver.beginPacket(address, EXTERNAL_PORT);
   this->state_connection.UDPserver.write(json_data.c_str());
   this->state_connection.UDPserver.endPacket();
 
-  ReturnErrors return_code;
+  NetworkReturnErrors return_code;
 
   long start = millis();
-  while(!this->state_connection.UDPserver.parsePacket() && this->state != DOWN && (millis() - start < timeout)) {}
-  if(this->state == DOWN) {
+  while(!this->state_connection.UDPserver.parsePacket() && this->network_state != DOWN && (millis() - start < timeout)) {}
+  if(this->network_state == DOWN) {
     return_code = WIFI_FAILURE;
   }
   else if(timeout < millis() - start) {
@@ -327,13 +319,14 @@ ReturnErrors ConnectionManager::send_broadcast(String &json_data, IPAddress &add
   return return_code;
 }
 
-bool ConnectionManager::broadcast() {
+bool ConnectionManager::broadcast(bool expidited) {
   this->state_connection.UDPserver.begin(LOCAL_PORT);
 
   DynamicJsonDocument doc(sizeof(this->own_information) + 20);
   doc["ip"] = this->own_information.ip;
   doc["mac"] = this->own_information.mac;
   doc["name"] = this->storage->config.device_name;
+  doc["expidited"] = expidited;
 
   DynamicJsonDocument received(32);
 
@@ -347,9 +340,9 @@ bool ConnectionManager::broadcast() {
   char receive_buffer[UDPReceiveBuffSize];
 
   bool discovered = false;
-  ReturnErrors return_value;
+  NetworkReturnErrors return_value;
 
-  while(!discovered && this->state != DOWN) {
+  while(!discovered && this->network_state != DOWN) {
     return_value = this->send_broadcast(json_data, external_address_object, receive_buffer, UDPReceiveBuffSize, received);
 
     switch(return_value) {
@@ -369,7 +362,7 @@ bool ConnectionManager::broadcast() {
   }
 
   this->state_connection.UDPserver.stop();
-  this->state = ASSOCIATING;
+  this->network_state = ASSOCIATING;
   return true;
 }
 
@@ -407,7 +400,7 @@ void ConnectionManager::package_identifying_info(DynamicJsonDocument &to_package
   to_package["device_status"] = true;
 }
 
-void ConnectionManager::write_identifying_info(ParsedResponse &response) {
+void ConnectionManager::write_identifying_info(ParsedResponse &response) { // when the server syncs its own data on the device to the device, it should write the server config locally
   
 }
 
@@ -417,17 +410,19 @@ bool ConnectionManager::association() { // make first ssl request to associate w
   
   while(!associated && fail_counter < 3) {
     if(!this->state_connection.SSLclient.connected() && !this->connect_to_server()) {
-      this->state = BROADCASTING; // if server connection fails, go back to broadcasting
+      this->network_state = BROADCASTING; // if server connection fails, go back to broadcasting
       return false;
     }
 
     DynamicJsonDocument doc(CONFIG_JSON_SIZE);
     this->package_identifying_info(doc);
 
-    String data = Requests::request(POST, String("/devices/confirm"), this->server_information.ip, doc);
+    String data = Requests::request(POST, String("/devices/confirm"), this->server_information.ip, this->storage->config.device_id, doc); // the device_id should default to 0 before reading from flash
     this->state_connection.SSLclient.println(data);
 
-    ParsedMessage message = this->rest_receive(this->state_connection.SSLclient, 10000);
+    ParsedMessage message = this->rest_receive(this->state_connection.SSLclient, 10000); // the device should receive a response here, make sure the server actually does that
+
+    this->state_connection.SSLclient.stop(); // remember to close the connection after each request
 
     switch(message.error) {
       case WIFI_FAILURE:
@@ -448,35 +443,97 @@ bool ConnectionManager::association() { // make first ssl request to associate w
     return false;
   }
 
-  this->state = CONNECTED;
+  this->network_state = CONNECTED;
+  this->machine_state->connection_state = MACHINE_CONNECTED;
 
   return true;
 }
 
-ReturnErrors ConnectionManager::handle_requests() {
+NetworkReturnErrors ConnectionManager::listener() {
+  this->state_connection.SSLlistener.beginSSL();
+  WiFiClient client;
+  ParsedMessage message;
+  String response;
+  NetworkReturnErrors error;
 
+  int connection_failure_counter = 0;
+  bool fail = false;
+
+  while(this->network_state == CONNECTED && connection_failure_counter < 10) {
+    client = this->state_connection.SSLlistener.available();
+    message = this->rest_receive(client, 3000);
+
+    error = message.error;
+    switch(error) {
+      case CONNECTION_FAILURE: // connection failures are bad, if 10 happen in a row that means the server probably died
+        connection_failure_counter++;
+        if(connection_failure_counter > 10) {
+          fail = true;
+        }
+        break;
+      case TIMEOUT: // timeouts are totally fine and can just be ignored :)
+        continue;
+      case WIFI_FAILURE:
+        fail = true;
+        break;
+      default:
+        connection_failure_counter = 0;
+    }
+    if(fail) {
+      break;
+    }
+    // assuming the message is in fact a request, deal with deciding that later
+    NetworkReturnErrors result = this->router->execute_route(client, message.request, &response);
+
+    client.println(response);
+
+    client.stop();
+  }
+
+  return error;
 }
 
-bool ConnectionManager::connected() {
-
+void ConnectionManager::listener_error_handler(NetworkReturnErrors error) {
+  switch(error) {
+    case WIFI_FAILURE:
+      this->network_state = WIFI_RECOVERY;
+      break;
+    case CONNECTION_FAILURE:
+      this->network_state = BROADCASTING;
+  }
 }
 
-bool ConnectionManager::send() {
+ParsedResponse ConnectionManager::connected_send(String &request) {
+  this->connect_to_server();
 
+  this->state_connection.SSLclient.println(request);
+
+  ParsedResponse response = this->rest_receive(this->state_connection.SSLclient, 10000).response;
+
+  this->state_connection.SSLclient.stop();
+
+  return response;
 }
 
 void ConnectionManager::run() { // goes in void_loop
-  switch(this->state) {
+  bool status;
+  switch(this->network_state) {
     case INITIALIZING:
-      this->initialization();
+      status = this->initialization();
       break;
     case BROADCASTING:
-      this->broadcast();
+      if(this->storage->configured) { // the server device_initializer object will have an expidited field, that can tell the association setup thing if the setup should be expidited (no async event)
+        status = this->broadcast(true);
+      }
+      else {
+        status = this->broadcast(true);
+      }
       break;
     case ASSOCIATING:
-      this->association();
+      status = this->association();
       break;
     case CONNECTED:
+      this->listener();
       break;
     case DOWN:
       break;

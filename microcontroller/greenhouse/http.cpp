@@ -50,21 +50,24 @@ String Reg::match(String content) {
 }
 
 
-String Requests::request(methods method, String route, String host) {
+String Requests::request(methods method, String route, String host, int device_id) {
   String request = return_method(method);
   request.concat(" ");
   request.concat(route);
   request.concat(" HTTP/1.1\n");
   request.concat("Host: ");
   request.concat(host);
+  request.concat("\n");
+  request.concat("Cookie: device_id=");
+  request.concat(device_id);
 
   return request;
 }
 
-String Requests::request(methods method, String route, String host, DynamicJsonDocument body) {
+String Requests::request(methods method, String route, String host, int device_id, DynamicJsonDocument body) {
   String json;
   serializeJson(body, json);
-  String request = Requests::request(method, route, host);
+  String request = Requests::request(method, route, host, device_id);
   request.concat("\n");
   request.concat("Content-Type: application/json\n");
   request.concat("Content-Length: ");

@@ -16,11 +16,11 @@ bool Router::add_route(String route) {
   return false;
 }
 
-ReturnErrors Router::execute_route(String &route, ParsedRequest &request, String *response) {
+ReturnErrors Router::execute_route(WiFiClient &client, ParsedRequest &request, String *response) {
   ReturnErrors return_code;
   for(int route_num = 0; route_num < MAX_ROUTES; route_num++) {
-    if(this->routes[route_num]->requested(route)) {
-        return this->routes[route_num]->execute(request, response);
+    if(this->routes[route_num]->requested(request.route)) {
+      return this->routes[route_num]->execute(client, request, response);
     }
   }
   return NOT_FOUND;

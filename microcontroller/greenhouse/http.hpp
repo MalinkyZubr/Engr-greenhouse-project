@@ -6,6 +6,7 @@
 #include <WiFi101.h>
 #include <Regexp.h>
 #include "storage.hpp"
+#include "wifi_info.hpp"
 
 
 enum methods {
@@ -14,15 +15,6 @@ enum methods {
   PUT,
   DELETE,
   PATCH
-};
-
-
-enum ReturnErrors {
-  OKAY,
-  CONNECTION_FAILURE,
-  WIFI_FAILURE,
-  TIMEOUT,
-  NOT_FOUND
 };
 
 
@@ -54,7 +46,7 @@ enum ReceiveType {
 
 class ParsedMessage {
   public:
-  ReturnErrors error = OKAY;
+  NetworkReturnErrors error = OKAY;
   ReceiveType type;
   ParsedResponse response;
   ParsedRequest request;
@@ -85,8 +77,8 @@ enum FileType {
 class Requests {
   public:
   static RegularExpressions regex;
-  static String request(methods method, String route, String host);
-  static String request(methods method, String route, String host, DynamicJsonDocument body);
+  static String request(methods method, String route, String host, int device_id);
+  static String request(methods method, String route, String host, int device_id, DynamicJsonDocument body);
 
   static ParsedRequest parse_request(String request);
 };

@@ -32,7 +32,7 @@ CREATE TABLE RegisteredDevices (
     PresetID VARCHAR(255),
     ProjectID VARCHAR(255),
     CreationDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    DeviceStatus BOOLEAN
+    DeviceStatus ENUM('ACTIVE', 'IDLE', 'DISCONNECTED')
 );
 
 CREATE TABLE Presets (

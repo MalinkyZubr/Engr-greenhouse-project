@@ -35,24 +35,28 @@ class LogSchema(BaseModel):
 
 @router.middleware("http")
 async def check_aging(request: Request, next_call): # auto updates the device status
+    reported_device_id = request.cookies["device_id"]
     source_ip = request.client.host
-    device_mac = None # <- SOMETHING SHOULD GO HERE! VERY IMPORTANT
-    device_info = router.device_manager.active_device_list[source_ip]
-    device_id = router.database_connector.execute("getDeviceIDByIP", source_ip)
+        
+    active_list_device_entry = router.device_manager.active_device_list[reported_device_id]
     
-    if not device_id: # this is to handle failed unregisters. If the device is supposed to be gone, get rid of it
-        await unregister_device_request(device_info[2])
+    stored_device_data = router.database_connector.execute("getDevice", reported_device_id)
+    
+    if not stored_device_data or not reported_device_id in router.device_manager.active_device_list: # this is to handle failed unregisters. If the device is supposed to be gone, get rid of it
+        await unregister_device_request(source_ip)
         raise HTTPException(428)
     
-    device_status = router.database_connector.execute("getDeviceStatus", device_id)
+    true_device_id = reported_device_id # if the above condition didnt get triggered, we know this is a valid ID
+    
+    device_status = router.database_connector.execute("getDeviceStatus", true_device_id)
     
     if not device_status: # if the device was down, sync its data back to the server in case it was out of sync
-        await configure_device_request(source_ip, device_name=device_info[1], 
-                                 device_project=router.database_connector.execute("getProjectName", device_info[5]),
-                                 device_preset=router.database_connector.execute("getPresetName", device_info[4])) # resync to the server data stored
-        router.database_connector.execute("configureDevice", device_id, device_status=True)
+        await configure_device_request(source_ip, device_name=stored_device_data[1], 
+                                 device_project=router.database_connector.execute("getProjectName", stored_device_data[5]),
+                                 device_preset=router.database_connector.execute("getPresetName", stored_device_data[4])) # resync to the server data stored
+        router.database_connector.execute("configureDevice", true_device_id, device_status=True)
         
-    device_info.update_time() # make sure the timeout doesnt go off...
+    active_list_device_entry.update_time() # make sure the timeout doesnt go off...
     
     response = await next_call(request)
     
@@ -64,9 +68,10 @@ async def post_data(device_name: str, data_info: DataSchema):
     post data from a device to the database
     """
     device_id = router.database_connector.execute('getDeviceID', device_name)
+    project_id = router.database_connector.execute('getProjectID', data_info.project_name)
     router.database_connector.execute('insertData',
         device_id,
-        data_info.project_id,
+        project_id,
         data_info.temperature,
         data_info.humidity,
         data_info.moisture,

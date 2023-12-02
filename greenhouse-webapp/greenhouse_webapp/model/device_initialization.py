@@ -15,10 +15,9 @@ manager_conf = os.path.join(script_dir, "conf/managerconf.json")
 
 
 class ReceivedPing:
-    def __init__(self, ip, mac, name=None, id=None):
+    def __init__(self, ip, name=None, id=None):
         self.time_received = self.update_time()
         self.ip = ip
-        self.mac = mac
         self.name = name
         self.id = id
         self.is_associated = False
@@ -40,7 +39,7 @@ class ReceivedPing:
             raise TimeoutError("The connection receive no pings for 30 seconds")
         
     def json(self):
-        return {"ip":self.ip, "mac":self.mac, "name":self.name}
+        return {"ip":self.ip, "name":self.name, "id":self.id}
         
 
 class DeviceManager:
@@ -52,9 +51,11 @@ class DeviceManager:
             self.ip_address = json.loads(f.read())['host']
         self.loop = loop
         
-        self.scans: dict[str, ReceivedPing] = dict()
-        self.registration_queue = dict()
-        self.active_device_list = dict()
+        self.scans: dict[str, ReceivedPing] = dict() # devices who's UDP pings were detected
+        
+        self.registration_queue = dict() # devices who are in the process of associating with the server
+        self.active_device_list = dict() # devices that have associated with the server and are active
+        self.sleeping_device_list = dict() # devices that have associated with the server and are inactive
         
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', self.port))
@@ -71,13 +72,13 @@ class DeviceManager:
         while self.active:
             print("checking for dead")
             await asyncio.sleep(30)
-            for mac, scan_object in self.scans.items():
+            for ip, scan_object in self.scans.items():
                 try: scan_object.check_time()
-                except: self.scans.pop(mac)
-            for mac, scan_object in self.active_device_list.items():
+                except: self.scans.pop(ip)
+            for ip, scan_object in self.active_device_list.items():
                 try: scan_object.check_time()
                 except: 
-                    self.active_device_list.pop(mac)
+                    self.active_device_list.pop(ip)
                     self.database_interface.execute("configureDevice", scan_object.id, status=False)
         
     async def serve_management(self):
@@ -87,18 +88,18 @@ class DeviceManager:
             data = json.loads(data.decode())
             
             try:
-                self.scans[data['mac']].update_time()
+                self.scans[data['ip']].update_time()
             except:
-                scan_result = ReceivedPing(data['ip'], data['mac'], name=data['name'])
-                self.scans[data['mac']] = scan_result
+                scan_result = ReceivedPing(data['ip'], name=data['name'])
+                self.scans[data['ip']] = scan_result
                 
-    async def send_registration(self, device_mac):
-        if device_mac not in self.scans:
+    async def send_registration(self, device_ip):
+        if device_ip not in self.scans:
             raise Exception("The IP has not been detected by any scan!")
         message = RegistrationSchema(server_ip=self.ip_address).model_dump_json().encode()
         await self.loop.sock_sendall(self.sock, message)
-        self.registration_queue[device_mac] = asyncio.Condition()
-        self.scans.pop(device_mac)
+        self.registration_queue[device_ip] = asyncio.Condition()
+        self.scans.pop(device_ip)
                 
     def get_scans(self):
         return self.scans

@@ -17,3 +17,5 @@
   * if changing provisioned html webpage doesnt work in the firmware, might just need to use UDP scan with some for of authentication -> ill just do this, I guess
 
 * also, at every startup the device should dhcp request the same ip address!!
+
+* THERE MUST BE SERVER LOGGING, LIKE CONNECTS AND DISCONNECTS

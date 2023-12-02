@@ -9,6 +9,7 @@
 
 #include "TimerInterrupt.h"
 #include "ISR_Timer.h"
+#include "machine_state.hpp"
 
 #define TESTING true // should serial be connected?
 
@@ -29,16 +30,18 @@
 #define SENSOR_INTERVAL 5 // in seconds
 #define SENSOR_ID 2
 
-ISR_Timer ISR_timer;
+ISR_Timer ISR_timer; // hardware timer instantiation
 
-CommonData common_data;
-TaskManager task_manager;
-Callable envmgr = EnvironmentManager(&common_data, (int) PUMP_PIN, HEAT_PIN, FAN_PIN, LED_PIN, 1.0, 2.0, 3.0, 6);
-Callable sensors = Sensors(&common_data, DHT_PIN, (int) MOISTURE_PIN);
-MessageQueue message_queue;
+MachineOperationalState state = MACHINE_PAUSED; // the machine should start in a paused state so that the environmental controls remain off
 
-Router router;
-ConfigManager config_manager(CONFIG_ADDRESS, WEBPAGE_ADDRESS);
+CommonData common_data; // struct to hold data feed from environmental systems
+TaskManager task_manager; // pseudo asynchronous, for executing periodic actions
+Callable envmgr = EnvironmentManager(&common_data, (int) PUMP_PIN, HEAT_PIN, FAN_PIN, LED_PIN, 1.0, 2.0, 3.0, 6); // control devices (heaters and such)
+Callable sensors = Sensors(&common_data, DHT_PIN, (int) MOISTURE_PIN); // sensor systems to feed into data struct
+MessageQueue message_queue; 
+
+Router router; // router for executing tasks based on received requests
+ConfigManager config_manager;
 
 void setup() {
   Serial.begin(115200);
