@@ -57,6 +57,7 @@ void ConfigManager::load_wifi_info(DynamicJsonDocument &document) {
       this->config.wifi_information.type = ENTERPRISE;
       this->config.wifi_information.password = (char *)document["password"];
       this->config.wifi_information.username = (char *)document["username"];
+      break;
     case 'o':
       this->config.wifi_information.type = OPEN;
   } 
@@ -82,40 +83,62 @@ void ConfigManager::load_preset_info(DynamicJsonDocument &document) {
   this->config.preset.hours_daylight = document["hours_daylight"];
 }
 
-String *ConfigManager::check_data(String *arriving_data, String *existing_data) {
-  if(arriving_data == nullptr) {
-    return existing_data;
-  }
-  return arriving_data;
+bool ConfigManager::write_configuration_flash(int address, DynamicJsonDocument &document) {
+  String serialized;
+  serializeJson(document, serialized);
+  this->flash.eraseSector(address);
+  return this->flash.writeStr(address, serialized);
 }
 
-int *ConfigManager::check_data(int *arriving_data, int *existing_data) {
-  if(arriving_data == nullptr) {
-    return existing_data;
-  }
-  return arriving_data;
+void ConfigManager::serialize_preset(Preset &preset, DynamicJsonDocument &document) {
+  document["preset_name"] = preset.preset_name;
+  document["temperature"] = preset.temperature;
+  document["humidity"] = preset.humidity;
+  document["moisture"] = preset.moisture;
+  document["hours_daylight"] = preset.hours_daylight;
 }
-
-// bool ConfigManager::write_configuration_flash(DynamicJsonDocument &document) {
-//   this->config.device_name = *this->check_data(document["device_name"], &this->config.device_name);
-//   this->config.device_name = *this->check_data(document["device_id"], &this->config.device_id);
-//   this->config.device_name = *this->check_data(document["project_name"], &this->config.project_name);
-//   this->config.device_name = *this->check_data(document["preset_name"], &this->config.preset.PresetName);
-
-//   String serialized;
-//   serializeJson(document, serialized);
-//   this->flash.eraseSector(this->configAddr);
-//   return this->flash.writeStr(this->configAddr, serialized);
-// }
 
 bool ConfigManager::set_preset(Preset preset) {
   this->config.preset = preset;
+
+  DynamicJsonDocument document(CONFIG_JSON_SIZE);
+  this->serialize_preset(preset, document);
+
+  this->flash.eraseSector(this->preset_address);
+  return this->write_configuration_flash(this->preset_address, document);
+}
+
+void ConfigManager::serialize_wifi_configuration(WifiInfo &wifi_configuration, DynamicJsonDocument &document) {
+  document["type"] = wifi_configuration.type;
+  document["ssid"] = wifi_configuration.ssid;
+  document["username"] = wifi_configuration.username;
+  document["password"] = wifi_configuration.password;
+  document["channel"] = wifi_configuration.channel;
 }
 
 bool ConfigManager::set_wifi_configuration(WifiInfo wifi_info) {
   this->config.wifi_information = wifi_info;
+
+  DynamicJsonDocument document(CONFIG_JSON_SIZE);
+  this->serialize_wifi_configuration(this->config.wifi_information, document);
+
+  this->flash.eraseSector(this->wifi_address);
+  return this->write_configuration_flash(this->wifi_address, document);
 }
 
-bool ConfigManager::set_device_identifiers(String server_hostname, String device_name, String project_name) {
+void serialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDocument &document) {
+  document["device_id"] = device_identifiers.device_id;
+  document["server_hostname"] = device_identifiers.server_hostname;
+  document["device_name"] = device_identifiers.device_name;
+  document["project_name"] = device_identifiers.project_name;
+}
 
+bool ConfigManager::set_device_identifiers(Identifiers device_identifiers) {
+  this->config.identifying_information = device_identifiers;
+
+  DynamicJsonDocument document(CONFIG_JSON_SIZE);
+  this->serialize_device_identifiers(this->config.identifying_information, document);
+
+  this->flash.eraseSector(this->identifier_address);
+  return this->write_configuration_flash(this->identifier_address, document);
 }

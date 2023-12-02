@@ -7,8 +7,8 @@
 #include <SPIMemory.h>
 #include "wifi_info.hpp"
 
-#define IDENTIFIER_ADDRESS 4000
-#define PRESET_ADDRESS 3000
+#define IDENTIFIER_ADDRESS 12000
+#define PRESET_ADDRESS 7000
 #define WIFI_ADDRESS 2000
 
 #define CONFIG_JSON_SIZE 256
@@ -44,10 +44,7 @@ class ConfigManager {
   SPIFlash flash;
 
   bool retrieve_configuration_flash(int address, String *output);
-  bool write_configuration_flash(DynamicJsonDocument &document);
-
-  String *check_data(String *arriving_data, String *existing_data);
-  int *check_data(int *arriving_data, int *existing_data);
+  bool write_configuration_flash(int address, DynamicJsonDocument &document);
 
   public:
   bool configured = false; // this must be set when the configuration is read at startup. Should also be set to true as soon as configuration data is written
@@ -56,11 +53,14 @@ class ConfigManager {
   ConfigManager(void){};
   ConfigManager();
 
+  void serialize_preset(Preset &preset, DynamicJsonDocument &document);
   bool set_preset(Preset preset);
 
+  void serialize_wifi_configuration(WifiInfo &wifi_info, DynamicJsonDocument &document);
   bool set_wifi_configuration(WifiInfo wifi_info);
 
-  bool set_device_identifiers(String server_hostname, String device_name, String project_name);
+  void serialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDocument &document);
+  bool set_device_identifiers(Identifiers device_identifiers);
 
   void load_device_identifiers(DynamicJsonDocument &document);
 
