@@ -8,9 +8,13 @@
 #include "wifi_info.hpp"
 #include "machine_state.hpp"
 
-#define IDENTIFIER_ADDRESS 12000
-#define PRESET_ADDRESS 7000
-#define WIFI_ADDRESS 2000
+#define IDENTIFIER_ADDRESS 9000
+#define PRESET_ADDRESS 5000
+#define WIFI_ADDRESS 1000
+#define DATA_STORAGE_START 13000
+#define DATA_STORAGE_LIMIT 180000
+
+#define ERASE_BLOCK_SIZE 4000
 
 #define CONFIG_JSON_SIZE 256
 
@@ -36,6 +40,27 @@ typedef struct {
   Preset preset;
 } Configuration;
 
+class DataWriter {
+  private:
+  long current;
+
+  long data_storage_start = DATA_STORAGE_START;
+
+  int partition_size = CONFIG_JSON_SIZE + 10;
+
+  SPIFlash *flash;
+
+  public:
+  bool is_full = false;
+  bool is_storing;
+
+  DataWriter(SPIFlash *flash);
+  
+  bool write_data(DynamicJsonDocument &data);
+  bool decrement_read(DynamicJsonDocument &data_output);
+  bool erase_all_data();
+};
+
 class ConfigManager {
   private:
   int identifier_address = IDENTIFIER_ADDRESS;
@@ -51,17 +76,22 @@ class ConfigManager {
 
   public:
   bool configured = false; // this must be set when the configuration is read at startup. Should also be set to true as soon as configuration data is written
+  
   Configuration config;
+  DataWriter *writer;
 
   ConfigManager(MachineState *machine_state);
+  ~ConfigManager();
 
   void serialize_preset(Preset &preset, DynamicJsonDocument &document);
+  void deserialize_preset(Preset &preset, DynamicJsonDocument &document);
   bool set_preset(Preset preset);
 
   void serialize_wifi_configuration(WifiInfo &wifi_info, DynamicJsonDocument &document, bool password);
   bool set_wifi_configuration(WifiInfo wifi_info);
 
   void serialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDocument &document);
+  void deserialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDocument &document);
   bool set_device_identifiers(Identifiers device_identifiers);
 
   void load_device_identifiers(DynamicJsonDocument &document);

@@ -15,7 +15,7 @@ class Route {
 
   Route(String route);
   bool requested(String &requested_route);
-  virtual NetworkReturnErrors execute(WiFiClient &client, ParsedRequest &request, String *response);
+  virtual NetworkReturnErrors execute(ParsedRequest &request, String *response);
 };
 
 class Router {
@@ -25,7 +25,7 @@ class Router {
 
   public:
   bool add_route(String route);
-  NetworkReturnErrors execute_route(WiFiClient &client, ParsedRequest &request, String *response);
+  NetworkReturnErrors execute_route(ParsedRequest &request, String *response);
   ~Router();
 };
 

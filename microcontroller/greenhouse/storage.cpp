@@ -1,8 +1,67 @@
 #include "storage.hpp"
 
 
+DataWriter::DataWriter(SPIFlash *flash) : flash(flash) {}
+
+bool DataWriter::write_data(DynamicJsonDocument &data) {
+  String serialized;
+  bool status;
+
+  this->is_storing = true;
+
+  if(!this->is_full) {
+    data["next"] = this->current + this->partition_size;
+    data["previous"] = this->current - this->partition_size;
+    data["seconds_from_disconnect"] = millis() / 1000;
+
+    serializeJson(data, serialized);
+
+    status = this->flash->writeStr(this->current, serialized);
+
+    this->current += this->partition_size;
+
+    if(this->current + partition_size >= DATA_STORAGE_LIMIT) {
+      this->is_full = true;
+    }
+  }
+  else {
+    status = false;
+  }
+  return status;
+}
+
+bool DataWriter::decrement_read(DynamicJsonDocument &data_output) {
+  String serialized;
+
+  this->current -= partition_size;
+  this->flash->readStr(this->current, serialized);
+  deserializeJson(data_output, serialized);
+  
+  if(current <= this->data_storage_start) {
+    return true; // the data segment has been completely flushed
+  }
+}
+
+bool DataWriter::erase_all_data() {
+  long current_address = this->current - ERASE_BLOCK_SIZE >= this->data_storage_start ? this->current - ERASE_BLOCK_SIZE : this->data_storage_start;
+
+  while(current_address >= this->data_storage_start) {
+    this->flash->eraseSector(current_address);
+
+    if(current_address - ERASE_BLOCK_SIZE <= this->data_storage_start) {
+      current_address = this->data_storage_start;
+    }
+  }
+  this->is_storing = false;
+  return true;
+}
+
+
 ConfigManager::ConfigManager(MachineState *machine_state) : machine_state(machine_state) {
   this->flash.begin();
+
+  this->writer = new DataWriter(&this->flash);
+
   DynamicJsonDocument doc(CONFIG_JSON_SIZE);
   
   this->load_device_identifiers(doc);
@@ -30,11 +89,7 @@ void ConfigManager::load_device_identifiers(DynamicJsonDocument &document) {
   }
 
   deserializeJson(document, temp_string);
-
-  this->config.identifying_information.device_id = document["device_id"];
-  this->config.identifying_information.project_name = (char *)document["project_name"];
-  this->config.identifying_information.device_name = (char *)document["device_name"];
-  this->config.identifying_information.server_hostname = (char *)document["server_name"];
+  this->deserialize_device_identifiers(this->config.identifying_information, document);
 }
 
 void ConfigManager::load_wifi_info(DynamicJsonDocument &document) {
@@ -76,11 +131,7 @@ void ConfigManager::load_preset_info(DynamicJsonDocument &document) {
 
   deserializeJson(document, temp_string);
 
-  this->config.preset.preset_name = (char *)document["preset_name"];
-  this->config.preset.temperature = document["temperature"];
-  this->config.preset.humidity = document["humidity"];
-  this->config.preset.moisture = document["moisture"];
-  this->config.preset.hours_daylight = document["hours_daylight"];
+  this->deserialize_preset(this->config.preset, document);
 }
 
 bool ConfigManager::write_configuration_flash(int address, DynamicJsonDocument &document) {
@@ -96,6 +147,14 @@ void ConfigManager::serialize_preset(Preset &preset, DynamicJsonDocument &docume
   document["humidity"] = preset.humidity;
   document["moisture"] = preset.moisture;
   document["hours_daylight"] = preset.hours_daylight;
+}
+
+void ConfigManager::deserialize_preset(Preset &preset, DynamicJsonDocument &document) {
+  preset.preset_name = (char *)document["preset_name"];
+  preset.temperature = document["temperature"];
+  preset.humidity = document["humidity"];
+  preset.moisture = document["moisture"];
+  preset.hours_daylight = document["hours_daylight"];
 }
 
 bool ConfigManager::set_preset(Preset preset) {
@@ -139,6 +198,13 @@ void ConfigManager::serialize_device_identifiers(Identifiers &device_identifiers
   document["project_name"] = device_identifiers.project_name;
 }
 
+void ConfigManager::deserialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDocument &document) {
+  device_identifiers.device_id = document["device_id"];
+  device_identifiers.project_name = (char *)document["project_name"];
+  device_identifiers.device_name = (char *)document["device_name"];
+  device_identifiers.server_hostname = (char *)document["server_name"];
+}
+
 bool ConfigManager::set_device_identifiers(Identifiers device_identifiers) {
   this->config.identifying_information = device_identifiers;
   if(this->config.identifying_information.project_name == nullptr) { // machine shouldnt run if no preset
@@ -158,4 +224,8 @@ bool ConfigManager::set_device_identifiers(Identifiers device_identifiers) {
 void ConfigManager::reset() {
   this->flash.eraseChip();
   this->configured = false;
+}
+
+ConfigManager::~ConfigManager() {
+  delete this->writer;
 }

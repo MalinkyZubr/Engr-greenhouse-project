@@ -17,6 +17,7 @@ class DataSender : Callable {
   ConnectionManager *connection_manager;
 
   public:
+  void flush_data_storage_to_server();
   DataSender(CommonData *common_data, MachineState *machine_state, ConfigManager *config_manager, ConnectionManager *connection_manager);
   void callback();
 };

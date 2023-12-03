@@ -16,7 +16,7 @@ class ResetDevice : public Route {
   
   public:
   ResetDevice(String route, ConfigManager *storage, MachineState *machine_state, ConnectionManager *connection_manager);
-  NetworkReturnErrors execute(WiFiClient &client, ParsedRequest &request, String *response) override;
+  NetworkReturnErrors execute(ParsedRequest &request, String *response) override;
 };
 
 
@@ -26,17 +26,36 @@ class SetTime : public Route {
 
   public:
   SetTime(String route, CommonData *common_data);
-  NetworkReturnErrors execute(WiFiClient &client, ParsedRequest &request, String *response) override;
+  NetworkReturnErrors execute(ParsedRequest &request, String *response) override;
 };
 
 
-class ConfigureDevice : public Route {
+class ConfigureDeviceIds : public Route {
   private:
   ConfigManager *storage;
   
   public:
-  ConfigureDevice(String route, ConfigManager *storage);
-  NetworkReturnErrors execute(WiFiClient &client, ParsedRequest &request, String *response) override;
+  ConfigureDeviceIds(String route, ConfigManager *storage);
+  NetworkReturnErrors execute(ParsedRequest &request, String *response) override;
+};
+
+
+class ConfigureDevicePreset : public Route {
+  private:
+  ConfigManager *storage;
+
+  public:
+  ConfigureDevicePreset(String route, ConfigManager *storage);
+  NetworkReturnErrors execute(ParsedRequest &request, String *response) override;
+};
+
+class PauseDevice : public Route {
+  private:
+  MachineState *machine_state;
+
+  public:
+  PauseDevice(String route, MachineState *machine_state);
+  NetworkReturnErrors execute(ParsedRequest &request, String *response) override;
 };
 
 #endif

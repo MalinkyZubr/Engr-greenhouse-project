@@ -8,7 +8,8 @@ enum NetworkReturnErrors {
   TIMEOUT,
   NOT_FOUND,
   AUTHENTICATION_FAILURE,
-  ERROR
+  ERROR,
+  STORAGE_WRITE_FAILURE
 };
 
 enum NetworkTypes {

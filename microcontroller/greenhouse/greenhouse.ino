@@ -38,8 +38,6 @@ CommonData common_data; // struct to hold data feed from environmental systems
 TaskManager task_manager; // pseudo asynchronous, for executing periodic actions
 Callable envmgr = EnvironmentManager(&state, &common_data, (int) PUMP_PIN, HEAT_PIN, FAN_PIN, LED_PIN, 1.0, 2.0, 3.0, 6); // control devices (heaters and such)
 Callable sensors = Sensors(&state, &common_data, DHT_PIN, (int) MOISTURE_PIN); // sensor systems to feed into data struct
-MessageQueue message_queue; 
-
 Router router; // router for executing tasks based on received requests
 ConfigManager config_manager;
 
@@ -49,8 +47,8 @@ void setup() {
   SPI.begin();
   
   //task_manager.add_task(enqueue_data, DATA_SEND_INTERVAL, DATA_SEND_ID);
-  task_manager.add_task(&envmgr, CONTROL_INTERVAL, CONTROL_ID);
-  task_manager.add_task(&sensors, SENSOR_INTERVAL, SENSOR_ID);
+  task_manager.add_task(&envmgr, CONTROL_INTERVAL, CONTROL_ID, false);
+  task_manager.add_task(&sensors, SENSOR_INTERVAL, SENSOR_ID, false);
   //task_manager.add_task();
 
   ITimer1.init();

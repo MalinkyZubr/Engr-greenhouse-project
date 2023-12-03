@@ -4,7 +4,7 @@
 // Task Object  //////////////////////////////////////////////
 //////////////////////////////////////////////////////////////
 
-TimedTask::TimedTask(Callable *callback, int interval, int id) : callback(callback), id(id), enabled(false) {
+TimedTask::TimedTask(Callable *callback, int interval, int id, bool disconnected_slowdown) : callback(callback), id(id), enabled(false), disconnected_slowdown(disconnected_slowdown) {
   if(interval < TIMER_INTERVAL_S) {
     this->interval = TIMER_INTERVAL_S;
   } 
@@ -20,11 +20,22 @@ void TimedTask::enable() {
   this->target_time = millis() + this->interval;
 }
 
-void TimedTask::execute() {
+void TimedTask::execute(MachineConnectionState mode) {
   if(millis() >= target_time && this->enabled) {
     this->callback->callback();
-    this->target_time = millis() + this->interval;
   }
+
+  switch(mode) {
+    case MACHINE_DISCONNECTED:
+      if(disconnected_slowdown) {
+        this->target_time = millis() + this->interval * 20;
+        break; // if the disconnected slowdown flag isnt set, the swithc statement should fall through
+      }
+    case MACHINE_CONNECTED:
+      this->target_time = millis() + this->interval;
+      break;
+  }
+
   this->callback->callback();
 }
 
@@ -36,8 +47,10 @@ void TimedTask::disable() {
 // Task Manager  /////////////////////////////////////////////
 //////////////////////////////////////////////////////////////
 
-bool TaskManager::add_task(Callable *callback, int interval, int id) {
-  TimedTask new_task = TimedTask(callback, interval, id);
+TaskManager::TaskManager(MachineState *machine_state) : machine_state(machine_state) {}
+
+bool TaskManager::add_task(Callable *callback, int interval, int id, bool disconnected_slowdown) {
+  TimedTask new_task = TimedTask(callback, interval, id, disconnected_slowdown);
   for(int i = 0; i < MAX_TASKS; i++) {
     if(this->task_list[i].id == -1)
     {
@@ -70,41 +83,9 @@ void TaskManager::execute_actions(Actions action) {
           task_list[i].disable();
           break;
         case EXECUTE:
-          task_list[i].execute();
+          task_list[i].execute(this->machine_state->connection_state);
           break;
       }
     }
   }
-}
-
-//////////////////////////////////////////////////////////////
-// Message Queue  ////////////////////////////////////////////
-//////////////////////////////////////////////////////////////
-
-bool MessageQueue::enqueue_message(String server_hostname, String route, String method, DynamicJsonDocument body) {
-  if(this->tail < MESSAGE_QUEUE_SIZE - 1) {
-    Message new_message;
-    new_message.server_hostname = server_hostname;
-    new_message.route = route;
-    new_message.method = method;
-    new_message.body = body;
-
-    this->queue[tail] = new_message;
-    this->tail++;
-
-    return true;
-  }
-  return false;
-}
-
-Message MessageQueue::dequeue_message() {
-  if(this->queue[0].route.equals("*")) {
-    Message head = this->queue[0];
-    for(int i = 0; i < MESSAGE_QUEUE_SIZE; i++) {
-      this->queue[i] = this->queue[i + 1];
-    }
-    return head;
-  }
-  Message empty;
-  return empty;
 }

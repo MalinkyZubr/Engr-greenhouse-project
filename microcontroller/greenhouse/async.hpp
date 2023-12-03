@@ -22,6 +22,11 @@
 
 #define TIMER_INTERVAL_S 5
 
+#include "machine_state.hpp"
+
+
+enum Actions {ENABLE, DISABLE, EXECUTE};
+
 
 class Callable {
   public:
@@ -33,6 +38,7 @@ class TimedTask {
   Callable *callback;
   int interval;
   long long target_time = 0;
+  bool disconnected_slowdown = true;
 
   public:
   int id;
@@ -40,39 +46,24 @@ class TimedTask {
   TimedTask() {
     this->id = -1;
   }
-  TimedTask(Callable *callback, int interval, int id);
-  void execute();
+  TimedTask(Callable *callback, int interval, int id, bool disconnected_slowdown);
+
+  void execute(MachineConnectionState mode);
   void enable();
   void disable();
 };
 
-enum Actions {ENABLE, DISABLE, EXECUTE};
+
 class TaskManager {
   private:
   TimedTask task_list[MAX_TASKS];
+  MachineState *machine_state;
 
   public:
-  bool add_task(Callable *callback, int interval, int id);
+  TaskManager(MachineState *machine_state);
+  bool add_task(Callable *callback, int interval, int id, bool disconnected_slowdown);
   bool remove_task(int id);
   void execute_actions(Actions action);
-};
-
-class Message {
-  public:
-  String server_hostname;
-  String route = "*";
-  String method;
-  DynamicJsonDocument body = DynamicJsonDocument(1024);
-};
-
-class MessageQueue {
-  private:
-  Message queue[MESSAGE_QUEUE_SIZE + 1]; // should be volatile
-  int tail = 0; // should be volatile
-
-  public:
-  bool enqueue_message(String server_hostname, String route, String method, DynamicJsonDocument body);
-  Message dequeue_message();
 };
 
 typedef struct {
