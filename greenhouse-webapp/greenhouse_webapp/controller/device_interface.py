@@ -23,9 +23,13 @@ class DataSchema(BaseModel):
     humidity: float
     moisture: float
     light_exposure: float
-    ir_exposure: Optional[float]
-    ph_level: Optional[float]
     
+    
+class OldDataSchema(DataSchema):
+    next: Optional[int]
+    previous: Optional[int]
+    seconds_from_disconnect: int
+    reference_datetime: str
     
 class LogSchema(BaseModel):
     log_level: int
@@ -75,10 +79,18 @@ async def post_data(device_name: str, data_info: DataSchema):
         data_info.humidity,
         data_info.moisture,
         data_info.light_exposure,
-        data_info.ir_exposure,
-        data_info.ph_level
     )
     return "data inserted successfully"
+
+@router.post("/olddata/{device_name}")
+async def post_old_data(device_name: str, data_info: OldDataSchema):
+    """
+    insert data with specified time
+    """
+    device_id = router.database_connector.execute('getDeviceID', device_name)
+    project_id = router.database_connector.execute('getProjectID', data_info.project_name)
+    
+    data_collection_time = data_info.seconds_from_disconnect
 
 @router.post("/logs/{device_name}")
 async def post_logs(device_name: str, log_info: LogSchema):

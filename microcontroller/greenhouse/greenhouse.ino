@@ -35,11 +35,11 @@ ISR_Timer ISR_timer; // hardware timer instantiation
 MachineState state; // the machine should start in a paused state so that the environmental controls remain off
 
 CommonData common_data; // struct to hold data feed from environmental systems
-TaskManager task_manager; // pseudo asynchronous, for executing periodic actions
+TaskManager task_manager(&state); // pseudo asynchronous, for executing periodic actions
 Callable envmgr = EnvironmentManager(&state, &common_data, (int) PUMP_PIN, HEAT_PIN, FAN_PIN, LED_PIN, 1.0, 2.0, 3.0, 6); // control devices (heaters and such)
 Callable sensors = Sensors(&state, &common_data, DHT_PIN, (int) MOISTURE_PIN); // sensor systems to feed into data struct
 Router router; // router for executing tasks based on received requests
-ConfigManager config_manager;
+ConfigManager config_manager(&state);
 
 void setup() {
   Serial.begin(115200);

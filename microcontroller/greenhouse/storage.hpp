@@ -51,6 +51,7 @@ class DataWriter {
   SPIFlash *flash;
 
   public:
+  float reference_datatime = 0;
   bool is_full = false;
   bool is_storing;
 
@@ -63,10 +64,6 @@ class DataWriter {
 
 class ConfigManager {
   private:
-  int identifier_address = IDENTIFIER_ADDRESS;
-  int preset_address = PRESET_ADDRESS;
-  int wifi_address = WIFI_ADDRESS;
-
   MachineState *machine_state;
 
   SPIFlash flash;
@@ -75,6 +72,10 @@ class ConfigManager {
   bool write_configuration_flash(int address, DynamicJsonDocument &document);
 
   public:
+  int identifier_address = IDENTIFIER_ADDRESS;
+  int preset_address = PRESET_ADDRESS;
+  int wifi_address = WIFI_ADDRESS;
+  
   bool configured = false; // this must be set when the configuration is read at startup. Should also be set to true as soon as configuration data is written
   
   Configuration config;
@@ -82,6 +83,10 @@ class ConfigManager {
 
   ConfigManager(MachineState *machine_state);
   ~ConfigManager();
+
+  void retrieve_config_to_json(int address, DynamicJsonDocument &document);
+
+  void set_reference_datetime(float datetime);
 
   void serialize_preset(Preset &preset, DynamicJsonDocument &document);
   void deserialize_preset(Preset &preset, DynamicJsonDocument &document);
@@ -94,11 +99,11 @@ class ConfigManager {
   void deserialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDocument &document);
   bool set_device_identifiers(Identifiers device_identifiers);
 
-  void load_device_identifiers(DynamicJsonDocument &document);
+  void load_device_identifiers(DynamicJsonDocument &document, Identifiers &identifiers);
 
-  void load_wifi_info(DynamicJsonDocument &document);
+  void load_wifi_info(DynamicJsonDocument &document, WifiInfo &wifi_info);
 
-  void load_preset_info(DynamicJsonDocument &document);
+  void load_preset_info(DynamicJsonDocument &document, Preset &preset);
 
   void reset();
 };

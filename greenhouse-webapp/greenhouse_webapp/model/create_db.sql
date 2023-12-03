@@ -19,8 +19,6 @@ CREATE TABLE Data (
     Humidity FLOAT,
     Moisture FLOAT,
     LightExposure FLOAT,
-    IRExposure FLOAT,
-    pHLevel FLOAT,
     Archived DEFAULT 0
 );
 

@@ -33,14 +33,21 @@ class DeviceConfigSchema(BaseModel):
     preset_name: Optional[str]
     project_name: Optional[str]
     
-
+class RegistrationPreset(BaseModel):
+    preset_name: str
+    temperature: float
+    humidity: float
+    moisture: float
+    hours_daylight: float
+    
 class DeviceRegistrationSchema(BaseModel):
-    source_mac: str
     device_name: Optional[str]
     device_id: Optional[int]
-    preset_name: Optional[str]
     project_name: Optional[str]
-    device_status: Optional[bool]
+    preset: Optional[RegistrationPreset]
+    
+class DeviceRegistrationResponse(DeviceRegistrationSchema):
+    reference_time: float
     
 class DeviceInformationSchema(BaseModel):
     device_name: str
@@ -265,7 +272,7 @@ async def register_device(project_name, device_info: ClientDeviceRegSchema):
     return "device registered successfully"
 
 @router.post("/confirm")
-async def confirm_registration(stored_device_info: DeviceRegistrationSchema, request: Request): # figure this shit out, I doubt it works
+async def confirm_registration(stored_device_info: DeviceRegistrationSchema, request: Request) -> DeviceRegistrationResponse: # figure this shit out, I doubt it works
     """
     trigger event to finish device registration. This is confirmation via https. THIS IS A REQUEST FROM THE DEVICE IN QUESTION. AKA the most disgusting function
     """
@@ -291,6 +298,9 @@ async def confirm_registration(stored_device_info: DeviceRegistrationSchema, req
         true_device_id = None
         pass     
     
+    # reference time should also be returned from here
+    
+    # check for expidited flag here
     router.device_manager.registration_queue[source_ip].notify_all()
     scan_info = router.device_manager.registration_queue.pop(source_ip)
 
@@ -307,9 +317,9 @@ async def unregister_device(device_name) -> Literal['successfully unregistered d
         router.database_connector.execute("unregisterDevice", device_id)
         router.device_manager.active_device_list.pop(device_ip)
     except Exception as e:
-    
+        pass
     return "successfully unregistered device"
-        
+
 @router.get("/devices/{device_name}/logs")
 async def get_logs(device_name) -> list[LogSchema]:
     pass

@@ -402,16 +402,6 @@ int* ConnectionManager::prepare_identifier_field(int &field_value) {
   return &field_value;
 }
 
-void ConnectionManager::package_identifying_info(DynamicJsonDocument &to_package) {
-  to_package["device_name"] = this->prepare_identifier_field(this->storage->config.identifying_information.device_name);
-  to_package["device_id"] = *this->prepare_identifier_field(this->storage->config.identifying_information.device_id);
-  to_package["device_ip"] = this->own_information.ip;
-  to_package["device_mac"] = this->own_information.mac;
-  to_package["preset_name"] = this->prepare_identifier_field(this->storage->config.preset.preset_name);
-  to_package["project_name"] = this->prepare_identifier_field(this->storage->config.identifying_information.project_name);
-  to_package["device_status"] = true;
-}
-
 void ConnectionManager::write_identifying_info(ParsedResponse &response) { // when the server syncs its own data on the device to the device, it should write the server config locally
   
 }
@@ -419,6 +409,9 @@ void ConnectionManager::write_identifying_info(ParsedResponse &response) { // wh
 bool ConnectionManager::association() { // make first ssl request to associate with server
   bool associated = false;
   int fail_counter = 0;
+
+  Identifiers device_identifiers;
+  Preset device_preset;
   
   while(!associated && fail_counter < 3) {
     if(!this->state_connection.SSLclient.connected() && !this->connect_to_server()) {
@@ -427,15 +420,21 @@ bool ConnectionManager::association() { // make first ssl request to associate w
     }
 
     DynamicJsonDocument doc(CONFIG_JSON_SIZE);
-    this->package_identifying_info(doc);
+    DynamicJsonDocument preset(CONFIG_JSON_SIZE);
+
+    this->storage->retrieve_config_to_json(this->storage->identifier_address, doc);
+    this->storage->retrieve_config_to_json(this->storage->preset_address, preset);
+
+    doc["preset"] = preset;
 
     String data = Requests::request(POST, String("/devices/confirm"), this->server_information.ip, this->storage->config.identifying_information.device_id, doc); // the device_id should default to 0 before reading from flash
-    this->state_connection.SSLclient.println(data);
+    this->state_connection.SSLclient.println(data); // THERE MUST BE A WAY TO PACKAGE THE PRESET NAME IN HERE TOO
 
     ParsedMessage message = this->rest_receive(this->state_connection.SSLclient, 10000); // the device should receive a response here, make sure the server actually does that
 
     this->state_connection.SSLclient.stop(); // remember to close the connection after each request
 
+    
     switch(message.error) {
       case WIFI_FAILURE:
         return false;
@@ -445,9 +444,18 @@ bool ConnectionManager::association() { // make first ssl request to associate w
         fail_counter++;
         continue;
       case OKAY:
-        // REMEMBER TO WRITE TO CONFIG HERE
+        this->storage->deserialize_device_identifiers(device_identifiers, message.response.body);
+        this->storage->set_device_identifiers(device_identifiers);
+
+        preset = message.response.body["preset"];
+
+        this->storage->deserialize_preset(device_preset, preset);
+        this->storage->set_preset(device_preset);
         
         associated = true;
+    }
+    if(!this->storage->writer->reference_datatime) {
+      this->storage->set_reference_datetime(message.response.body["reference_time"]);
     }
   }
 

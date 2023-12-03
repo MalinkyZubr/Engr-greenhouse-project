@@ -77,8 +77,6 @@ class ConnectionManager {
 
   bool connect_to_server();
 
-  void package_identifying_info(DynamicJsonDocument &to_package);
-
   const char* prepare_identifier_field(String &field_value);
 
   int* prepare_identifier_field(int &field_value);

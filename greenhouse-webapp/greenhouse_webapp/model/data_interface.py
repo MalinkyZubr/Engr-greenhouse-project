@@ -199,10 +199,18 @@ class deleteProject(DatabaseQuery):
 
 class insertData(DatabaseQuery):
     query_str = \
-    f"""INSERT INTO Data (DeviceID, ProjectID, Temperature, Humidity, Moisture, LightExposure, IRExposure, pHLevel)
+    f"""INSERT INTO Data (DeviceID, ProjectID, Temperature, Humidity, Moisture, LightExposure)
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"""
-    def query(self, cursor, device_id, project_id, temperature, humidity, moisture, light_exposure, ir_exposure, ph_level):
-        return cursor.execute(self.query_str, (device_id, project_id, temperature, humidity, moisture, light_exposure, ir_exposure, ph_level))
+    def query(self, cursor, device_id, project_id, temperature, humidity, moisture, light_exposure):
+        return cursor.execute(self.query_str, (device_id, project_id, temperature, humidity, moisture, light_exposure))
+    
+    
+class insertDataAtTime(DatabaseQuery):
+    query_str = \
+    f"""INSERT INTO Data (DeviceID, ProjectID, DateCollected, Temperature, Humidity, Moisture, LightExposure)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""
+    def query(self, cursor, device_id, project_id, temperature, humidity, moisture, light_exposure):
+        return cursor.execute(self.query_str, (device_id, project_id, temperature, humidity, moisture, light_exposure))
 
 
 class getDeviceID(DatabaseQuery):

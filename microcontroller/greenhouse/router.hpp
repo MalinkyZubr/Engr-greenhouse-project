@@ -15,7 +15,7 @@ class Route {
 
   Route(String route);
   bool requested(String &requested_route);
-  virtual NetworkReturnErrors execute(ParsedRequest &request, String *response);
+  virtual NetworkReturnErrors execute(ParsedRequest &request, String *response) {};
 };
 
 class Router {

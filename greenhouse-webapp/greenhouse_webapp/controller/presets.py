@@ -15,7 +15,6 @@ class PresetSchema(BaseModel):
     humidity: float = Field(gt=0, lt=100)
     moisture: float = Field(gt=0, lt=100)
     light_exposure: float = Field(gt=0, lt=100000)
-    ir_exposure: float = Field(gt=0, lt=100000)
     
     
 @router.get("/availablePresets/{preset_name}")

@@ -13,6 +13,7 @@ bool DataWriter::write_data(DynamicJsonDocument &data) {
     data["next"] = this->current + this->partition_size;
     data["previous"] = this->current - this->partition_size;
     data["seconds_from_disconnect"] = millis() / 1000;
+    data["reference_datetime"] = this->reference_datatime;
 
     serializeJson(data, serialized);
 
@@ -64,11 +65,12 @@ ConfigManager::ConfigManager(MachineState *machine_state) : machine_state(machin
 
   DynamicJsonDocument doc(CONFIG_JSON_SIZE);
   
-  this->load_device_identifiers(doc);
+  // load existing configuration to the storage manager
+  this->load_device_identifiers(doc, this->config.identifying_information);
   doc.clear();
-  this->load_preset_info(doc);
+  this->load_preset_info(doc, this->config.preset);
   doc.clear();
-  this->load_wifi_info(doc);
+  this->load_wifi_info(doc, this->config.wifi_information);
   doc.clear();
 
   if(this->config.identifying_information.device_id != -1) {
@@ -76,23 +78,21 @@ ConfigManager::ConfigManager(MachineState *machine_state) : machine_state(machin
   }
 }
 
+void ConfigManager::set_reference_datetime(float datetime) {
+  this->writer->reference_datatime = datetime;
+}
+
 bool ConfigManager::retrieve_configuration_flash(int address, String *output) {
   return this->flash.readStr(address, *output);
 }
 
-void ConfigManager::load_device_identifiers(DynamicJsonDocument &document) {
-  String temp_string;
-  this->retrieve_configuration_flash(this->identifier_address, &temp_string);
-
-  if(temp_string.equals("")) {
-    return;
-  }
-
-  deserializeJson(document, temp_string);
-  this->deserialize_device_identifiers(this->config.identifying_information, document);
+void ConfigManager::retrieve_config_to_json(int address, DynamicJsonDocument &document) {
+  String data;
+  this->retrieve_configuration_flash(address, &data);
+  deserializeJson(document, data);
 }
 
-void ConfigManager::load_wifi_info(DynamicJsonDocument &document) {
+void ConfigManager::load_device_identifiers(DynamicJsonDocument &document, Identifiers &identifiers) {
   String temp_string;
   this->retrieve_configuration_flash(this->identifier_address, &temp_string);
 
@@ -101,27 +101,41 @@ void ConfigManager::load_wifi_info(DynamicJsonDocument &document) {
   }
 
   deserializeJson(document, temp_string);
+  this->deserialize_device_identifiers(identifiers, document);
+}
 
-  char type = document["type"];
-  switch(type) {
+void ConfigManager::load_wifi_info(DynamicJsonDocument &document, WifiInfo &wifi_info) {
+  String temp_string;
+
+  this->retrieve_configuration_flash(this->identifier_address, &temp_string);
+
+  if(temp_string.equals("")) {
+    return;
+  }
+
+  deserializeJson(document, temp_string);
+
+  String type = document["type"];
+  
+  switch(type.c_str()[0]) {
     case 'h':
-      this->config.wifi_information.type = HOME;
-      this->config.wifi_information.password = (char *)document["password"];
+      wifi_info.type = HOME;
+      wifi_info.password = (char *)&document["password"];
       break;
     case 'e':
-      this->config.wifi_information.type = ENTERPRISE;
-      this->config.wifi_information.password = (char *)document["password"];
-      this->config.wifi_information.username = (char *)document["username"];
+      wifi_info.type = ENTERPRISE;
+      wifi_info.password = (char *)&document["password"];
+      wifi_info.username = (char *)&document["username"];
       break;
     case 'o':
-      this->config.wifi_information.type = OPEN;
+      wifi_info.type = OPEN;
   } 
-  this->config.wifi_information.channel = document["channel"];
+  wifi_info.channel = document["channel"];
 
-  this->config.wifi_information.ssid = (char *)document["ssid"];
+  wifi_info.ssid = (char *)&document["ssid"];
 }
 
-void ConfigManager::load_preset_info(DynamicJsonDocument &document) {
+void ConfigManager::load_preset_info(DynamicJsonDocument &document, Preset &preset) {
   String temp_string;
   this->retrieve_configuration_flash(this->preset_address, &temp_string);
 
@@ -131,7 +145,7 @@ void ConfigManager::load_preset_info(DynamicJsonDocument &document) {
 
   deserializeJson(document, temp_string);
 
-  this->deserialize_preset(this->config.preset, document);
+  this->deserialize_preset(preset, document);
 }
 
 bool ConfigManager::write_configuration_flash(int address, DynamicJsonDocument &document) {
@@ -150,7 +164,7 @@ void ConfigManager::serialize_preset(Preset &preset, DynamicJsonDocument &docume
 }
 
 void ConfigManager::deserialize_preset(Preset &preset, DynamicJsonDocument &document) {
-  preset.preset_name = (char *)document["preset_name"];
+  preset.preset_name = (char *)&document["preset_name"];
   preset.temperature = document["temperature"];
   preset.humidity = document["humidity"];
   preset.moisture = document["moisture"];
@@ -200,9 +214,9 @@ void ConfigManager::serialize_device_identifiers(Identifiers &device_identifiers
 
 void ConfigManager::deserialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDocument &document) {
   device_identifiers.device_id = document["device_id"];
-  device_identifiers.project_name = (char *)document["project_name"];
-  device_identifiers.device_name = (char *)document["device_name"];
-  device_identifiers.server_hostname = (char *)document["server_name"];
+  device_identifiers.project_name = (char *)&document["project_name"];
+  device_identifiers.device_name = (char *)&document["device_name"];
+  device_identifiers.server_hostname = (char *)&document["server_name"];
 }
 
 bool ConfigManager::set_device_identifiers(Identifiers device_identifiers) {
