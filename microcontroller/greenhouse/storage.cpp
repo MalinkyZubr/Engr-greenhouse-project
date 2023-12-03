@@ -1,7 +1,7 @@
 #include "storage.hpp"
 
-// MUST MODERNIZE ALL THIS SO THAT IT WORKS BETTER IN CONJUNCTION WITH THE STRUCT MEMBERS
-ConfigManager::ConfigManager() {
+
+ConfigManager::ConfigManager(MachineState *machine_state) : machine_state(machine_state) {
   this->flash.begin();
   DynamicJsonDocument doc(CONFIG_JSON_SIZE);
   
@@ -100,6 +100,12 @@ void ConfigManager::serialize_preset(Preset &preset, DynamicJsonDocument &docume
 
 bool ConfigManager::set_preset(Preset preset) {
   this->config.preset = preset;
+  if(this->config.preset.preset_name == nullptr) { // machine shouldnt run if no preset
+    this->machine_state->operational_state = MACHINE_PAUSED;
+  }
+  else {
+    this->machine_state->operational_state = MACHINE_ACTIVE;
+  }
 
   DynamicJsonDocument document(CONFIG_JSON_SIZE);
   this->serialize_preset(preset, document);
@@ -126,7 +132,7 @@ bool ConfigManager::set_wifi_configuration(WifiInfo wifi_info) {
   return this->write_configuration_flash(this->wifi_address, document);
 }
 
-void serialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDocument &document) {
+void ConfigManager::serialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDocument &document) {
   document["device_id"] = device_identifiers.device_id;
   document["server_hostname"] = device_identifiers.server_hostname;
   document["device_name"] = device_identifiers.device_name;
@@ -135,6 +141,12 @@ void serialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDo
 
 bool ConfigManager::set_device_identifiers(Identifiers device_identifiers) {
   this->config.identifying_information = device_identifiers;
+  if(this->config.identifying_information.project_name == nullptr) { // machine shouldnt run if no preset
+    this->machine_state->operational_state = MACHINE_PAUSED;
+  }
+  else {
+    this->machine_state->operational_state = MACHINE_ACTIVE;
+  }
 
   DynamicJsonDocument document(CONFIG_JSON_SIZE);
   this->serialize_device_identifiers(this->config.identifying_information, document);

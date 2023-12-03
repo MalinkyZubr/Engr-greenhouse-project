@@ -11,9 +11,12 @@ enum MachineOperationalState {
     MACHINE_ACTIVE // in this case devices should send data to the server
 };
 
-struct MachineState {
+class MachineState {
+    public:
     MachineOperationalState operational_state;
     MachineConnectionState connection_state;
+
+    MachineState() : operational_state(MACHINE_PAUSED), connection_state(MACHINE_DISCONNECTED) {};
 };
 
 

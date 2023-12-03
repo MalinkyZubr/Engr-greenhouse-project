@@ -32,12 +32,12 @@
 
 ISR_Timer ISR_timer; // hardware timer instantiation
 
-MachineOperationalState state = MACHINE_PAUSED; // the machine should start in a paused state so that the environmental controls remain off
+MachineState state; // the machine should start in a paused state so that the environmental controls remain off
 
 CommonData common_data; // struct to hold data feed from environmental systems
 TaskManager task_manager; // pseudo asynchronous, for executing periodic actions
-Callable envmgr = EnvironmentManager(&common_data, (int) PUMP_PIN, HEAT_PIN, FAN_PIN, LED_PIN, 1.0, 2.0, 3.0, 6); // control devices (heaters and such)
-Callable sensors = Sensors(&common_data, DHT_PIN, (int) MOISTURE_PIN); // sensor systems to feed into data struct
+Callable envmgr = EnvironmentManager(&state, &common_data, (int) PUMP_PIN, HEAT_PIN, FAN_PIN, LED_PIN, 1.0, 2.0, 3.0, 6); // control devices (heaters and such)
+Callable sensors = Sensors(&state, &common_data, DHT_PIN, (int) MOISTURE_PIN); // sensor systems to feed into data struct
 MessageQueue message_queue; 
 
 Router router; // router for executing tasks based on received requests
@@ -67,16 +67,4 @@ void TimedTasks() // executes every 5 seconds
 {
   ISR_timer.run();
   task_manager.execute_actions(EXECUTE);
-}
-
-void enqueue_data(ConfigManager config_manager) { // this should be called by sensor reader
-  DynamicJsonDocument message_body(1024);
-  message_body["project_name"] = config_manager.config.project_name;
-  message_body["device_name"] = config_manager.config.device_name;
-  message_body["temperature"] = common_data.temperature;
-  message_body["moisture"] = common_data.moisture;
-  message_body["humidity"] = common_data.humidity;
-  message_body["light_exposure"] = common_data.light_level;
-
-  message_queue.enqueue_message(config_manager.config.server_hostname, String("/interface/data/") + config_manager.config.device_name, String("POST"), message_body);
 }

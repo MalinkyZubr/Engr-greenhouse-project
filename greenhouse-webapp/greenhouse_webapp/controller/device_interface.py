@@ -19,7 +19,6 @@ this file interacts directly with the devices on the entwork
 
 class DataSchema(BaseModel):
     project_name: str # the device should know its own project ID
-    device_name: str
     temperature: float
     humidity: float
     moisture: float

@@ -7,6 +7,7 @@
 #include <BH1750.h>
 #include <DHT.h>
 #include "async.hpp"
+#include "machine_state.hpp"
 
 #define MILLISECONDS_IN_HOUR 3600000
 #define LUX_THRESHOLD 800
@@ -64,6 +65,7 @@ class Interval {
 
 class EnvironmentManager : public Callable {
   private:
+
   typedef struct Intervals { // the lgiht management has to be done server side, since it has to keep track of data of the whole day
     Interval temperature;
     Interval humidity;
@@ -72,6 +74,8 @@ class EnvironmentManager : public Callable {
 
     Intervals(float desired_temperature, float desired_humidity, float desired_moisture, int hours_sunlight);
   }Intervals;
+
+  MachineState *machine_state;
 
   Device pump;
   Device heater;
@@ -83,7 +87,7 @@ class EnvironmentManager : public Callable {
   Interval::relation check_status();
 
   public:
-  EnvironmentManager(CommonData *common_data, int pump_pin, int heating_pin, int fan_pin, int led_pin, float desired_temperature, float desired_humidity, float desired_moisture, int hours_sunlight);
+  EnvironmentManager(MachineState *machine_state, CommonData *common_data, int pump_pin, int heating_pin, int fan_pin, int led_pin, float desired_temperature, float desired_humidity, float desired_moisture, int hours_sunlight);
   void device_activation();
   void callback() override {
     this->device_activation();
@@ -132,13 +136,14 @@ class HumidityTemperature {
 
 class Sensors : public Callable {
   private:
+  MachineState *machine_state;
   CommonData *common_data;
   Moisture moisture;
   Light light;
   HumidityTemperature humtemp;
 
   public:
-  Sensors(CommonData *common_data, int humtemp_pin, int moisture_pin);
+  Sensors(MachineState *machine_state, CommonData *common_data, int humtemp_pin, int moisture_pin);
 
   void submit_readings();
   void callback() override {

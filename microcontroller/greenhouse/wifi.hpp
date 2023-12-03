@@ -54,6 +54,41 @@ class ConnectionManager {
   private:
   bool check_ssid_existence(String &ssid);
 
+  ParsedMessage rest_receive(WiFiClient &client, int timeout);
+
+  // initialization
+  bool set_ssid_config();
+
+  int get_ap_channel(String &ssid);
+
+  bool enterprise_connect(WifiInfo &enterprise_wifi_info);
+  
+  bool home_connect(WifiInfo &home_wifi_info);
+
+  NetworkReturnErrors connect_wifi(WifiInfo &wifi_info);
+
+  bool initialization();
+
+  WifiInfo receive_credentials(WiFiClient &client);
+  
+  NetworkReturnErrors send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &received, int timeout); 
+
+  bool broadcast(bool expidited);
+
+  bool connect_to_server();
+
+  void package_identifying_info(DynamicJsonDocument &to_package);
+
+  const char* prepare_identifier_field(String &field_value);
+
+  int* prepare_identifier_field(int &field_value);
+
+  void write_identifying_info(ParsedResponse &response);
+
+  bool association(); // to be run inside broadcast when receive confirmation
+
+  void listener_error_handler(NetworkReturnErrors error);
+
   public:
   MachineState *machine_state;
   States network_state = INITIALIZING;
@@ -73,33 +108,7 @@ class ConnectionManager {
   ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state, WifiInfo wifi_information);
   ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state, WifiInfo wifi_information, ConnectionInfo server_information);
 
-  ParsedMessage rest_receive(WiFiClient &client, int timeout);
-
-  // initialization
-  bool set_ssid_config();
-
-  int get_ap_channel(String &ssid);
-
-  bool enterprise_connect(WifiInfo &enterprise_wifi_info);
-  bool home_connect(WifiInfo &home_wifi_info);
-
-  NetworkReturnErrors connect_wifi(WifiInfo &wifi_info);
-
-  bool initialization();
-  WifiInfo receive_credentials(WiFiClient &client);
-  
-  NetworkReturnErrors send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &received, int timeout); 
-  bool broadcast(bool expidited);
-
-  bool connect_to_server();
-  void package_identifying_info(DynamicJsonDocument &to_package);
-  const char* prepare_identifier_field(String &field_value);
-  int* prepare_identifier_field(int &field_value);
-  void write_identifying_info(ParsedResponse &response);
-  bool association(); // to be run inside broadcast when receive confirmation
-
   NetworkReturnErrors listener();
-  void listener_error_handler(NetworkReturnErrors error);
   ParsedResponse connected_send(String &request);
 
   void run();

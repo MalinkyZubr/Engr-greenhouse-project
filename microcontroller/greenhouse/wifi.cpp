@@ -37,7 +37,7 @@ ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, 
   this->run();
 }
 
-bool check_ssid_existence(String &ssid) {
+bool ConnectionManager::check_ssid_existence(String &ssid) {
     int num_networks = WiFi.scanNetworks();
 
     for(int network = 0; network < num_networks; network++) {

@@ -6,6 +6,7 @@
 #include <Arduino.h>
 #include <SPIMemory.h>
 #include "wifi_info.hpp"
+#include "machine_state.hpp"
 
 #define IDENTIFIER_ADDRESS 12000
 #define PRESET_ADDRESS 7000
@@ -41,6 +42,8 @@ class ConfigManager {
   int preset_address = PRESET_ADDRESS;
   int wifi_address = WIFI_ADDRESS;
 
+  MachineState *machine_state;
+
   SPIFlash flash;
 
   bool retrieve_configuration_flash(int address, String *output);
@@ -50,8 +53,7 @@ class ConfigManager {
   bool configured = false; // this must be set when the configuration is read at startup. Should also be set to true as soon as configuration data is written
   Configuration config;
 
-  ConfigManager(void){};
-  ConfigManager();
+  ConfigManager(MachineState *machine_state);
 
   void serialize_preset(Preset &preset, DynamicJsonDocument &document);
   bool set_preset(Preset preset);
