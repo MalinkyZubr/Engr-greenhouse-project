@@ -6,12 +6,12 @@
 #include <WiFiUdp.h>
 #include <ArduinoJson.h>
 #include <SPI.h>
-#include "async.hpp"
+#include "../asynchronous/async.hpp"
+#include "../storage/storage.hpp"
+#include "../asynchronous/machine_state.hpp"
 #include "http.hpp"
-#include "storage.hpp"
 #include "webpage.hpp"
 #include "router.hpp"
-#include "machine_state.hpp"
 #include "wifi_info.hpp"
 
 

@@ -1,15 +1,16 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <ArduinoJson.h>
-#include "async.hpp"
-#include "environmentManagement.hpp"
-#include "wifi.hpp"
-#include "storage.hpp"
-#include "router.hpp"
+
+#include "network/wifi.hpp"
+#include "network/router.hpp"
+#include "storage/storage.hpp"
+#include "asynchronous/async.hpp"
+#include "peripherals/environmentManagement.hpp"
 
 #include "TimerInterrupt.h"
 #include "ISR_Timer.h"
-#include "machine_state.hpp"
+#include "asynchronous/machine_state.hpp"
 
 #define TESTING true // should serial be connected?
 

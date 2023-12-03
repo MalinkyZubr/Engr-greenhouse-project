@@ -3,9 +3,9 @@
 
 
 #include "wifi.hpp"
-#include "storage.hpp"
-#include "machine_state.hpp"
-#include "async.hpp"
+#include "../storage/storage.hpp"
+#include "../asynchronous/machine_state.hpp"
+#include "../asynchronous/async.hpp"
 #include "http.hpp"
 
 

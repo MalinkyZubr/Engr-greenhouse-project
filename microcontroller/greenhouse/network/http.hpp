@@ -5,7 +5,7 @@
 #include <ArduinoJson.h>
 #include <WiFi101.h>
 #include <Regexp.h>
-#include "storage.hpp"
+#include "../storage/storage.hpp"
 #include "wifi_info.hpp"
 
 

@@ -3,9 +3,9 @@
 
 #include <Arduino.h>
 #include <WiFi101.h>
-#include "async.hpp"
+#include "../asynchronous/async.hpp"
 #include "http.hpp"
-#include "machine_state.hpp"
+#include "../asynchronous/machine_state.hpp"
 
 #define MAX_ROUTES 10
 

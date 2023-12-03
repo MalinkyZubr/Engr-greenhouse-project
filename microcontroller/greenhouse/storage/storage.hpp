@@ -5,8 +5,8 @@
 #include <ArduinoJson.hpp>
 #include <Arduino.h>
 #include <SPIMemory.h>
-#include "wifi_info.hpp"
-#include "machine_state.hpp"
+#include "../network/wifi_info.hpp"
+#include "../asynchronous/machine_state.hpp"
 
 #define IDENTIFIER_ADDRESS 9000
 #define PRESET_ADDRESS 5000

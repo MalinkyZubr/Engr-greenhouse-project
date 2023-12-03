@@ -1,9 +1,1 @@
-server should be able to issue a hard reset call so that the device can be reconfigured
-
-if conneciton is lost, all the sensor intervals should be increased singificantly to prevent saturation of ram/f
-
-1. connection controller must be more advanced. If there is already stored wifi creds for instance, try those
-
-2. if the server 
-
-3. broadcast stage should check "server name" in order to ensure different devices dont overlap with servers
+all the internal crap has to go inside the libraries folder, use rsync command to mirror files, see chatgpt chat you did.
