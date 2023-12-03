@@ -36,6 +36,7 @@ enum States {
     BROADCASTING,
     ASSOCIATING,
     CONNECTED, 
+    STARTUP,
     DOWN
 };
 
@@ -50,6 +51,9 @@ class Connection {
 };
 
 class ConnectionManager {
+  private:
+  bool check_ssid_existence(String &ssid);
+
   public:
   MachineState *machine_state;
   States network_state = INITIALIZING;
@@ -79,7 +83,7 @@ class ConnectionManager {
   bool enterprise_connect(WifiInfo &enterprise_wifi_info);
   bool home_connect(WifiInfo &home_wifi_info);
 
-  bool connect_wifi(WifiInfo &wifi_info);
+  NetworkReturnErrors connect_wifi(WifiInfo &wifi_info);
 
   bool initialization();
   WifiInfo receive_credentials(WiFiClient &client);

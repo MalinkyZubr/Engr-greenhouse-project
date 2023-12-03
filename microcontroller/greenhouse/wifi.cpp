@@ -9,16 +9,8 @@ void WiFiWatchdog::check_wifi_status() {
   // check if the wifi is disconnected, first and foremost
   if((Wifi_status == WL_CONNECTION_LOST || Wifi_status == WL_DISCONNECTED) && (this->connected_manager->network_state != DOWN && this->connected_manager->network_state != INITIALIZING)) {
     this->machine_state->connection_state = MACHINE_DISCONNECTED;
-    this->common_data->connected = this->handle_wifi_down();
-  }
-}
-
-bool WiFiWatchdog::handle_wifi_down() {
-  bool wifi_connected = this->connected_manager->connect_wifi(this->connected_manager->wifi_information);
-  if(!wifi_connected) {
     this->connected_manager->network_state = DOWN;
   }
-  return wifi_connected;
 }
 
 void WiFiWatchdog::callback() {
@@ -31,19 +23,30 @@ ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, 
 }
 
 ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state, WifiInfo wifi_information) : wifi_information(wifi_information), router(routes), storage(storage), message_queue(message_queue), machine_state(machine_state), task_manager(task_manager) {
-  this->network_state = BROADCASTING;
+  this->network_state = STARTUP;
   this->run();
 }
 
 ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state, WifiInfo wifi_information, ConnectionInfo connection_information) : wifi_information(wifi_information), storage(storage), message_queue(message_queue), machine_state(machine_state), server_information(connection_information), task_manager(task_manager) {
-  if(this->storage->config.device_id == -1) {
-    this->network_state = BROADCASTING;
+  if(this->storage->config.identifying_information.device_id == -1) {
+    this->network_state = STARTUP;
   }
   else {
     this->network_state = CONNECTED;
   }
   this->run();
 }
+
+bool check_ssid_existence(String &ssid) {
+    int num_networks = WiFi.scanNetworks();
+
+    for(int network = 0; network < num_networks; network++) {
+      if(strcmp(WiFi.SSID(network), ssid.c_str())) {
+        return true;
+      }
+      return false;
+    }
+  }
 
 ParsedMessage ConnectionManager::rest_receive(WiFiClient &client, int timeout=30000) {
   String message;
@@ -219,8 +222,12 @@ bool ConnectionManager::home_connect(WifiInfo &info) {
   return status == WL_CONNECTED;
 }
 
-bool ConnectionManager::connect_wifi(WifiInfo &info) {
+NetworkReturnErrors ConnectionManager::connect_wifi(WifiInfo &info) {
   bool result;
+
+  if(!this->check_ssid_existence(info.ssid)) {
+    return NOT_FOUND;
+  }
   switch(info.type) {
     case ENTERPRISE:
       result = this->enterprise_connect(info);
@@ -231,7 +238,10 @@ bool ConnectionManager::connect_wifi(WifiInfo &info) {
     case OPEN:
       break;
   }
-  return result;
+  if(!result) {
+    return AUTHENTICATION_FAILURE;
+  }
+  return OKAY;
 }
 
 bool ConnectionManager::initialization() { 
@@ -255,13 +265,15 @@ bool ConnectionManager::initialization() {
   }
   delay(2000);
 
-  bool success = false;
+  NetworkReturnErrors success;
+  success = ERROR;
+
   WiFiClient client; 
   WifiInfo temporary_wifi_information;
 
   this->state_connection.Startupserver.begin(); // start the web server
   
-  while(!success && this->network_state != DOWN) {
+  while(success != OKAY && this->network_state != DOWN) {
     while(!client) {
       client = this->state_connection.Startupserver.available();
     }
@@ -284,7 +296,7 @@ bool ConnectionManager::initialization() {
   free(temp);
   free(converted);
 
-  if(!success) {
+  if(success != OKAY) {
     return false;
   }
 
@@ -325,7 +337,7 @@ bool ConnectionManager::broadcast(bool expidited) {
   DynamicJsonDocument doc(sizeof(this->own_information) + 20);
   doc["ip"] = this->own_information.ip;
   doc["mac"] = this->own_information.mac;
-  doc["name"] = this->storage->config.device_name;
+  doc["name"] = this->storage->config.identifying_information.device_name;
   doc["expidited"] = expidited;
 
   DynamicJsonDocument received(32);
@@ -391,12 +403,12 @@ int* ConnectionManager::prepare_identifier_field(int &field_value) {
 }
 
 void ConnectionManager::package_identifying_info(DynamicJsonDocument &to_package) {
-  to_package["device_name"] = this->prepare_identifier_field(this->storage->config.device_name);
-  to_package["device_id"] = *this->prepare_identifier_field(this->storage->config.device_id);
+  to_package["device_name"] = this->prepare_identifier_field(this->storage->config.identifying_information.device_name);
+  to_package["device_id"] = *this->prepare_identifier_field(this->storage->config.identifying_information.device_id);
   to_package["device_ip"] = this->own_information.ip;
   to_package["device_mac"] = this->own_information.mac;
-  to_package["preset_name"] = this->prepare_identifier_field(this->storage->config.preset.PresetName);
-  to_package["project_name"] = this->prepare_identifier_field(this->storage->config.project_name);
+  to_package["preset_name"] = this->prepare_identifier_field(this->storage->config.preset.preset_name);
+  to_package["project_name"] = this->prepare_identifier_field(this->storage->config.identifying_information.project_name);
   to_package["device_status"] = true;
 }
 
@@ -417,7 +429,7 @@ bool ConnectionManager::association() { // make first ssl request to associate w
     DynamicJsonDocument doc(CONFIG_JSON_SIZE);
     this->package_identifying_info(doc);
 
-    String data = Requests::request(POST, String("/devices/confirm"), this->server_information.ip, this->storage->config.device_id, doc); // the device_id should default to 0 before reading from flash
+    String data = Requests::request(POST, String("/devices/confirm"), this->server_information.ip, this->storage->config.identifying_information.device_id, doc); // the device_id should default to 0 before reading from flash
     this->state_connection.SSLclient.println(data);
 
     ParsedMessage message = this->rest_receive(this->state_connection.SSLclient, 10000); // the device should receive a response here, make sure the server actually does that
@@ -496,7 +508,7 @@ NetworkReturnErrors ConnectionManager::listener() {
 void ConnectionManager::listener_error_handler(NetworkReturnErrors error) {
   switch(error) {
     case WIFI_FAILURE:
-      this->network_state = WIFI_RECOVERY;
+      this->network_state = DOWN;
       break;
     case CONNECTION_FAILURE:
       this->network_state = BROADCASTING;
@@ -526,7 +538,7 @@ void ConnectionManager::run() { // goes in void_loop
         status = this->broadcast(true);
       }
       else {
-        status = this->broadcast(true);
+        status = this->broadcast(false);
       }
       break;
     case ASSOCIATING:
@@ -535,7 +547,19 @@ void ConnectionManager::run() { // goes in void_loop
     case CONNECTED:
       this->listener();
       break;
+    case STARTUP:
     case DOWN:
+      switch(this->connect_wifi(this->wifi_information)) {
+        case NOT_FOUND:
+          break;
+        case AUTHENTICATION_FAILURE:
+          this->network_state = INITIALIZING; // if credentials are no longer valid, reset the wifi data
+          break;
+        case OKAY:
+          this->network_state = BROADCASTING;
+          break;
+      }
+      delay(5000);
       break;
   }
 }

@@ -56,7 +56,7 @@ class ConfigManager {
   void serialize_preset(Preset &preset, DynamicJsonDocument &document);
   bool set_preset(Preset preset);
 
-  void serialize_wifi_configuration(WifiInfo &wifi_info, DynamicJsonDocument &document);
+  void serialize_wifi_configuration(WifiInfo &wifi_info, DynamicJsonDocument &document, bool password);
   bool set_wifi_configuration(WifiInfo wifi_info);
 
   void serialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDocument &document);
@@ -67,6 +67,8 @@ class ConfigManager {
   void load_wifi_info(DynamicJsonDocument &document);
 
   void load_preset_info(DynamicJsonDocument &document);
+
+  void reset();
 };
 
 #endif

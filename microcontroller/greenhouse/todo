@@ -5,3 +5,5 @@ if conneciton is lost, all the sensor intervals should be increased singificantl
 1. connection controller must be more advanced. If there is already stored wifi creds for instance, try those
 
 2. if the server 
+
+3. broadcast stage should check "server name" in order to ensure different devices dont overlap with servers

@@ -6,7 +6,9 @@ enum NetworkReturnErrors {
   CONNECTION_FAILURE,
   WIFI_FAILURE,
   TIMEOUT,
-  NOT_FOUND
+  NOT_FOUND,
+  AUTHENTICATION_FAILURE,
+  ERROR
 };
 
 enum NetworkTypes {

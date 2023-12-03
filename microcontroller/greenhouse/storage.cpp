@@ -108,7 +108,7 @@ bool ConfigManager::set_preset(Preset preset) {
   return this->write_configuration_flash(this->preset_address, document);
 }
 
-void ConfigManager::serialize_wifi_configuration(WifiInfo &wifi_configuration, DynamicJsonDocument &document) {
+void ConfigManager::serialize_wifi_configuration(WifiInfo &wifi_configuration, DynamicJsonDocument &document, bool password = false) {
   document["type"] = wifi_configuration.type;
   document["ssid"] = wifi_configuration.ssid;
   document["username"] = wifi_configuration.username;
@@ -141,4 +141,9 @@ bool ConfigManager::set_device_identifiers(Identifiers device_identifiers) {
 
   this->flash.eraseSector(this->identifier_address);
   return this->write_configuration_flash(this->identifier_address, document);
+}
+
+void ConfigManager::reset() {
+  this->flash.eraseChip();
+  this->configured = false;
 }
