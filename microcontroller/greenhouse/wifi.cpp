@@ -17,17 +17,17 @@ void WiFiWatchdog::callback() {
   this->check_wifi_status();
 }
 
-ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state) : task_manager(task_manager), router(routes), storage(storage), message_queue(message_queue), machine_state(machine_state) {
+ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MachineState *machine_state) : task_manager(task_manager), router(routes), storage(storage), machine_state(machine_state) {
   this->network_state = INITIALIZING;
   this->run();
 }
 
-ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state, WifiInfo wifi_information) : wifi_information(wifi_information), router(routes), storage(storage), message_queue(message_queue), machine_state(machine_state), task_manager(task_manager) {
+ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MachineState *machine_state, WifiInfo wifi_information) : wifi_information(wifi_information), router(routes), storage(storage), machine_state(machine_state), task_manager(task_manager) {
   this->network_state = STARTUP;
   this->run();
 }
 
-ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state, WifiInfo wifi_information, ConnectionInfo connection_information) : wifi_information(wifi_information), storage(storage), message_queue(message_queue), machine_state(machine_state), server_information(connection_information), task_manager(task_manager) {
+ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MachineState *machine_state, WifiInfo wifi_information, ConnectionInfo connection_information) : wifi_information(wifi_information), storage(storage), machine_state(machine_state), server_information(connection_information), task_manager(task_manager) {
   if(this->storage->config.identifying_information.device_id == -1) {
     this->network_state = STARTUP;
   }
@@ -495,7 +495,7 @@ NetworkReturnErrors ConnectionManager::listener() {
       break;
     }
     // assuming the message is in fact a request, deal with deciding that later
-    NetworkReturnErrors result = this->router->execute_route(client, message.request, &response);
+    NetworkReturnErrors result = this->router->execute_route(message.request, &response);
 
     client.println(response);
 

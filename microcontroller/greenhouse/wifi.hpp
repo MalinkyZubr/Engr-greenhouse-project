@@ -98,15 +98,14 @@ class ConnectionManager {
   ConnectionInfo server_information;
   TaskManager *task_manager;
   Connection state_connection;
-  MessageQueue *message_queue;
 
   Router *router;
 
   ConfigManager *storage;
 
-  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state);
-  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state, WifiInfo wifi_information);
-  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MessageQueue *message_queue, MachineState *machine_state, WifiInfo wifi_information, ConnectionInfo server_information);
+  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MachineState *machine_state);
+  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MachineState *machine_state, WifiInfo wifi_information);
+  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MachineState *machine_state, WifiInfo wifi_information, ConnectionInfo server_information);
 
   NetworkReturnErrors listener();
   ParsedResponse connected_send(String &request);
