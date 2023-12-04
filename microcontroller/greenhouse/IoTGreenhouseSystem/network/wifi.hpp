@@ -10,9 +10,9 @@
 #include "../storage/storage.hpp"
 #include "../asynchronous/machine_state.hpp"
 #include "http.hpp"
-#include "webpage.hpp"
+#include "static/webpage.hpp"
 #include "router.hpp"
-#include "wifi_info.hpp"
+#include "static/wifi_info.hpp"
 
 
 #define RECEPTION_PID 6

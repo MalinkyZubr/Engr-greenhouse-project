@@ -1,11 +1,11 @@
 #ifndef REQUEST_ROUTES_HPP
 #define REQUEST_ROUTES_HPP
 
-#include "network/wifi.hpp"
-#include "network/http.hpp"
-#include "network/router.hpp"
-#include "storage/storage.hpp"
-#include "asynchronous/async.hpp"
+#include "wifi.hpp"
+#include "http.hpp"
+#include "router.hpp"
+#include "../storage/storage.hpp"
+#include "../asynchronous/async.hpp"
 
 
 class ResetDevice : public Route {
