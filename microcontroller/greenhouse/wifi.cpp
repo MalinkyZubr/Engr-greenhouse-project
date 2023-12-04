@@ -338,6 +338,7 @@ bool ConnectionManager::broadcast(bool expidited) {
   doc["ip"] = this->own_information.ip;
   doc["mac"] = this->own_information.mac;
   doc["name"] = this->storage->config.identifying_information.device_name;
+  doc["id"] = this->storage->config.identifying_information.device_id;
   doc["expidited"] = expidited;
 
   DynamicJsonDocument received(32);
@@ -400,10 +401,6 @@ int* ConnectionManager::prepare_identifier_field(int &field_value) {
     return nullptr;
   }
   return &field_value;
-}
-
-void ConnectionManager::write_identifying_info(ParsedResponse &response) { // when the server syncs its own data on the device to the device, it should write the server config locally
-  
 }
 
 bool ConnectionManager::association() { // make first ssl request to associate with server

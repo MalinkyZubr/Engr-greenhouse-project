@@ -24,14 +24,14 @@ typedef struct {
   float humidity;
   float moisture;
   float hours_daylight;
-  String preset_name;
+  int preset_id = -1;
 } Preset;
 
 typedef struct {
   int device_id = -1;
   String server_hostname;
   String device_name;
-  String project_name;
+  int project_id = -1;
 } Identifiers;
 
 typedef struct {

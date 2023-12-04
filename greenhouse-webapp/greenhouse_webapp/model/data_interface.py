@@ -2,6 +2,8 @@ import os
 import sys
 import json
 import typing
+from enum import Enum
+from typing import Union
 
 import mysql.connector
 from mysql.connector.cursor import MySQLCursorPrepared
@@ -13,6 +15,36 @@ sql_creation_path = os.path.join(script_dir, "create_db.sql")
 sql_config_path = os.path.join(script_dir, "conf/dbconf.json")
 
 
+class QueryParser(ABC):
+    @abstractmethod
+    def parse_query(self, query: list) -> Union[list, int, str]:
+        pass
+    
+    
+class FullQueryParser(QueryParser):
+    def parse_query(self, query: list) -> list:
+        return query
+    
+    
+class SingleObjectQueryParser(QueryParser):
+    def parse_query(self, query: list) -> list:
+        return query[0]
+    
+    
+class SingleElementQueryParser(QueryParser):
+    def __init__(self, index: int):
+        self.index: int = index
+        
+    def parse_query(self, query: list) -> Union[int, str]:
+        return query[0][self.index]
+    
+
+class ReturnTypes:
+    FULL_RESULT: FullQueryParser = FullQueryParser
+    SINGLE_OBJECT: SingleObjectQueryParser = SingleObjectQueryParser
+    SINGLE_ELEMENT: SingleElementQueryParser = SingleElementQueryParser
+    
+    
 class DatabaseQuery(ABC):
     black_list = ["--", ";", "/*", "*/", "@@", "@",
                   "char", "nchar", "varchar", "nvarchar",
@@ -37,7 +69,7 @@ class DatabaseQuery(ABC):
 
     query_str = """"""
     
-    single_element=False
+    return_type: ReturnTypes.FULL_RESULT()
         
     @abstractmethod
     def query(self, cursor, *query_parameters, **keyword_parameters):
@@ -58,7 +90,11 @@ class DatabaseQuery(ABC):
             self.query(cursor, *query_parameters, **keyword_parameters)
             result = cursor.fetchall()
             
-            if self.single_element:
+            if self.return_type == ReturnTypes.FULL_RESULT:
+                return result
+            elif self.return_type == ReturnTypes.SINGLE_OBJECT:
+                return result[0]
+            elif self.return_type == ReturnTypes.SINGLE_ELEMENT:
                 return result[0][0]
             return result
         except Exception as e:
@@ -67,7 +103,7 @@ class DatabaseQuery(ABC):
 
 
 class getProjectID(DatabaseQuery):
-    single_element=True
+    return_type=ReturnTypes.SINGLE_ELEMENT(0)
     query_str = \
     f"""SELECT ProjectID FROM ActiveProjects WHERE ProjectName = %s;"""
     def query(self, cursor, project_name):
@@ -75,7 +111,7 @@ class getProjectID(DatabaseQuery):
 
 
 class getArchiveProjectID(DatabaseQuery):
-    single_element=True
+    return_type=ReturnTypes.SINGLE_ELEMENT(0)
     query_str = \
     f"""SELECT ProjectID FROM ArchivedProjects WHERE ProjectName = %s;"""
     def query(self, cursor, project_name):
@@ -90,6 +126,7 @@ class getActiveProjects(DatabaseQuery):
 
 
 class getProject(DatabaseQuery):
+    return_type=ReturnTypes.SINGLE_OBJECT()
     query_str = \
     f"""SELECT * FROM ActiveProjects WHERE ProjectID = %s;"""
     def query(self, cursor, project_id):
@@ -138,6 +175,7 @@ class getDeviceData(DatabaseQuery):
     
     
 class getLatestDeviceData(DatabaseQuery):
+    return_type=ReturnTypes.SINGLE_OBJECT()
     query = \
     f"""SELECT * FROM Data WHERE DeviceID = %d ORDER BY DateCollected DESC limit 1;"""
     def query(self, cursor, device_id):
@@ -214,7 +252,7 @@ class insertDataAtTime(DatabaseQuery):
 
 
 class getDeviceID(DatabaseQuery):
-    single_element=True
+    return_type=ReturnTypes.SINGLE_ELEMENT(0)
     query_str = \
     f"""SELECT DeviceID FROM RegisteredDevices
     WHERE DeviceName = %s;"""
@@ -223,7 +261,7 @@ class getDeviceID(DatabaseQuery):
     
     
 class getDeviceIDByMAC(DatabaseQuery):
-    single_element=True
+    return_type=ReturnTypes.SINGLE_ELEMENT(0)
     query_str = \
     f"""SELECT DeviceID FROM RegisteredDevices
     WHERE DeviceMAC = %s;"""
@@ -232,7 +270,7 @@ class getDeviceIDByMAC(DatabaseQuery):
     
 
 class getDeviceName(DatabaseQuery):
-    single_element=True
+    return_type=ReturnTypes.SINGLE_ELEMENT(1)
     query_str = \
     f"""SELECT DeviceName FROM RegisteredDevices
     WHERE DeviceID = %s;"""
@@ -241,7 +279,7 @@ class getDeviceName(DatabaseQuery):
     
     
 class getProjectName(DatabaseQuery):
-    single_element=True
+    return_type=ReturnTypes.SINGLE_ELEMENT(1)
     query_str = \
     f"""SELECT ProjectName FROM ActiveProjects
     WHERE ProjectID = %s;"""
@@ -250,7 +288,7 @@ class getProjectName(DatabaseQuery):
     
 
 class getPresetName(DatabaseQuery):
-    single_element=True
+    return_type=ReturnTypes.SINGLE_ELEMENT(1)
     query_str = \
     f"""SELECT PresetName FROM Presets
     WHERE PresetID = %s;"""
@@ -259,7 +297,7 @@ class getPresetName(DatabaseQuery):
     
     
 class getDeviceStatus(DatabaseQuery):
-    single_element=True
+    return_type=ReturnTypes.SINGLE_ELEMENT(6)
     query_str = \
     f"""SELECT DeviceStatus FROM RegisteredDevices
     WHERE DeviceID = %s"""
@@ -282,6 +320,7 @@ class getProjectDevices(DatabaseQuery):
 
 
 class getDevice(DatabaseQuery):
+    return_type=ReturnTypes.SINGLE_OBJECT()
     query_str = \
     f"""SELECT * FROM RegisteredDevices
     WHERE DeviceID = %s;"""
@@ -300,10 +339,10 @@ class configureDevice(DatabaseQuery):
 
 class registerDevice(DatabaseQuery):
     query_str = \
-    f"""INSERT INTO RegisteredDevices (DeviceName, DeviceIP, DeviceMAC, PresetID, ProjectID, DeviceStatus)
+    f"""INSERT INTO RegisteredDevices (DeviceName, PresetID, ProjectID, DeviceStatus)
     VALUES (%s, %s, %s, %s, %s, %s);"""
-    def query(self, cursor, device_name, device_ip, device_mac, preset_id, project_id, device_status):
-        return cursor.execute(self.query_str, (device_name, device_ip, device_mac, preset_id, project_id, device_status))
+    def query(self, cursor, device_name, preset_id, project_id, device_status):
+        return cursor.execute(self.query_str, (device_name, preset_id, project_id, device_status))
     
     
 class reregisterDevice(DatabaseQuery):
@@ -322,7 +361,7 @@ class deleteDevice(DatabaseQuery):
 
 
 class getPresetID(DatabaseQuery):
-    single_element=True
+    return_type=ReturnTypes.SINGLE_ELEMENT(0)
     query_str = \
     f"""SELECT PresetID FROM Presets WHERE PresetName = %s"""
     def query(self, cursor, preset_name):
@@ -337,6 +376,7 @@ class getPresets(DatabaseQuery):
 
 
 class getPreset(DatabaseQuery):
+    return_type=ReturnTypes.SINGLE_OBJECT()
     query_str = \
     f"""SELECT * FROM Presets WHERE PresetID = %s"""
     def query(self, cursor, preset_id):

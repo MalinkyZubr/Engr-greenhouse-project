@@ -1,1 +1,5 @@
 all the internal crap has to go inside the libraries folder, use rsync command to mirror files, see chatgpt chat you did.
+
+actually make sure that none values go to nullptr for shit with arduino json
+
+need ping function for idle status

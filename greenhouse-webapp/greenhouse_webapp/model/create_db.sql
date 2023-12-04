@@ -26,7 +26,6 @@ CREATE TABLE RegisteredDevices (
     DeviceID INT AUTO_INCREMENT PRIMARY KEY,
     DeviceName VARCHAR(255) UNIQUE,
     DeviceIP VARCHAR(255) UNIQUE,
-    DeviceMAC VARCHAR(255) UNIQUE,
     PresetID VARCHAR(255),
     ProjectID VARCHAR(255),
     CreationDate DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -40,5 +39,4 @@ CREATE TABLE Presets (
     Humidity FLOAT,
     Moisture FLOAT,
     LightExposure FLOAT,
-    IRExposure FLOAT
 );

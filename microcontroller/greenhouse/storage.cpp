@@ -156,7 +156,7 @@ bool ConfigManager::write_configuration_flash(int address, DynamicJsonDocument &
 }
 
 void ConfigManager::serialize_preset(Preset &preset, DynamicJsonDocument &document) {
-  document["preset_name"] = preset.preset_name;
+  document["preset_id"] = preset.preset_id;
   document["temperature"] = preset.temperature;
   document["humidity"] = preset.humidity;
   document["moisture"] = preset.moisture;
@@ -164,7 +164,7 @@ void ConfigManager::serialize_preset(Preset &preset, DynamicJsonDocument &docume
 }
 
 void ConfigManager::deserialize_preset(Preset &preset, DynamicJsonDocument &document) {
-  preset.preset_name = (char *)&document["preset_name"];
+  preset.preset_id = document["preset_id"];
   preset.temperature = document["temperature"];
   preset.humidity = document["humidity"];
   preset.moisture = document["moisture"];
@@ -173,7 +173,7 @@ void ConfigManager::deserialize_preset(Preset &preset, DynamicJsonDocument &docu
 
 bool ConfigManager::set_preset(Preset preset) {
   this->config.preset = preset;
-  if(this->config.preset.preset_name == nullptr) { // machine shouldnt run if no preset
+  if(this->config.preset.preset_id == -1) { // machine shouldnt run if no preset
     this->machine_state->operational_state = MACHINE_PAUSED;
   }
   else {
@@ -209,19 +209,19 @@ void ConfigManager::serialize_device_identifiers(Identifiers &device_identifiers
   document["device_id"] = device_identifiers.device_id;
   document["server_hostname"] = device_identifiers.server_hostname;
   document["device_name"] = device_identifiers.device_name;
-  document["project_name"] = device_identifiers.project_name;
+  document["project_id"] = device_identifiers.project_id;
 }
 
 void ConfigManager::deserialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDocument &document) {
   device_identifiers.device_id = document["device_id"];
-  device_identifiers.project_name = (char *)&document["project_name"];
+  device_identifiers.project_id = document["project_name"];
   device_identifiers.device_name = (char *)&document["device_name"];
   device_identifiers.server_hostname = (char *)&document["server_name"];
 }
 
 bool ConfigManager::set_device_identifiers(Identifiers device_identifiers) {
   this->config.identifying_information = device_identifiers;
-  if(this->config.identifying_information.project_name == nullptr) { // machine shouldnt run if no preset
+  if(this->config.identifying_information.project_id == -1) { // machine shouldnt run if no preset
     this->machine_state->operational_state = MACHINE_PAUSED;
   }
   else {

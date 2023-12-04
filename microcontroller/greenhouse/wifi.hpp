@@ -81,8 +81,6 @@ class ConnectionManager {
 
   int* prepare_identifier_field(int &field_value);
 
-  void write_identifying_info(ParsedResponse &response);
-
   bool association(); // to be run inside broadcast when receive confirmation
 
   void listener_error_handler(NetworkReturnErrors error);
@@ -115,7 +113,6 @@ class WiFiWatchdog : public Callable {
   private:
   int wifi_fail_counter = 0;
   void check_wifi_status();
-  bool handle_wifi_down();
   MachineState *machine_state;
 
   public:
