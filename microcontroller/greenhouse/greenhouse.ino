@@ -1,16 +1,10 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <ArduinoJson.h>
-
-#include "network/wifi.hpp"
-#include "network/router.hpp"
-#include "storage/storage.hpp"
-#include "asynchronous/async.hpp"
-#include "peripherals/environmentManagement.hpp"
+#include <IoTGreenhouseSystem.h>
 
 #include "TimerInterrupt.h"
 #include "ISR_Timer.h"
-#include "asynchronous/machine_state.hpp"
 
 #define TESTING true // should serial be connected?
 
