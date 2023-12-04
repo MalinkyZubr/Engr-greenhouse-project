@@ -6,13 +6,13 @@
 #include <WiFiUdp.h>
 #include <ArduinoJson.h>
 #include <SPI.h>
-#include "../asynchronous/async.hpp"
-#include "../storage/storage.hpp"
-#include "../asynchronous/machine_state.hpp"
+#include "async.hpp"
+#include "storage.hpp"
+#include "machine_state.hpp"
 #include "http.hpp"
-#include "static/webpage.hpp"
+#include "webpage.hpp"
 #include "router.hpp"
-#include "static/wifi_info.hpp"
+#include "wifi_info.hpp"
 
 
 #define RECEPTION_PID 6

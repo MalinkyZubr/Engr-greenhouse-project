@@ -5,8 +5,8 @@
 #include <ArduinoJson.h>
 #include <WiFi101.h>
 #include <Regexp.h>
-#include "../storage/storage.hpp"
-#include "static/wifi_info.hpp"
+#include "storage.hpp"
+#include "wifi_info.hpp"
 
 
 enum methods {

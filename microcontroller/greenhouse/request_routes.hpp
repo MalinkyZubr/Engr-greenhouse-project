@@ -4,8 +4,8 @@
 #include "wifi.hpp"
 #include "http.hpp"
 #include "router.hpp"
-#include "../storage/storage.hpp"
-#include "../asynchronous/async.hpp"
+#include "storage.hpp"
+#include "async.hpp"
 
 
 class ResetDevice : public Route {

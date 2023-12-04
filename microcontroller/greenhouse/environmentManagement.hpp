@@ -6,8 +6,8 @@
 #include <Adafruit_Sensor.h>
 #include <BH1750.h>
 #include <DHT.h>
-#include "../asynchronous/async.hpp"
-#include "../asynchronous/machine_state.hpp"
+#include "async.hpp"
+#include "machine_state.hpp"
 
 #define MILLISECONDS_IN_HOUR 3600000
 #define LUX_THRESHOLD 800
