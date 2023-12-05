@@ -246,9 +246,9 @@ class insertData(DatabaseQuery):
 class insertDataAtTime(DatabaseQuery):
     query_str = \
     f"""INSERT INTO Data (DeviceID, ProjectID, DateCollected, Temperature, Humidity, Moisture, LightExposure)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""
-    def query(self, cursor, device_id, project_id, temperature, humidity, moisture, light_exposure):
-        return cursor.execute(self.query_str, (device_id, project_id, temperature, humidity, moisture, light_exposure))
+    VALUES (%s, %s, str_to_date(%s, '%Y-%m-%d %H:%i:%s'), %s, %s, %s, %s, %s, %s);"""
+    def query(self, cursor, device_id, project_id, temperature, humidity, moisture, light_exposure, datetime_collected):
+        return cursor.execute(self.query_str, (device_id, project_id, datetime_collected, temperature, humidity, moisture, light_exposure))
 
 
 class getDeviceID(DatabaseQuery):

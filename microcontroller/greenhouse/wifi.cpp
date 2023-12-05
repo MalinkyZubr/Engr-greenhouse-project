@@ -429,28 +429,41 @@ bool ConnectionManager::association() { // make first ssl request to associate w
 
     ParsedMessage message = this->rest_receive(this->state_connection.SSLclient, 10000); // the device should receive a response here, make sure the server actually does that
 
+    this->state_connection.SSLclient.stop();
+
+    String response;
+
+    switch(message.type) {
+      case RESPONSE:
+        switch(message.error) {
+          case WIFI_FAILURE:
+            return false;
+            break;
+          case CONNECTION_FAILURE:
+          case TIMEOUT:
+            fail_counter++;
+            continue;
+          case OKAY:
+            this->storage->deserialize_device_identifiers(device_identifiers, message.response.body);
+            this->storage->set_device_identifiers(device_identifiers);
+
+            preset = message.response.body["preset"];
+
+            this->storage->deserialize_preset(device_preset, preset);
+            this->storage->set_preset(device_preset);
+            
+            associated = true;
+        }
+        break;
+      case REQUEST: // this needs work. If the request is an unregister, that should be handleded accordingly. Also check to see that routes are closing connections right
+        this->connect_to_server();
+        this->router->execute_route(message.request, &response);
+        this->state_connection.SSLclient.stop();
+        break;
+    }
+
     this->state_connection.SSLclient.stop(); // remember to close the connection after each request
 
-    
-    switch(message.error) {
-      case WIFI_FAILURE:
-        return false;
-        break;
-      case CONNECTION_FAILURE:
-      case TIMEOUT:
-        fail_counter++;
-        continue;
-      case OKAY:
-        this->storage->deserialize_device_identifiers(device_identifiers, message.response.body);
-        this->storage->set_device_identifiers(device_identifiers);
-
-        preset = message.response.body["preset"];
-
-        this->storage->deserialize_preset(device_preset, preset);
-        this->storage->set_preset(device_preset);
-        
-        associated = true;
-    }
     if(!this->storage->writer->reference_datatime) {
       this->storage->set_reference_datetime(message.response.body["reference_time"]);
     }
@@ -504,7 +517,7 @@ NetworkReturnErrors ConnectionManager::listener() {
 
     client.println(response);
 
-    client.stop();
+    client.stop(); // more robust client closing in the case several requests occur within the span of one operation
   }
 
   return error;

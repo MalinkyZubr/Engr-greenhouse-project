@@ -12,7 +12,7 @@ bool DataWriter::write_data(DynamicJsonDocument &data) {
   if(!this->is_full) {
     data["next"] = this->current + this->partition_size;
     data["previous"] = this->current - this->partition_size;
-    data["seconds_from_disconnect"] = millis() / 1000;
+    data["seconds_from_start"] = millis() / 1000;
     data["reference_datetime"] = this->reference_datatime;
 
     serializeJson(data, serialized);

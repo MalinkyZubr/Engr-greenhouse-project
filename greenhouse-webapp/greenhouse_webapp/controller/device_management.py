@@ -524,6 +524,8 @@ async def confirm_registration(stored_device_info: DeviceRegistrationSchema, req
     """Step 3 of the device registration process (see register_device and send_registration). Waits for a request from an IoT device containing
     device information. This information should be from the flash memory unit on the IoT device. If the device knows its own ID, it must be in the database
     and so there is no need to create a new entry in the database. If however, it is the devices first time connecting, it needs a new database entry.
+    
+    If the device was disconnected, and an unregister request was sent before it reconnected, this method will detect that and automatically unregister the device
 
     Args:
         stored_device_info (DeviceRegistrationSchema): contains the data stored on the flash memory of the device (if any)
@@ -544,12 +546,13 @@ async def confirm_registration(stored_device_info: DeviceRegistrationSchema, req
     reported_device_id: str = stored_device_info.device_id
     database_device_data: tuple = router.database_connector.execute("getDevice", reported_device_id)
     
-    # check to see if the device knows its device id and it doesnt have data in the database
+    # check to see if the device knows its device id and it doesnt have data in the database. This means the device was unregistered while the device was disconnected
     if reported_device_id and not database_device_data: # this is an edge case. If it becomes necessary ill implement it later
         true_device_id: str = reported_device_id
         
+        await device_unregister.call(source_ip)
         # do something with reregistration here, I dont frickin know
-        pass
+        return
     
     # check to see if the device knows its device id, and it does have an entry in the database
     elif reported_device_id and database_device_data:

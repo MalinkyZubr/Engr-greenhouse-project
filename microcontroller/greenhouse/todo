@@ -3,3 +3,5 @@ all the internal crap has to go inside the libraries folder, use rsync command t
 actually make sure that none values go to nullptr for shit with arduino json
 
 need ping function for idle status
+
+devices should automatically reset (like uploading a new script would do) once the millis() epoch is exceeded

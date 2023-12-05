@@ -1,5 +1,6 @@
 #include "http.hpp"
 
+// need to fix http formatting, ensure it is all correct
 
 String return_method(methods method) {
   String method_str;

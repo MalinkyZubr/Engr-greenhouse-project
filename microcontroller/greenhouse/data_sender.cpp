@@ -11,7 +11,7 @@ void DataSender::flush_data_storage_to_server() {
 
   while(!done) {
     done = this->storage->writer->decrement_read(data);
-    request = Requests::request(POST, String("/interface/olddata/" + this->storage->config.identifying_information.device_name), // create server route for olddata that processes time
+    request = Requests::request(POST, String("/interface/olddata/"), // create server route for olddata that processes time
                                         this->connection_manager->server_information.ip, 
                                         this->storage->config.identifying_information.device_id, data);
     this->connection_manager->connected_send(request);
@@ -28,7 +28,8 @@ void DataSender::callback() {
   String request;
   DynamicJsonDocument data(CONFIG_JSON_SIZE);
 
-  data["project_name"] = this->storage->config.identifying_information.project_name;
+  data["project_id"] = this->storage->config.identifying_information.project_id;
+  data["device_id"] = this->storage->config.identifying_information.device_id;
   data["temperature"] = this->common_data->temperature;
   data["humidity"] = this->common_data->humidity;
   data["moisture"] = this->common_data->moisture;
@@ -39,7 +40,7 @@ void DataSender::callback() {
       if(this->storage->writer->is_storing) {
         this->flush_data_storage_to_server();
       }
-      request = Requests::request(POST, String("/interface/data/" + this->storage->config.identifying_information.device_name), 
+      request = Requests::request(POST, String("/interface/data/"), 
                                         this->connection_manager->server_information.ip, 
                                         this->storage->config.identifying_information.device_id, data);
       this->connection_manager->connected_send(request);
