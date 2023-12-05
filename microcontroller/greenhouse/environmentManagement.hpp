@@ -8,6 +8,7 @@
 #include <DHT.h>
 #include "async.hpp"
 #include "machine_state.hpp"
+#include "storage.hpp"
 
 #define MILLISECONDS_IN_HOUR 3600000
 #define LUX_THRESHOLD 800
@@ -59,21 +60,17 @@ class Interval {
 
   enum relation {HIGHER, LOWER, OKAY};
 
-  Interval(float upper, float lower);
+  Interval(float desired_value);
+  void set_interval(float desired_value);
   relation check_current_value(float value);
 };
 
 class EnvironmentManager : public Callable {
   private:
-
-  typedef struct Intervals { // the lgiht management has to be done server side, since it has to keep track of data of the whole day
-    Interval temperature;
-    Interval humidity;
-    Interval moisture;
-    long long hours_sunlight_ms;
-
-    Intervals(float desired_temperature, float desired_humidity, float desired_moisture, int hours_sunlight);
-  }Intervals;
+  Interval temperature;
+  Interval humidity;
+  Interval moisture;
+  long long hours_sunlight_ms;
 
   MachineState *machine_state;
 
@@ -81,17 +78,18 @@ class EnvironmentManager : public Callable {
   Device heater;
   Device fan;
   LedStrip led;
-  Intervals intervals;
   CommonData *common_data;
+  Configuration *config;
 
   Interval::relation check_status();
 
   public:
-  EnvironmentManager(MachineState *machine_state, CommonData *common_data, int pump_pin, int heating_pin, int fan_pin, int led_pin, float desired_temperature, float desired_humidity, float desired_moisture, int hours_sunlight);
+  EnvironmentManager(MachineState *machine_state, Configuration *config, CommonData *common_data, int pump_pin, int heating_pin, int fan_pin, int led_pin, float desired_temperature, float desired_humidity, float desired_moisture, int hours_sunlight);
+
+  void update_interfaces();
+
   void device_activation();
-  void callback() override {
-    this->device_activation();
-  }
+  void callback() override {}
 };
 
 class Sensor {

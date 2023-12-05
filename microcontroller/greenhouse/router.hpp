@@ -15,6 +15,11 @@ class Route {
 
   Route(String route);
   bool requested(String &requested_route);
+
+  /// @brief abstract function needed in all routes to allow execution of code
+  /// @param request request object to process
+  /// @param response response string to write response to
+  /// @return NetworkReturnErrors contains the result code for the execution
   virtual NetworkReturnErrors execute(ParsedRequest &request, String *response) {};
 };
 
@@ -24,7 +29,7 @@ class Router {
   int num_routes;
 
   public:
-  bool add_route(String route);
+  bool add_route(Route *route);
   NetworkReturnErrors execute_route(ParsedRequest &request, String *response);
   ~Router();
 };

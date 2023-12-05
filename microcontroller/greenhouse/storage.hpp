@@ -18,7 +18,10 @@
 
 #define CONFIG_JSON_SIZE 256
 
+// there must be a memory sector for machine state, so that if the device disconnects while paused, it will stay paused after reconnecting
 
+
+/// @brief contains information about the preset assigned to the device
 typedef struct {
   float temperature;
   float humidity;
@@ -27,6 +30,7 @@ typedef struct {
   int preset_id = -1;
 } Preset;
 
+/// @brief contains information about the device itself, used for identification in the database
 typedef struct {
   int device_id = -1;
   String server_hostname;
@@ -34,6 +38,8 @@ typedef struct {
   int project_id = -1;
 } Identifiers;
 
+
+/// @brief configuration schema aggregating identifying information, preset data, and wifi connection information
 typedef struct {
   Identifiers identifying_information;
   WifiInfo wifi_information;

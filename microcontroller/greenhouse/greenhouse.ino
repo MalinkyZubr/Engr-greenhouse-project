@@ -1,3 +1,13 @@
+/*
+  Project Name: Engineering 131 Greenhouse Project
+  Description: For Purdue freshman engineering 131, team was assigned to develop an efficient greenhouse system including microcontroller systems for environmental regulation
+  We decided to develop a full stack wifi based system for easy user configuration. This is the embedded systems portion of the project
+  Author: Michael Ray (MalinkyZubr on github)
+  Date: 2023-10-10
+  License: MIT license
+*/
+
+
 #include <Wire.h>
 #include <SPI.h>
 #include <ArduinoJson.h>
@@ -25,6 +35,7 @@
 #define LED_PIN 6
 #define FAN_PIN 5
 #define HEAT_PIN 4
+#define DEVICE_RESET_PIN 11
 
 
 // Data sending
@@ -39,12 +50,12 @@ ISR_Timer ISR_timer; // hardware timer instantiation
 
 MachineState state; // the machine should start in a paused state so that the environmental controls remain off
 
+ConfigManager config_manager(&state, DEVICE_RESET_PIN);
 CommonData common_data; // struct to hold data feed from environmental systems
 TaskManager task_manager(&state); // pseudo asynchronous, for executing periodic actions
-Callable envmgr = EnvironmentManager(&state, &common_data, (int) PUMP_PIN, HEAT_PIN, FAN_PIN, LED_PIN, 1.0, 2.0, 3.0, 6); // control devices (heaters and such)
+Callable envmgr = EnvironmentManager(&state, &config_manager.config, &common_data, (int) PUMP_PIN, HEAT_PIN, FAN_PIN, LED_PIN, 1.0, 2.0, 3.0, 6); // control devices (heaters and such)
 Callable sensors = Sensors(&state, &common_data, DHT_PIN, (int) MOISTURE_PIN); // sensor systems to feed into data struct
 Router router; // router for executing tasks based on received requests
-ConfigManager config_manager(&state);
 
 void setup() {
   Serial.begin(115200);

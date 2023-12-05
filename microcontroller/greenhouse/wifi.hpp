@@ -23,6 +23,10 @@
 #define AP_CONFIG_PASSWORD "GREENHOUSE_CONFIG"
 
 
+/// @brief connection info for server and client connections
+/// @param ip: string representing target IP
+/// @param mac: string representing target mac address
+/// @param error: error for when returning connection info from methods
 typedef struct {
     String ip;
     String mac;
@@ -47,6 +51,12 @@ enum States {
     DOWN
 };
 
+
+/// @brief struct containing all the necessary objects for serving different connection types during association and operations
+/// @param UDPserver: udp server object for sending and receiving UDP requests during broadcast phase
+/// @param Startupserver: insecure wifiserver for communicating with client during wifi provisioning process (webpage for wifi setup)
+/// @param SSLclient: sending secure requests to server during regular operations
+/// @param SSLlistener: listen for and respond to requests from the server
 class Connection {
   public:
   WiFiUDP UDPserver;
@@ -83,10 +93,6 @@ class ConnectionManager {
   bool broadcast(bool expidited);
 
   bool connect_to_server();
-
-  const char* prepare_identifier_field(String &field_value);
-
-  int* prepare_identifier_field(int &field_value);
 
   bool association(); // to be run inside broadcast when receive confirmation
 

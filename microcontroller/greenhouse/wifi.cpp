@@ -138,7 +138,7 @@ ParsedMessage ConnectionManager::rest_receive(WiFiClient &client, int timeout=30
 
 
 /// @brief this utility function is necessary when in AP mode for putting the device's own AP online. Checks if the desired SSID is taken, and if not, increments a number attached to the SSID
-/// @return bool to spefify if success or not
+/// @return bool to specify if an ssid was found successfully. If there are no networks detected in range, the function return false, since this means wifi card isnt working anyway
 bool ConnectionManager::set_ssid_config() {
   String ssid = "REMOTE_GREENHOUSE";
   int num_networks = WiFi.scanNetworks();
@@ -162,6 +162,10 @@ bool ConnectionManager::set_ssid_config() {
   return true;
 }
 
+
+/// @brief get the channel of a specified wireless AP in preparation to connect
+/// @param ssid the SSID of the AP in question
+/// @return integer representation of the AP channel. if -1, the SSID is not associated with any active AP
 int ConnectionManager::get_ap_channel(String &ssid) {
   int num_networks = WiFi.scanNetworks();
 
@@ -173,6 +177,11 @@ int ConnectionManager::get_ap_channel(String &ssid) {
   return -1;
 }
 
+
+/// @brief function used during wifi provisioning to receive credentials for AP association from served webpage. Serves webpage and submits respones to client
+/// @param client wifi client to use for communications with the requesting device
+/// @return WifiInfo object to return and apply to the flash memory and to the server
+/// @todo upgrade this to an SSL server connection
 WifiInfo ConnectionManager::receive_credentials(WiFiClient &client) {
   bool credentials_received = false;
   WifiInfo temporary_wifi_information;
@@ -237,6 +246,10 @@ WifiInfo ConnectionManager::receive_credentials(WiFiClient &client) {
   return temporary_wifi_information;
 }
 
+
+/// @brief connect to an enterprise authenticated AP with username and password
+/// @param info WifiInfo reference to wifi info object containing configuration information for AP connection
+/// @return bool to say if the connection succeeded or not
 bool ConnectionManager::enterprise_connect(WifiInfo &info) {
   int ssid_size = info.ssid.length() * sizeof(char);
 
@@ -257,11 +270,19 @@ bool ConnectionManager::enterprise_connect(WifiInfo &info) {
   return wifi_status == M2M_SUCCESS;
 }
 
+
+/// @brief simple AP connection function that connects to home wifi AP with just a password
+/// @param info wifi information containing credentials necessary for connection
+/// @return bool to say if connection succeeded or not
 bool ConnectionManager::home_connect(WifiInfo &info) {
   bool status = WiFi.begin(info.ssid, info.password);
   return status == WL_CONNECTED;
 }
 
+
+/// @brief function for switching between different connection functions based on the type enum specified in the wifi info
+/// @param info wifi information necessary for connection to an AP, contains the network type
+/// @return NetworkReturnErrors enum containing error or okay message after execution
 NetworkReturnErrors ConnectionManager::connect_wifi(WifiInfo &info) {
   bool result;
 
@@ -284,6 +305,10 @@ NetworkReturnErrors ConnectionManager::connect_wifi(WifiInfo &info) {
   return OKAY;
 }
 
+
+/// @brief comprehensive function to enter wifi card AP mode (serve a wifi network), wait for a connection from a client, and serve the provisioning webpage. 
+/// After, the AP deactivates, and the device attempts to connect to the specified AP ssid with the provided credentials. If the authentication fails, restart AP mode and try again
+/// @return bool to say if the initialization succeeded
 bool ConnectionManager::initialization() { 
   if (WiFi.status() == WL_NO_SHIELD) {
     Serial.println("WiFi shield not present");
@@ -346,6 +371,15 @@ bool ConnectionManager::initialization() {
   return true;
 }
 
+
+/// @brief send a multicast UDP packet to the specified server multicast address. Sends packet, and waits until a timeout for a response. 
+/// @param json_data json schema to send to the server
+/// @param address multicast address to send the UDP packet to 
+/// @param receive_buffer char buffer for receiving responses from the server
+/// @param buff_size size of the char buffer
+/// @param receive_json json object to deserialize received responses into
+/// @param timeout timeout interval in milliseconds. Defaults to 10000
+/// @return NetworkReturnErrors, contains error code to be handled by calling function
 NetworkReturnErrors ConnectionManager::send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &receive_json, int timeout = 10000) {
   this->state_connection.UDPserver.beginPacket(address, EXTERNAL_PORT);
   this->state_connection.UDPserver.write(json_data.c_str());
@@ -371,6 +405,12 @@ NetworkReturnErrors ConnectionManager::send_broadcast(String &json_data, IPAddre
   return return_code;
 }
 
+
+/// @brief function to govern broadcasting operations. This makes the server aware of the existience of this device, so it can be placed in the registration queue, associate, and begin normal operations.
+/// This is basically a layer 3 version of LLDP protocol https://en.wikipedia.org/wiki/Link_Layer_Discovery_Protocol
+/// @param expidited this flag is set when the device has previously connected to the server (eg, if the device has a device ID stored in memory). Setting this flag will allow the device to skip manual registration by the user, and be put directly into full operation with the server.
+/// @return bool to say if broadcasting succeeded
+/// @todo is this function actually configuring server information on the device side?
 bool ConnectionManager::broadcast(bool expidited) {
   this->state_connection.UDPserver.begin(LOCAL_PORT);
 
@@ -419,6 +459,9 @@ bool ConnectionManager::broadcast(bool expidited) {
   return true;
 }
 
+
+/// @brief function designed to connect to server using the object's ssl client. Makes 5 attempts at 5 second intervals to connect
+/// @return if the function fails to connect after 5 attempts, return false
 bool ConnectionManager::connect_to_server() {
   for(int x = 0; x < 5; x++) {
     if(this->state_connection.SSLclient.connect(this->server_information.ip.c_str(), EXTERNAL_PORT)) {
@@ -429,20 +472,9 @@ bool ConnectionManager::connect_to_server() {
   return false;
 }
 
-const char* ConnectionManager::prepare_identifier_field(String &field_value) {
-  if(field_value.equals("")) {
-    return nullptr;
-  }
-  return field_value.c_str();
-}
 
-int* ConnectionManager::prepare_identifier_field(int &field_value) {
-  if(!field_value) {
-    return nullptr;
-  }
-  return &field_value;
-}
-
+/// @brief after the server acknowledges udp broadcast, see broadcast method, the device must make the first ssl connection request to the server, so that it can sync its configuration with the server database and enter full operation
+/// @return bool to say if the association succeeded
 bool ConnectionManager::association() { // make first ssl request to associate with server
   bool associated = false;
   int fail_counter = 0;
@@ -519,6 +551,9 @@ bool ConnectionManager::association() { // make first ssl request to associate w
   return true;
 }
 
+
+/// @brief listener function to listen for incoming requests from the server, and forward them to the router for processing.
+/// @return NetworkReturnErrors to say if the operation succeeded, or if it failed, what caused the failure
 NetworkReturnErrors ConnectionManager::listener() {
   this->state_connection.SSLlistener.beginSSL();
   WiFiClient client;
@@ -563,16 +598,26 @@ NetworkReturnErrors ConnectionManager::listener() {
   return error;
 }
 
+
+/// @brief process listener errors, and sets network + machine state accordingly
+/// @param error the error 
 void ConnectionManager::listener_error_handler(NetworkReturnErrors error) {
   switch(error) {
     case WIFI_FAILURE:
       this->network_state = DOWN;
+      this->machine_state->connection_state = MACHINE_DISCONNECTED;
       break;
     case CONNECTION_FAILURE:
       this->network_state = BROADCASTING;
+      this->machine_state->connection_state = MACHINE_DISCONNECTED;
+      break;
   }
 }
 
+
+/// @brief send a request to the server over SSL, and wait for a response
+/// @param request request string, formatted using HTTP 
+/// @return ParsedResponse containing the response from the server
 ParsedResponse ConnectionManager::connected_send(String &request) {
   this->connect_to_server();
 
@@ -585,6 +630,8 @@ ParsedResponse ConnectionManager::connected_send(String &request) {
   return response;
 }
 
+
+/// @brief Core network management code. State driven, running different functions based on machine network state. This should be the only function in void loop, everythign else is a pseudo-async task in the device task manager
 void ConnectionManager::run() { // goes in void_loop
   bool status;
   switch(this->network_state) {
