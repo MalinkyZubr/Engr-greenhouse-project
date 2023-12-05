@@ -78,7 +78,7 @@ enum FileType {
 class Requests {
   public:
   static RegularExpressions regex;
-  static String request(methods method, String route, String host, int device_id, MachineOperationalState op_state);
+  static String request(methods method, String route, String host, int device_id, MachineOperationalState op_state, bool contains_body);
   static String request(methods method, String route, String host, int device_id, MachineOperationalState op_state, DynamicJsonDocument body);
 
   static ParsedRequest parse_request(String request);
@@ -88,7 +88,7 @@ class Requests {
 class Responses {
   public:
   static RegularExpressions regex;
-  static String response(int status);
+  static String response(int status, bool contains_body);
   static String response(int status, DynamicJsonDocument content);
   static String file_response(String content, FileType type);
 

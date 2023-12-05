@@ -75,13 +75,15 @@ class ConfigManager {
   int identifier_address = IDENTIFIER_ADDRESS;
   int preset_address = PRESET_ADDRESS;
   int wifi_address = WIFI_ADDRESS;
+
+  int device_reset_pin;
   
   bool configured = false; // this must be set when the configuration is read at startup. Should also be set to true as soon as configuration data is written
   
   Configuration config;
   DataWriter *writer;
 
-  ConfigManager(MachineState *machine_state);
+  ConfigManager(MachineState *machine_state, int device_reset_pin);
   ~ConfigManager();
 
   void retrieve_config_to_json(int address, DynamicJsonDocument &document);
