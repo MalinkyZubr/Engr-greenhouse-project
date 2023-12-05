@@ -228,7 +228,7 @@ class archiveProject(DatabaseQuery):
     
     UPDATE RegisteredDevices
     SET ProjectID = -1
-    WHERE ProjectID = %s"""
+    WHERE ProjectID = %s;"""
     def query(self, cursor, project_id):
         return cursor.execute(self.query_str, (project_id, project_id, project_id, project_id, project_id))
 
@@ -236,7 +236,7 @@ class archiveProject(DatabaseQuery):
 class deleteProject(DatabaseQuery):
     query_str = \
     f"""DELETE FROM ArchivedProjects WHERE ProjectID = %s;
-    DELETE FROM ArchivedData WHERE ProjectID = %s"""
+    DELETE FROM ArchivedData WHERE ProjectID = %s;"""
     def query(self, cursor, project_id):
         return cursor.execute(self.query_str, (project_id,project_id))
 
@@ -306,7 +306,7 @@ class getDeviceStatus(DatabaseQuery):
     return_type=ReturnTypes.SINGLE_ELEMENT(6)
     query_str = \
     f"""SELECT DeviceStatus FROM RegisteredDevices
-    WHERE DeviceID = %s"""
+    WHERE DeviceID = %s;"""
     def query(self, cursor, device_id):
         return cursor.execute(self.query_str, (device_id,))
 
@@ -369,7 +369,7 @@ class deleteDevice(DatabaseQuery):
 class getPresetID(DatabaseQuery):
     return_type=ReturnTypes.SINGLE_ELEMENT(0)
     query_str = \
-    f"""SELECT PresetID FROM Presets WHERE PresetName = %s"""
+    f"""SELECT PresetID FROM Presets WHERE PresetName = %s;"""
     def query(self, cursor, preset_name):
         return cursor.execute(self.query_str, (preset_name,))
 
@@ -384,7 +384,7 @@ class getPresets(DatabaseQuery):
 class getPreset(DatabaseQuery):
     return_type=ReturnTypes.SINGLE_OBJECT()
     query_str = \
-    f"""SELECT * FROM Presets WHERE PresetID = %s"""
+    f"""SELECT * FROM Presets WHERE PresetID = %s;"""
     def query(self, cursor, preset_id):
         return cursor.execute(self.query_str, (preset_id,))
 
@@ -401,7 +401,7 @@ class updatePreset(DatabaseQuery):
     query_str = \
     f"""UPDATE Presets
     SET PresetName = COALESCE(%(PresetName)s, PresetName), Temperature = COALESCE(%(Temperature)s, Temperature), Humidity = COALESCE(%(Humidity)s, Humidity), Moisture = COALESCE(%(Moisture)s, Moisture), LightExposure = COALESCE(%(LightExposure)s, LightExposure), IRExposure = COALESCE(%(IRExposure)s, IRExposure)
-    WHERE PresetID = %(presetID)s"""
+    WHERE PresetID = %(presetID)s;"""
     def query(self, cursor, preset_id, preset_name=None, temperature=None, humidity=None, moisture=None, light_exposure=None, ir_exposure=None):
         return cursor.execute(self.query_str, {"PresetName":preset_name, "Temperature":temperature, "Humidity":humidity, "Moisture":moisture, "LightExposure":light_exposure, "IRExposure":ir_exposure, "presetID":preset_id})
 
@@ -418,7 +418,7 @@ class deletePreset(DatabaseQuery):
     
 class getPresetAssociatedDevices(DatabaseQuery):
     query_str = \
-    f"""SELECT * FROM RegisteredDevices WHERE PresetID = %s"""
+    f"""SELECT * FROM RegisteredDevices WHERE PresetID = %s;"""
     def query(self, cursor, preset_id):
         return cursor.execute(self.query_str, (preset_id,))
     

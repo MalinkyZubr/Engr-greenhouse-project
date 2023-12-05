@@ -18,6 +18,15 @@ manager_conf = os.path.join(script_dir, "conf/managerconf.json")
 
 class Device:
     def __init__(self, ip: str, name: Optional[str]=None, id: Optional[int]=None, expidited: bool=False):
+        """Low level class for storing information about active connections to the server. Used to provide registration with server as well
+
+        Args:
+            ip (str): ip address of the device
+            name (Optional[str], optional): name for the device to display on frontend. Only set after registration. Defaults to None.
+            id (Optional[int], optional): id to use for data accessing and identification by other parts of program. Only set after registration. Defaults to None.
+            expidited (bool, optional): The expidited flag identifies if the device making the conneciton request has already connected to the server, and has a saved ID on its flash memory.
+            This will allow it to skip manual registration and immediately associate to the server. Defaults to False.
+        """
         self.time_received: int = self.update_time()
         self.ip: str = ip
         self.name: str = name
@@ -35,9 +44,16 @@ class Device:
         self.id = id
         
     def update_time(self) -> None:
+        """reset the timer for disconnecting the device
+        """
         self.time_received = time.time()
         
     def check_time(self) -> None:
+        """check if the timeout threshold was exceeded, if no messages have been received in a while
+
+        Raises:
+            TimeoutError: raised if timeout threshold exceeded
+        """
         if time.time() - self.time_received > 30:
             raise TimeoutError("The connection receive no pings for 30 seconds")
         
@@ -49,6 +65,12 @@ class DeviceManager:
     multicast_address: str = '224.0.2.4'
     port = 1337
     def __init__(self, loop: asyncio.BaseEventLoop, database_interface: DatabaseInterface):
+        """class for managing low level socket operations, association, and connection statuses
+
+        Args:
+            loop (asyncio.BaseEventLoop): event loop for async operations
+            database_interface (DatabaseInterface): interface to the database for managing data
+        """
         self.database_interface: DatabaseInterface = database_interface
         
         with open(manager_conf, 'r') as f:
@@ -59,7 +81,6 @@ class DeviceManager:
         
         self.registration_queue: dict[str, asyncio.Condition] = dict() # devices who are in the process of associating with the server
         self.active_device_list: dict[str, Device] = dict() # devices that have associated with the server and are active
-        self.sleeping_device_list: dict[str, Device] = dict() # devices that have associated with the server and are inactive
         
         self.sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('', self.port))
@@ -73,6 +94,8 @@ class DeviceManager:
         self.active: bool = True
         
     async def check_for_dead(self) -> None:
+        """check for dead connections, so they can be removed. Dead connections are those that fail the "check_time" function of device class
+        """
         while self.active:
             print("checking for dead")
             await asyncio.sleep(30)
@@ -86,6 +109,8 @@ class DeviceManager:
                     self.database_interface.execute("configureDevice", scan_object.id, status="DISCONNECTED")
         
     async def serve_management(self) -> None:
+        """listen for UDP requests to the mutlicast server address, places devices into the registration queue in waiting to be associated to the server by a client
+        """
         while self.active:
             print("waiting for connection")
             data: bytes = await self.loop.sock_recv(self.sock, 1024)
@@ -97,15 +122,28 @@ class DeviceManager:
                 scan_result = Device(data['ip'], name=data['name'], id=data["id"], expidited=data["expidited"])
                 self.scans[data['ip']] = scan_result
                 
-    async def send_registration(self, device_ip) -> None:
+    async def send_registration(self, device_ip: str) -> None:
+        """when the client requests to add a device to the server, this will send the registration request to the device so it can proceed with authentication and setup
+
+        Args:
+            device_ip (str): ip of desired device
+
+        Raises:
+            IndexError: if the IP is not in the registration queue, this error is raised
+        """
         if device_ip not in self.scans:
-            raise Exception("The IP has not been detected by any scan!")
+            raise IndexError("The IP has not been detected by any scan!")
         message: RegistrationSchema = RegistrationSchema(server_ip=self.ip_address).model_dump_json().encode()
         await self.loop.sock_sendall(self.sock, message)
         self.registration_queue[device_ip] = asyncio.Condition()
         self.scans.pop(device_ip)
                 
     def get_scans(self) -> dict[str, Device]:
+        """gets the scan list of the manager
+
+        Returns:
+            dict[str, Device]: list of scans
+        """
         return self.scans
 
     async def shutdown(self) -> None:
