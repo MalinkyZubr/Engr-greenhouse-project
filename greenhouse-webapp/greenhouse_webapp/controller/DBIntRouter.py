@@ -9,6 +9,14 @@ from controller.frontend_paths import TEMPLATES
 
 
 class APIDRouter(APIRouter):
+    """custom router that can support specialized functions more intuitively (to me)
+
+    Args:
+        template_paths, Jinja2Templates: template manager object to support template responses
+        database_connector, Optional[DatabaseInterface]: connector object to make queries to database through API calls
+        device_manager, Optional[DeviceManager]: low level socket based management system for governing device association, timing, and aging of devices
+        data_retriever, DataRetriever: utility for fetching data visualizations and CSV files
+    """
     template_paths: Jinja2Templates = Jinja2Templates(directory=TEMPLATES)
     database_connector: typing.Optional[DatabaseInterface] = None
     device_manager: typing.Optional[DeviceManager] = None
