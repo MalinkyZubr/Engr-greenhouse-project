@@ -10,6 +10,8 @@ from controller.DBIntRouter import APIDRouter
 from controller.schemas.server_device_schemas import BaseSchema
 from controller.device_management import device_unregister
 
+from model.device_initialization import Device
+
 router = APIDRouter(
     prefix="/interface"
 )
@@ -70,9 +72,9 @@ async def check_aging(request: Request, next_call): # auto updates the device st
         response, Any: the response to the next_call the device is requesting
     """
     
-    reported_device_id = request.cookies["device_id"]
+    reported_device_id: int = int(request.cookies["device_id"])
         
-    active_list_device_entry = router.device_manager.active_device_list[reported_device_id]
+    active_list_device_entry: Device = router.device_manager.active_device_list[reported_device_id]
         
     active_list_device_entry.update_time() # make sure the timeout doesnt go off...
     
@@ -125,7 +127,7 @@ async def post_old_data(data_info: OldDataSchema) -> JSONResponse:
     return JSONResponse("data inserted successfully", 200)
 
 @router.get("/ping")
-async def ping() -> None:
+async def ping() -> None: # when this is received from a device, it should set the device status to idle, since no non idle device should send standard pings
     """Empty route for the sole purpose of idle (paused) devices confirming they are still connected"""
     pass
 
