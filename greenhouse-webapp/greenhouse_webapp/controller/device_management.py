@@ -1,20 +1,24 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-from typing import Optional, Literal
+from typing import Optional, Literal, Type
 from starlette.responses import FileResponse
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
 import time
 import asyncio
 from datetime import datetime
+
 import requests
 from requests import Response
+from requests.exceptions import Timeout
+
 from controller.frontend_paths import SCAN, ASSIGN_PRES, ASSIGN_PROJ
 from controller.DBIntRouter import APIDRouter
 from controller.schemas.server_device_schemas import BaseSchema
 from model.device_initialization import Device
 from jinja2 import Template
+from abc import ABC, abstractmethod
 
 
 router = APIDRouter(
@@ -109,79 +113,145 @@ class LogSchema(BaseModel):
     log_content: str
     
     
-async def unregister_device_request(device_ip: str) -> None: # should delete the proejct data from the device, as well as server IP. 
-    """Unregistering the device will purge its entry from the database, and remove all stored data from the device. THe device will thereafter
-    re-enter a 
+class DeviceRequest(ABC):
+    """Interface for sending requests to connected IoT devices unsolicited by said devices
 
     Args:
-        device_ip (str): ip to send the request to
+        route, str: route to send the data to
+        method, Literal["POST", "PUT", "GET"]: method with which to send the http request
 
     Raises:
         HTTPException: 500 in case the request fails
     """
-    for _ in range(3): # must make sure the device actually unregisters
-        message = BaseSchema("unregister") # this feature is deprecated, work around it, fix later
-        try:
-            response = requests.put(f"{device_ip}/unregister", data=message.model_dump_json(), timeout=3) # need to implement https and encryption for server -> device communication
-        except Exception as e:
-            await asyncio.sleep(3)
-            continue
-        response_code = response.status_code
-        if response_code == 200:
-            break
-    else:
-        raise HTTPException(500, detail="unregistering failed")
+    route: str
+    method: Literal["POST", "PUT", "GET"]
     
-async def configure_device_request(device_ip: str, device_name: str=None, device_id: int=None, device_project_id: int=None) -> None:
-    """send a request to configure device identifying information
-
-    Args:
-        device_ip (str): ip of the device to configure
-        device_name (str, optional): configuration field for the name of the target device. Defaults to None.
-        device_id (int, optional): device id to write to the device. Defaults to None.
-        device_project_id (int, optional): id of the project to write to flash. Defaults to None.
-
-    Raises:
-        HTTPException: 500 in case the request to the device fails
-    """
-    message: DeviceConfigurationSchema = DeviceConfigurationSchema(
-        device_name = device_name,
-        device_id = device_id,
-        project_id = device_project_id
-    )
-    for _ in range(3):
-        try:
-            response: Response = requests.put(f"{device_ip}/configure", data=message.model_dump_json(), timeout=3) # need to implement https and encryption for server -> device communication
-        except Exception as e:
-            await asyncio.sleep(10)
-            continue
-        response_code = response.status_code
-        if response_code == 200:
-            break
-    else:
-        raise HTTPException(500, detail="configuration failed") # MAKE SURE IT UNREGISTERES NO MATTER WHAT
+    __attempt_interval: int = 3
+    __attempt_count: int = 3
     
-async def configure_device_preset(device_ip: str, preset_data: DeviceRegistrationPreset) -> None:
-    """make a request to the device to configure its preset information
+    @abstractmethod
+    async def call(self, ip: str, data: Optional[Type[BaseModel]] = None) -> Response:
+        pass
+        
+    async def submit_request(self, ip: str, data: Optional[Type[BaseModel]] = None) -> Response:
+        """Standard request function for submitting request to IoT devices
 
-    Args:
-        device_ip (str): ip of the device to be configured
-        preset_data (DeviceRegistrationPreset): the preset schema to be sent to the device
+        Args:
+            ip (str): ip to send request to
+            data (Optional[Type[BaseModel]], optional): _description_. Defaults to None.
 
-    Raises:
-        HTTPException: 500 in case the request to the device fails
-    """
-    for _ in range(3):
-        try:
-            response: Response = requests.put(f"{device_ip}/preset_config", data=preset_data.model_dump_json(), timeout=3)
-        except Exception as e:
-            await asyncio.sleep(10)
-            continue
-        response_code = response.status_code
-        if response_code == 200:
-            break
-    else:
-        raise HTTPException(500, detail="configuration failed") # MAKE SURE IT UNREGISTERES NO MATTER WHAT
+        Raises:
+            HTTPException: _description_
+
+        Returns:
+            Response: _description_
+        """
+        response: Response | None = None
+        for _ in range(self.__attempt_count):
+            try:
+                if self.method == "GET":
+                    response: Response = requests.get(f"{ip}{self.route}", timeout=self.__attempt_interval)
+                    break
+                elif self.method == "PUT":
+                    response: Response = requests.put(f"{ip}{self.route}", data=data.model_dump_json(), timeout=self.__attempt_interval)
+                    break
+                elif self.method == "POST":
+                    response: Response = requests.post(f"{ip}{self.route}", data=data.model_dump_json(), timeout=self.__attempt_interval)
+                    break
+            except Timeout:
+                await asyncio.sleep(self.__attempt_interval)
+                continue
+        if not response:
+            raise HTTPException(500, detail="Request to device failed!")
+        
+        return response
+     
+        
+class UnregisterDeviceRequest(DeviceRequest):
+    route = "/unregister"
+    method = "PUT"
+    
+    async def call(self, ip: str) -> Response:
+        """Unregistering the device will purge its entry from the database, and remove all stored data from the device. THe device will thereafter
+        re-enter a 
+
+        Args:
+            ip (str): ip to send the request to
+
+        Raises:
+            HTTPException: 500 in case the request fails
+            
+        Returns:
+            Response: response from IOT device
+        """
+        return await self.submit_request(ip)
+    
+
+class ConfigureDeviceRequest(DeviceRequest):
+    route = "/configure_identifiers"
+    method = "PUT"
+    
+    async def call(self, ip: str, data: DeviceConfigurationSchema) -> Response:
+        """send a request to configure device identifying information
+
+        Args:
+            ip, str: ip to send request to
+            data, DeviceConfigurationSchema: schema which contains configuration data to send to the device
+
+        Raises:
+            HTTPException: 500 in case the request to the device fails
+            
+        Returns:
+            Response: response from IOT device
+        """
+        return await self.submit_request(ip, data=data)
+    
+    
+class ConfigureDevicePreset(DeviceRequest):
+    route = "/configure_preset"
+    method = "PUT"
+    
+    async def call(self, ip: str, data: DeviceRegistrationPreset) -> Response:
+        """make a request to the device to configure its preset information
+
+        Args:
+            ip (str): ip of the device to be configured
+            data (DeviceRegistrationPreset): the preset schema to be sent to the device
+
+        Raises:
+            HTTPException: 500 in case the request to the device fails
+            
+        Returns:
+            Response: response from IOT device
+        """
+        return await self.submit_request(ip, data=data)
+    
+    
+class SetDeviceStatus(DeviceRequest):
+    route = "/pause"
+    method = "POST"
+    
+    async def call(self, ip: str, pause_device: bool):
+        """makes a call to the device to set its state to either paused or active
+
+        Args:
+            ip (str): destination ip to which request will be sent
+            pause_device (bool): True if want to pause the device, False if want to activate it
+
+        Raises:
+            HTTPException: 500 in case the request to the device fails
+            
+        Returns:
+            Response: response from IOT device
+        """
+        return await self.submit_request(ip, BaseModel(paused = pause_device))
+    
+
+change_preset: ConfigureDevicePreset = ConfigureDevicePreset()
+change_identifier: ConfigureDeviceRequest = ConfigureDeviceRequest()
+device_unregister: UnregisterDeviceRequest = UnregisterDeviceRequest()
+set_device_status: SetDeviceStatus = SetDeviceStatus()
+        
     
 @router.get("/devices/{device_name}")
 async def serve_webpage(request: Request, device_name: str) -> Template:
@@ -332,7 +402,7 @@ async def scan_devices() -> JSONResponse:
     return JSONResponse(scans, 200)
 
 @router.put("/devices/{device_name}/update")
-async def configure_device(device_name: str, configuration_info: ClientDeviceConfigSchema) -> JSONResponse:
+async def configure_device_identifiers(device_name: str, configuration_info: ClientDeviceConfigSchema) -> JSONResponse:
     """The user will often want to re-configure their device settings to fulfill new tasks. This route will receive configuration information
     from the user on the frontend, write it to the database, and forward it to the device
 
@@ -347,28 +417,59 @@ async def configure_device(device_name: str, configuration_info: ClientDeviceCon
         JSONResponse(202) in the event the configuration is successful
     """
     device_id = router.database_connector.execute('getDeviceID', device_name)
-    device_ip = router.database_connector.execute('getDevice', device_id)
+    device_ip = router.database_connector.execute('getDevice', device_id)[2]
     
     if configuration_info.project_name:
         project_id = router.database_connector.execute("getProjectID", configuration_info.project_name)
-    if configuration_info.preset_name:
-        preset_id = router.database_connector.execute("getPresetID", configuration_info.preset_name)
     
-    router.database_connector.execute("configureDevice", device_id, device_name=configuration_info.device_name, preset_id=preset_id, project_id=project_id) # let it go anyway, the device will sync when reconnecting
+    router.database_connector.execute("configureDevice", device_id, device_name=configuration_info.device_name, project_id=project_id) # let it go anyway, the device will sync when reconnecting
     
     try:
-        await configure_device_request(
-            device_ip, 
-            device_name = configuration_info.device_name, 
-            device_status = configuration_info.device_status,
-            device_project = configuration_info.project_name, 
-            device_preset = configuration_info.preset_name
+        body: DeviceConfigurationSchema = DeviceConfigurationSchema(
+            device_name=configuration_info.device_name,
+            device_id=device_id,
+            project_id=router.database_connector.execute("getProjectName", configuration_info.project_name),
         )
+        response = change_identifier.call(device_ip, data=body)
     except Exception as e: # more graceful handling of the timeout, in case device disconnects it shouldnt actually prevent the user from configuring it, the device just syncs later
-        router.database_connector.execute("configureDevice", device_id, device_status=False)
+        router.database_connector.execute("configureDevice", device_id, device_status="IDLE")
         raise e
     
     return JSONResponse("Device configuration successful", 202)
+
+@router.put("/devices/{device_name}/update_preset")
+async def configure_device_preset(device_name: str, preset_name: str) -> JSONResponse:
+    """receive request from the frontend client to change the device preset
+
+    Args:
+        device_name (str): name of the device to configure
+        preset_name (str): name of the preset to switch to
+
+    Returns:
+        JSONResponse: respond with 200 if successful 
+    """
+    device_id: int = router.database_connector.execute('getDeviceID', device_name)
+    device_ip: str = router.database_connector.execute('getDevice', device_id)[2]
+    
+    preset_id: int = router.database_connector.execute('getPresetID', preset_name)
+    preset_information: tuple = router.database_connector.execute("getPreset", preset_id)
+    
+    router.database_connector.execute("configureDevice", device_id, preset_id=preset_id)
+    
+    try:
+        body: DeviceRegistrationPreset(
+            temperature = preset_information[2],
+            humidity=preset_information[3],
+            moisture=preset_information[4],
+            hours_daylight=preset_information[5],
+            preset_id=preset_id
+        )
+        response = await change_preset.call(device_ip, data=body)
+    except Exception as e: # more graceful handling of the timeout, in case device disconnects it shouldnt actually prevent the user from configuring it, the device just syncs later
+        router.database_connector.execute("configureDevice", device_id, device_status="IDLE")
+        raise e
+    
+    return JSONResponse("Device preset set successfully", 200)
 
 @router.post("/scan/register_device")
 async def register_device(device_ip: str, project_name: Optional[str] = None) -> JSONResponse:
