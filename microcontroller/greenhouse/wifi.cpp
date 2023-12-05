@@ -1,8 +1,13 @@
 #include "wifi.hpp"
 
 
-WiFiWatchdog::WiFiWatchdog(CommonData *common_data, ConnectionManager *connected_manager, MachineState *machine_state) : common_data(common_data), connected_manager(connected_manager), machine_state(machine_state) {}
+/// @brief the wifi watchdog watches to see if the connection to the wireless AP is stable. if connection is lost, it sets the network state to down. This is meant to be a Task manager task @see TaskManager
+/// @param connected_manager the connection manager for which the watchdog is checking wifi status
+/// @param machine_state machine state with which the watchdog tracks and sets machine connection state on wifi failure
+WiFiWatchdog::WiFiWatchdog(ConnectionManager *connected_manager, MachineState *machine_state) : connected_manager(connected_manager), machine_state(machine_state) {}
 
+
+/// @brief checks the wifi status of the connection manager. if the connection to AP is down, machine network state is set to MACHINE_DISCONNETED and the network state is set to down
 void WiFiWatchdog::check_wifi_status() {
   int Wifi_status = WiFi.status();
 
@@ -13,20 +18,43 @@ void WiFiWatchdog::check_wifi_status() {
   }
 }
 
+
+/// @brief callback for the wifi watchdog to be run by the task manager
 void WiFiWatchdog::callback() {
   this->check_wifi_status();
 }
 
+
+/// @brief instantiate a connection manager with minimal information. This is designed to be used on first startup after a reset
+/// @param task_manager device task manager for the management of wifi based tasks in tandem with network operations
+/// @param routes router object for handling http requests to the device from the server
+/// @param storage storage manager for interfacing with flash memory
+/// @param machine_state global machine state for tracking and managing device behaviors
 ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MachineState *machine_state) : task_manager(task_manager), router(routes), storage(storage), machine_state(machine_state) {
   this->network_state = INITIALIZING;
   this->run();
 }
 
+
+/// @brief instantiate a connection manager with wifi information pre-specified. This is for when the device has already connected to the network before
+/// @param task_manager device task manager for the management of wifi based tasks in tandem with network operations
+/// @param routes router object for handling http requests to the device from the server
+/// @param storage storage manager for interfacing with flash memory
+/// @param machine_state global machine state for tracking and managing device behaviors
+/// @param wifi_information wifi information to preconfigure device authentication infromation, this should be retrieved from flash memory most likely
 ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MachineState *machine_state, WifiInfo wifi_information) : wifi_information(wifi_information), router(routes), storage(storage), machine_state(machine_state), task_manager(task_manager) {
   this->network_state = STARTUP;
   this->run();
 }
 
+
+/// @brief instantiate a connection manager with wifi information and server information pre specified. Designed for use if the device has already associated with a server in the past
+/// @param task_manager device task manager for the management of wifi based tasks in tandem with network operations
+/// @param routes router object for handling http requests to the device from the server
+/// @param storage storage manager for interfacing with flash memory
+/// @param machine_state global machine state for tracking and managing device behaviors
+/// @param wifi_information wifi information to preconfigure device authentication infromation, this should be retrieved from flash memory most likely
+/// @param connection_info struct identifying server information for the connection
 ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MachineState *machine_state, WifiInfo wifi_information, ConnectionInfo connection_information) : wifi_information(wifi_information), storage(storage), machine_state(machine_state), server_information(connection_information), task_manager(task_manager) {
   if(this->storage->config.identifying_information.device_id == -1) {
     this->network_state = STARTUP;
@@ -37,17 +65,26 @@ ConnectionManager::ConnectionManager(TaskManager *task_manager, Router *routes, 
   this->run();
 }
 
+
+/// @brief check if the specified ssid is in range of wifi card
+/// @param ssid SSID of the desired network
+/// @return bool to signify if the network exists or not
 bool ConnectionManager::check_ssid_existence(String &ssid) {
-    int num_networks = WiFi.scanNetworks();
+  int num_networks = WiFi.scanNetworks();
 
-    for(int network = 0; network < num_networks; network++) {
-      if(strcmp(WiFi.SSID(network), ssid.c_str())) {
-        return true;
-      }
-      return false;
+  for(int network = 0; network < num_networks; network++) {
+    if(strcmp(WiFi.SSID(network), ssid.c_str())) {
+      return true;
     }
+    return false;
   }
+}
 
+
+/// @brief restfully receive a request from an external source
+/// @param client wifi client (with or without SSL) to receive data on
+/// @param timeout if no message is received before this point is exceeded, the timeout error is raised
+/// @return ParsedMessage representing received message
 ParsedMessage ConnectionManager::rest_receive(WiFiClient &client, int timeout=30000) {
   String message;
   String current_line = "";
@@ -99,6 +136,9 @@ ParsedMessage ConnectionManager::rest_receive(WiFiClient &client, int timeout=30
   return received;
 }
 
+
+/// @brief this utility function is necessary when in AP mode for putting the device's own AP online. Checks if the desired SSID is taken, and if not, increments a number attached to the SSID
+/// @return bool to spefify if success or not
 bool ConnectionManager::set_ssid_config() {
   String ssid = "REMOTE_GREENHOUSE";
   int num_networks = WiFi.scanNetworks();
@@ -161,11 +201,11 @@ WifiInfo ConnectionManager::receive_credentials(WiFiClient &client) {
           temporary_wifi_information.type = HOME;
           int channel = this->get_ap_channel(temporary_wifi_information.ssid);
           if(channel == -1) {
-            response = Responses::response(503); // if the network isnt found, return 503 error
+            response = Responses::response(503, false); // if the network isnt found, return 503 error
           }
           else {
             temporary_wifi_information.channel = channel;
-            response = Responses::response(200); // otherwise tell the client everything worked
+            response = Responses::response(200, false); // otherwise tell the client everything worked
             credentials_received = true;
           }
         }
@@ -179,7 +219,7 @@ WifiInfo ConnectionManager::receive_credentials(WiFiClient &client) {
           response = Responses::file_response(webpage_js, JS);
         }
         else {
-          response = Responses::response(404);
+          response = Responses::response(404, false);
         }
         break;
 
@@ -209,7 +249,7 @@ bool ConnectionManager::enterprise_connect(WifiInfo &info) {
   strcpy((char *) auth.au8UserName, info.username.c_str());
   strcpy((char *) auth.au8Passwd, info.password.c_str());
 
-  bool wifi_status = m2m_wifi_connect_sc(ssid_converted, ssid_size, M2M_WIFI_SEC_802_1X, &auth, info.channel, true);
+  bool wifi_status = m2m_wifi_connect_sc(ssid_converted, ssid_size, M2M_WIFI_SEC_802_1X, &auth, info.channel, false);
 
   free(ssid_temp);
   free(ssid_converted);
@@ -464,7 +504,7 @@ bool ConnectionManager::association() { // make first ssl request to associate w
 
     this->state_connection.SSLclient.stop(); // remember to close the connection after each request
 
-    if(!this->storage->writer->reference_datatime) {
+    if(!this->storage->writer->reference_datetime) {
       this->storage->set_reference_datetime(message.response.body["reference_time"]);
     }
   }

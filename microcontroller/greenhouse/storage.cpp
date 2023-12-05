@@ -20,7 +20,7 @@ bool DataWriter::write_data(DynamicJsonDocument &data) {
     data["next"] = this->current + this->partition_size;
     data["previous"] = this->current - this->partition_size;
     data["seconds_from_start"] = millis() / 1000;
-    data["reference_datetime"] = this->reference_datatime;
+    data["reference_datetime"] = this->reference_datetime;
 
     serializeJson(data, serialized);
 
@@ -103,7 +103,7 @@ ConfigManager::ConfigManager(MachineState *machine_state, int device_reset_pin) 
 /// @brief sets the reference datetime for the data writer. Necessary in cases where connection is lost. This will keep data time synced (to a reasonable extent)
 /// @param datetime unix timestamp representing the datetime the device was associated with its server
 void ConfigManager::set_reference_datetime(float datetime) {
-  this->writer->reference_datatime = datetime;
+  this->writer->reference_datetime = datetime;
 }
 
 
@@ -150,7 +150,7 @@ void ConfigManager::load_device_identifiers(DynamicJsonDocument &document, Ident
 void ConfigManager::load_wifi_info(DynamicJsonDocument &document, WifiInfo &wifi_info) {
   String temp_string;
 
-  this->retrieve_configuration_flash(this->identifier_address, &temp_string);
+  this->retrieve_configuration_flash(this->wifi_address, &temp_string);
 
   if(temp_string.equals("")) {
     return;
@@ -300,7 +300,7 @@ void ConfigManager::serialize_device_identifiers(Identifiers &device_identifiers
 /// @param document json document to read data from
 void ConfigManager::deserialize_device_identifiers(Identifiers &device_identifiers, DynamicJsonDocument &document) {
   device_identifiers.device_id = document["device_id"];
-  device_identifiers.project_id = document["project_name"];
+  device_identifiers.project_id = document["project_id"];
   device_identifiers.device_name = (char *)&document["device_name"];
   device_identifiers.server_hostname = (char *)&document["server_name"];
 }

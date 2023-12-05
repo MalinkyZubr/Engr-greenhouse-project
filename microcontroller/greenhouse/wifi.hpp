@@ -30,9 +30,16 @@ typedef struct {
     NetworkReturnErrors error;
 } ConnectionInfo;
 
+
+/// @brief enum containing all network manager states. Each of these represents a different step in the network management process
+/// @param INITIALIZING the device is acting in AP Mode waiting to serve a webpage to configure wifi information, and connect to a network
+/// @param BROADCASTING the device is broadcasting UDP packets to the mutlicast server address waiting for acknowledgement to proceed with association
+/// @param ASSOCIATING the device is authenticating to the server and syncing its local data (preset, identifiers, etc) with the server. Prelude to full connection
+/// @param CONNECTED the device is fully authenticated and connected to the server, and can commence regular operations
+/// @param STARTUP this is the wifi network connection sequence if the device has already connected to the wifi previously
+/// @param DOWN state when the device loses connection and must recover
 enum States {
     INITIALIZING, 
-    WIFI_RECOVERY,
     BROADCASTING,
     ASSOCIATING,
     CONNECTED, 
@@ -117,9 +124,8 @@ class WiFiWatchdog : public Callable {
 
   public:
   ConnectionManager *connected_manager;
-  CommonData *common_data;
 
-  WiFiWatchdog(CommonData *common_data, ConnectionManager *connected_manager, MachineState *machine_state);
+  WiFiWatchdog(ConnectionManager *connected_manager, MachineState *machine_state);
   void callback();
 };
 

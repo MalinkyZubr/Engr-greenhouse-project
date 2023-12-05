@@ -51,7 +51,7 @@ class DataWriter {
   SPIFlash *flash;
 
   public:
-  float reference_datatime = 0;
+  float reference_datetime = 0;
   bool is_full = false;
   bool is_storing;
 

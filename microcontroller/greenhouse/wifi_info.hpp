@@ -1,6 +1,8 @@
 #ifndef WIFI_INFO_HPP
 #define WIFI_INFO_HPP
 
+
+/// @brief enum of errors that can be returned by functions in the syste,
 enum NetworkReturnErrors {
   OKAY,
   CONNECTION_FAILURE,
@@ -12,12 +14,16 @@ enum NetworkReturnErrors {
   STORAGE_WRITE_FAILURE
 };
 
+
+/// @brief enum of possible wifi connection authentication types supported by the network management software
 enum NetworkTypes {
   HOME = 'h',
   ENTERPRISE = 'e',
   OPEN = 'o'
 };
 
+
+/// @brief struct containing critical wifi information for maintaining device connectivity
 typedef struct {
   NetworkTypes type;
   String ssid;
