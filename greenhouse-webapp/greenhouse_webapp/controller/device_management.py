@@ -430,7 +430,7 @@ async def configure_device_identifiers(device_name: str, configuration_info: Cli
             device_id=device_id,
             project_id=router.database_connector.execute("getProjectName", configuration_info.project_name),
         )
-        response = change_identifier.call(device_ip, data=body)
+        response: Response = await change_identifier.call(device_ip, data=body)
     except Exception as e: # more graceful handling of the timeout, in case device disconnects it shouldnt actually prevent the user from configuring it, the device just syncs later
         router.database_connector.execute("configureDevice", device_id, device_status="IDLE")
         raise e
@@ -464,7 +464,7 @@ async def configure_device_preset(device_name: str, preset_name: str) -> JSONRes
             hours_daylight=preset_information[5],
             preset_id=preset_id
         )
-        response = await change_preset.call(device_ip, data=body)
+        response: Response = await change_preset.call(device_ip, data=body)
     except Exception as e: # more graceful handling of the timeout, in case device disconnects it shouldnt actually prevent the user from configuring it, the device just syncs later
         router.database_connector.execute("configureDevice", device_id, device_status="IDLE")
         raise e
@@ -488,7 +488,7 @@ async def register_device(device_ip: str, project_name: Optional[str] = None) ->
     """
     router.device_manager.send_registration(device_ip=device_ip)
     
-    start_time = time.time()
+    start_time: int = time.time()
 
     condition = router.device_manager.registration_queue['device_ip']
     async with condition:
@@ -498,12 +498,21 @@ async def register_device(device_ip: str, project_name: Optional[str] = None) ->
             router.device_manager.registration_queue.pop(device_ip)
             raise HTTPException(503, detail=f"Registration of Device {device_ip} failed!")
         
-    device_id = router.database_connector.execute("getDeviceID", device_ip) # the device name will be the same as its IP for now
+    device_id: int = router.database_connector.execute("getDeviceID", device_ip) # the device name will be the same as its IP for now
     
     if project_name: # if the device is being registered as a project device. This might work, except now we must take into consideration idle status devices. Idle devices could just be included in "scan list" that should be in a separate function though
-        project_id = router.database_connector.execute("getProjectID", project_name)
+        project_id: int = router.database_connector.execute("getProjectID", project_name)
         
-        await configure_device_request(device_ip, device_project = project_name)
+        device_information: tuple = router.database_connector.execute("getDevice", device_id)
+        
+        body: DeviceConfigurationSchema = DeviceConfigurationSchema(
+            device_id=device_id,
+            device_name=device_information[1],
+            project_id=project_id
+        )
+        
+        response: Response = await change_identifier.call(device_ip, data=body)
+        
         router.database_connector.execute("configureDevice", device_id, project_id=project_id)
         
     router.device_manager.active_device_list[device_ip].set_id(device_id)
@@ -590,12 +599,12 @@ async def unregister_device(device_name) -> Literal['successfully unregistered d
     device_ip = router.device_manager.active_device_list[device_id].ip
     
     try:
-        await unregister_device_request(device_ip)
+        await device_unregister.call(device_ip)
     
         router.database_connector.execute("unregisterDevice", device_id)
         router.device_manager.active_device_list.pop(device_ip)
     except Exception as e:
-        pass
+        raise e
     return "successfully unregistered device"
 
 @router.get("/devices/{device_name}/logs")
