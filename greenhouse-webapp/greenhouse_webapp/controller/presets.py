@@ -146,6 +146,7 @@ async def delete_preset(preset_name: str) -> JSONResponse:
         preset_id=-1) # make sure that the frontend is actually sending hours daylight
     
     for device in connected_devices:
+        
         response: Response = await change_preset.call(device[2], data=request_body)
         
     return JSONResponse("Successfully deleted!", 200)

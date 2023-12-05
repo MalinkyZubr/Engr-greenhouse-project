@@ -7,6 +7,7 @@
 #include <Regexp.h>
 #include "storage.hpp"
 #include "wifi_info.hpp"
+#include "machine_state.hpp"
 
 
 enum methods {
@@ -77,8 +78,8 @@ enum FileType {
 class Requests {
   public:
   static RegularExpressions regex;
-  static String request(methods method, String route, String host, int device_id);
-  static String request(methods method, String route, String host, int device_id, DynamicJsonDocument body);
+  static String request(methods method, String route, String host, int device_id, MachineOperationalState op_state);
+  static String request(methods method, String route, String host, int device_id, MachineOperationalState op_state, DynamicJsonDocument body);
 
   static ParsedRequest parse_request(String request);
 };

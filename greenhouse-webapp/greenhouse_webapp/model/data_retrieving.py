@@ -21,8 +21,6 @@ class DataRetriever:
         "Humidity":4,
         "Moisture":5,
         "LightExposure":6,
-        "IRExposure":7,
-        "pHLevel":8
     }
     def filter_data_project_vis(self, provided_data, data_type, data_interface) -> list[tuple]:
         devices = dict()
@@ -66,8 +64,6 @@ class DataRetriever:
                     "Humidity":datapoint[4],
                     "Moisture":datapoint[5],
                     "LightExposure":datapoint[6],
-                    "IRExposure":datapoint[7],
-                    "pHLevel":datapoint[8]
             })
         return csv_file_name
         

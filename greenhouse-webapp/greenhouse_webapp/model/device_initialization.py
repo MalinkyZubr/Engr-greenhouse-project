@@ -83,7 +83,7 @@ class DeviceManager:
                 try: scan_object.check_time()
                 except: 
                     self.active_device_list.pop(ip)
-                    self.database_interface.execute("configureDevice", scan_object.id, status=False)
+                    self.database_interface.execute("configureDevice", scan_object.id, status="DISCONNECTED")
         
     async def serve_management(self) -> None:
         while self.active:

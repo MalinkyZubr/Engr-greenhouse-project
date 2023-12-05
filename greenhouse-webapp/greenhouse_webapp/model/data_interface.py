@@ -220,17 +220,23 @@ class archiveProject(DatabaseQuery):
     VALUES SELECT * FROM ActiveProjects
     WHERE ProjectID = %s;
     DELETE FROM ActiveProjects WHERE ProjectID = %s;
-    UPDATE Data
-    SET Archived = 1
-    WHERE ProjectID = %s;"""
+    
+    INSERT INTO ArchivedData(DeviceID, ProjectID, DateCollected, Temperature, Humidity, Moisture, LightExposure)
+    VALUES SELECT * FROM Data
+    WHERE ProjectID = %s
+    DELETE FROM Data WHERE ProjectID = %s;
+    
+    UPDATE RegisteredDevices
+    SET ProjectID = -1
+    WHERE ProjectID = %s"""
     def query(self, cursor, project_id):
-        return cursor.execute(self.query_str, (project_id, project_id, project_id))
+        return cursor.execute(self.query_str, (project_id, project_id, project_id, project_id, project_id))
 
 
 class deleteProject(DatabaseQuery):
     query_str = \
     f"""DELETE FROM ArchivedProjects WHERE ProjectID = %s;
-    DELETE FROM Data WHERE ProjectID = %s"""
+    DELETE FROM ArchivedData WHERE ProjectID = %s"""
     def query(self, cursor, project_id):
         return cursor.execute(self.query_str, (project_id,project_id))
 
@@ -402,9 +408,12 @@ class updatePreset(DatabaseQuery):
 
 class deletePreset(DatabaseQuery):
     query_str = \
-    f"""DELETE FROM Presets WHERE PresetID = %s"""
+    f"""DELETE FROM Presets WHERE PresetID = %s;
+    UPDATE RegisteredDevices
+    SET PresetID = -1
+    WHERE PresetID = %s;"""
     def query(self, cursor, preset_id):
-        return cursor.execute(self.query_str, (preset_id,))
+        return cursor.execute(self.query_str, (preset_id, preset_id))
     
     
 class getPresetAssociatedDevices(DatabaseQuery):

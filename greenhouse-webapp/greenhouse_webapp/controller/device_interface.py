@@ -3,7 +3,7 @@ from fastapi.requests import Request
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 
 from controller.DBIntRouter import APIDRouter
@@ -52,6 +52,7 @@ class OldDataSchema(DataSchema):
     previous: Optional[int]
     seconds_from_start: int
     reference_datetime: str
+
     
 class LogSchema(BaseModel):
     log_level: int
@@ -73,6 +74,9 @@ async def check_aging(request: Request, next_call): # auto updates the device st
     """
     
     reported_device_id: int = int(request.cookies["device_id"])
+    reported_device_status: Literal["ACTIVE", "IDLE"] = request.cookies["status"]
+    
+    router.database_connector.execute("configureDevice", reported_device_id, status=reported_device_status)
         
     active_list_device_entry: Device = router.device_manager.active_device_list[reported_device_id]
         

@@ -424,7 +424,7 @@ bool ConnectionManager::association() { // make first ssl request to associate w
 
     doc["preset"] = preset;
 
-    String data = Requests::request(POST, String("/devices/confirm"), this->server_information.ip, this->storage->config.identifying_information.device_id, doc); // the device_id should default to 0 before reading from flash
+    String data = Requests::request(POST, String("/devices/confirm"), this->server_information.ip, this->storage->config.identifying_information.device_id, this->machine_state->operational_state, doc); // the device_id should default to 0 before reading from flash
     this->state_connection.SSLclient.println(data); // THERE MUST BE A WAY TO PACKAGE THE PRESET NAME IN HERE TOO
 
     ParsedMessage message = this->rest_receive(this->state_connection.SSLclient, 10000); // the device should receive a response here, make sure the server actually does that

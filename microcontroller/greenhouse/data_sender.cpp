@@ -13,7 +13,7 @@ void DataSender::flush_data_storage_to_server() {
     done = this->storage->writer->decrement_read(data);
     request = Requests::request(POST, String("/interface/olddata/"), // create server route for olddata that processes time
                                         this->connection_manager->server_information.ip, 
-                                        this->storage->config.identifying_information.device_id, data);
+                                        this->storage->config.identifying_information.device_id, this->machine_state->operational_state, data);
     this->connection_manager->connected_send(request);
   }
   
@@ -42,7 +42,7 @@ void DataSender::callback() {
       }
       request = Requests::request(POST, String("/interface/data/"), 
                                         this->connection_manager->server_information.ip, 
-                                        this->storage->config.identifying_information.device_id, data);
+                                        this->storage->config.identifying_information.device_id, this->machine_state->operational_state, data);
       this->connection_manager->connected_send(request);
       break;
     case MACHINE_DISCONNECTED:
