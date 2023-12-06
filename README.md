@@ -1,4 +1,5 @@
 # Greenhouse Project
+copied straight from project report, will make actual readme later, too lazy now
 
 Embedded Systems (Microcontroller) 
 
