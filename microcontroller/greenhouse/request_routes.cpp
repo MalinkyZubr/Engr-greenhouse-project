@@ -24,7 +24,6 @@ NetworkReturnErrors NetworkReset::execute(ParsedRequest &request, String *respon
 DeviceReset::DeviceReset(String route, ConfigManager *storage) : Route(route), storage(storage) {}
 
 NetworkReturnErrors DeviceReset::execute(ParsedRequest &request, String *response) {
-  String response = Responses::response(200, false);
   // server must not check for response
   this->storage->reset();
 }

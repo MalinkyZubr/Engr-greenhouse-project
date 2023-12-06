@@ -89,7 +89,7 @@ class EnvironmentManager : public Callable {
   void update_interfaces();
 
   void device_activation();
-  void callback() override {}
+  void callback() override;
 };
 
 class Sensor {
