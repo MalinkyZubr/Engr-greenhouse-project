@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from starlette.responses import FileResponse
 from fastapi import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from jinja2 import Template
 from requests import Response
 
@@ -22,7 +22,7 @@ class PresetSchema(BaseModel):
     
     
 @router.get("/availablePresets/{preset_name}")
-async def load_webpage(request: Request, preset_name: str) -> Template:
+async def load_webpage(request: Request, preset_name: str) -> HTMLResponse:
     """load the webpage for the preset in question
 
     Args:

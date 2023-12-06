@@ -254,7 +254,7 @@ set_device_status: SetDeviceStatus = SetDeviceStatus()
         
     
 @router.get("/devices/{device_name}")
-async def serve_webpage(request: Request, device_name: str) -> Template:
+async def serve_webpage(request: Request, device_name: str) -> HTMLResponse:
     """serve the webpage for the specified device to the frontend
 
     Args:
@@ -268,7 +268,7 @@ async def serve_webpage(request: Request, device_name: str) -> Template:
     return router.template_paths.TemplateResponse("device.html", {"request":request,"device_name":device_name}) # assign the metavariable the device name so frontend can get the rest
 
 @router.get("/devices/{device_name}/assign_project")
-async def assign_project(request: Request, device_name: str) -> Template:
+async def assign_project(request: Request, device_name: str) -> HTMLResponse:
     """assign a project to a device
 
     Args:
@@ -281,7 +281,7 @@ async def assign_project(request: Request, device_name: str) -> Template:
     return router.template_paths.TemplateResponse("assign_project.html", {"request":request,"device_name":device_name})
 
 @router.get("/devices/{device_name}/assign_preset")
-async def assign_preset(request: Request, device_name: str) -> Template:
+async def assign_preset(request: Request, device_name: str) -> HTMLResponse:
     """Opens the preset assignment webpage to assign a preset to a device
 
     Args:
@@ -293,7 +293,7 @@ async def assign_preset(request: Request, device_name: str) -> Template:
     """
     return router.template_paths.TemplateResponse("assign_preset.html", {"request":request,"device_name":device_name})
 
-@router.get("/list_devices")
+@router.get("/devices/list_devices")
 async def list_devices() -> list[tuple | None]:
     """get a list of all devices registered to the server, whether they are idle or active
 
@@ -365,7 +365,7 @@ async def get_device_status(device_name: str) -> JSONResponse:
     return JSONResponse(device_status, 200)
     
 @router.get("/scan")
-async def serve_scan_page(request: Request, source_project: Optional[str]=None) -> Template:
+async def serve_scan_page(request: Request, source_project: Optional[str]=None) -> HTMLResponse:
     """_summary_
 
     Args:

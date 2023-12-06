@@ -25,7 +25,7 @@ class DateQuerySchema(BaseModel): # add input validation here
         
     
 @router.get("/projects/{project_name}")
-async def serve_project_webpage(request: Request, project_name: str) -> Template:
+async def serve_project_webpage(request: Request, project_name: str) -> HTMLResponse:
     """serve the template for the project requested
 
     Args:
@@ -80,7 +80,7 @@ async def update_project(project_name: str, new_name: str) -> JSONResponse:
     return JSONResponse("successfully updated", 200)
     
 @router.get("/list_projects")
-async def list_projects() -> list[tuple | None]:
+async def list_projects() -> list[tuple | None] | None:
     """get a list of projects currently loaded to the database
 
     Returns:
@@ -148,9 +148,9 @@ async def get_project_data_visualized(project_name: str, data_type: Literal["Tem
         FileResponse: PNG image of visualized data
     """
     if not date_information.start_date and not date_information.end_date:
-        date_information.start_date, date_information.end_date: str = get_today_tomorrow()
+        date_information.start_date, date_information.end_date = get_today_tomorrow()
     else:
-        date_information.start_date, date_information.end_date: str =  convert_time_formats(date_information.start_date), convert_time_formats(date_information.end_date)
+        date_information.start_date, date_information.end_date =  convert_time_formats(date_information.start_date), convert_time_formats(date_information.end_date)
         
     project_id: int = router.database_connector.execute("getProjectID", project_name)
     data_points: list[tuple] = router.database_connector.execute("getProjectDataInRange", project_id, date_information.start_date, date_information.end_date)
@@ -221,7 +221,7 @@ async def delete_project(project_name:str) -> JSONResponse:
     return JSONResponse("successfully deleted project", 200)
     
 @router.get("/archived/{project_name}")
-async def serve_archived_webpage(project_name: str, request: Request) -> Template:
+async def serve_archived_webpage(project_name: str, request: Request) -> HTMLResponse:
     """serve the webpage template for an archived project
 
     Args:

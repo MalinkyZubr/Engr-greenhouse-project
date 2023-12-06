@@ -69,7 +69,7 @@ class DatabaseQuery(ABC):
 
     query_str = """"""
     
-    return_type: ReturnTypes.FULL_RESULT()
+    return_type: ReturnTypes = ReturnTypes.FULL_RESULT()
         
     @abstractmethod
     def query(self, cursor, *query_parameters, **keyword_parameters):

@@ -57,34 +57,7 @@ class OldDataSchema(DataSchema):
 class LogSchema(BaseModel):
     log_level: int
     log_content: str
-    
 
-@router.middleware("http")
-async def check_aging(request: Request, next_call): # auto updates the device status
-    """Critical middleware which governs device status. Any device that goes a specified period of time without sending a message to the server will be designated 'disconnected'
-    This middleware tracks every request made by devices to the server, and resets their disconnect timers accordingly. Each request is embedded with a cookie contianing the device id
-    which allows easy tracking in tandem with the DeviceManager in the router. 
-    
-    Args:
-        request (Request): raw request containing all encapsulated data from the device
-        next_call (api call): the next api call to be executed should all middleware checks pass
-
-    Returns:
-        response, Any: the response to the next_call the device is requesting
-    """
-    
-    reported_device_id: int = int(request.cookies["device_id"])
-    reported_device_status: Literal["ACTIVE", "IDLE"] = request.cookies["status"]
-    
-    router.database_connector.execute("configureDevice", reported_device_id, status=reported_device_status)
-        
-    active_list_device_entry: Device = router.device_manager.active_device_list[reported_device_id]
-        
-    active_list_device_entry.update_time() # make sure the timeout doesnt go off...
-    
-    response = await next_call(request)
-    
-    return response  
     
 @router.post("/data")
 async def post_data(data_info: DataSchema) -> JSONResponse:
