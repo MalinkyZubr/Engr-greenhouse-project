@@ -66,13 +66,5 @@ class TaskManager {
   void execute_actions(Actions action);
 };
 
-typedef struct {
-    int moisture;
-    float temperature;
-    float humidity;
-    float light_level;
-    long long light_increment;
-    bool nighttime;
-} CommonData;
 
 #endif

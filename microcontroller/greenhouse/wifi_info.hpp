@@ -23,14 +23,4 @@ enum NetworkTypes {
 };
 
 
-/// @brief struct containing critical wifi information for maintaining device connectivity
-typedef struct {
-  NetworkTypes type;
-  String ssid;
-  String username;
-  String password;
-  int channel;
-  NetworkReturnErrors error;
-} WifiInfo;
-
 #endif
