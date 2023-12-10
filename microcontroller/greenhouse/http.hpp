@@ -6,11 +6,10 @@
 #include <WiFi101.h>
 #include <Regexp.h>
 #include "storage.hpp"
-#include "wifi_info.hpp"
-#include "machine_state.hpp"
+#include "exceptions.hpp"
 
 
-enum methods {
+enum Method {
   GET,
   POST,
   PUT,
@@ -18,26 +17,88 @@ enum methods {
   PATCH
 };
 
-
-String return_method(methods method);
-
-
-class ParsedRequest {
-  public:
-  String method;
-  String route;
-  String host;
-  DynamicJsonDocument body;
-  ParsedRequest() : body(DynamicJsonDocument(0)) {};
-  ParsedRequest(DynamicJsonDocument body) : body(body) {};
+enum BodyType {
+  NONE,
+  JSON,
+  HTML,
+  CSS,
+  JS
 };
 
-class ParsedResponse {
+String return_method_str(Method method);
+Method return_method_enum(String &method);
+
+class RegularExpressions {
   public:
+  static const char* json_regex = R"(\{[^}]*\})";
+  static const char* content_length_regex = R"((?<=Content-Length: )\d+)";
+  static const char* host_regex = R"((?<=Host: )\S+)";
+  static const char* route_regex = R"(/([^ ]+)(?=\sHTTP))";
+  static const char* status_regex = R"(\d\d\d)";
+  static const char* method_regex = R"(^([A-Z]+)\b)";
+
+  static String match(const String &content, const char* pattern_str);
+  static String get_body(const String &content);
+  static String get_content_length(const String &content);
+  static String get_host(const String &content);
+  static String get_route(const String &content);
+  static int get_status(const String &content);
+  static Method get_method(const String &content);
+}
+
+
+class HTTPMessage {
+  private:
+  BodyType body_type;
+  DynamicJsonDocument body = DynamicJsonDocument(0);
+  NetworkExceptions exception = NETWORK_OKAY;
+
+  public:
+  HTTPMessage();
+  HTTPMessage(DynamicJsonDocument body);
+
+  BodyType get_body_type();
+  DynamicJsonDocument& get_body();
+
+  void set_exception(NetworkExceptions exception);
+  NetworkExceptions get_exception();
+
+  void set_body(DynamicJsonDocument body);
+  void set_body_type(BodyType type);
+
+  virtual String serialize() = 0;
+};
+
+class Request : public HTTPMessage {
+  private:
+  Method method;
+  String route;
+  String host;
+  int device_id;
+  MachineOperationalState machine_state;
+
+  public:
+  Request(Method method, String route, String host, int device_id, MachineOperationalState machine_state);
+  Request(Method method, String route, String host, int device_id, MachineOperationalState machine_state, DynamicJsonDocument body);
+  Request(String &unparsed);
+  Request(Request* base_pointer);
+
+  String serialize();
+};
+
+class Response : public HTTPMessage {
+  private:
   int status;
-  DynamicJsonDocument body;
-  ParsedResponse() : body(DynamicJsonDocument(0)) {};
-  ParsedResponse(DynamicJsonDocument body) : body(body) {};
+  String *file_content;
+
+  public:
+  Response(int status);
+  Response(int status, DynamicJsonDocument body);
+  Response(int status, BodyType file_type, String *file_content);
+  Response(String &unparsed);
+  Response(Response* base_pointer);
+
+  String serialize();
 };
 
 enum ReceiveType {
@@ -47,52 +108,10 @@ enum ReceiveType {
 
 class ParsedMessage {
   public:
-  NetworkReturnErrors error = OKAY;
+  NetworkExceptions error = OKAY;
   ReceiveType type;
-  ParsedResponse response;
-  ParsedRequest request;
-};
-
-class Reg {
-    public:
-    MatchState pattern;
-    Reg(char *pattern);
-    String match(String content);
-};
-
-typedef struct {
-  Reg GET_JSON = Reg(R"(\{[^}]*\})");
-  Reg GET_CONTENT_LENGTH = Reg(R"((?<=Content-Length: )\d+)");
-  Reg GET_HOST = Reg(R"((?<=Host: )\S+)");
-  Reg GET_ROUTE = Reg(R"(/([^ ]+)(?=\sHTTP))");
-  Reg GET_STAT = Reg(R"(\d\d\d)");
-  Reg GET_METHOD = Reg(R"(^([A-Z]+)\b)");
-} RegularExpressions;
-
-enum FileType {
-  HTML,
-  CSS,
-  JS
-};
-
-class Requests {
-  public:
-  static RegularExpressions regex;
-  static String request(methods method, String route, String host, int device_id, MachineOperationalState op_state, bool contains_body);
-  static String request(methods method, String route, String host, int device_id, MachineOperationalState op_state, DynamicJsonDocument body);
-
-  static ParsedRequest parse_request(String request);
-};
-
-
-class Responses {
-  public:
-  static RegularExpressions regex;
-  static String response(int status, bool contains_body);
-  static String response(int status, DynamicJsonDocument content);
-  static String file_response(String content, FileType type);
-
-  static ParsedResponse parse_response(String response);
+  Response response;
+  Request request;
 };
 
 

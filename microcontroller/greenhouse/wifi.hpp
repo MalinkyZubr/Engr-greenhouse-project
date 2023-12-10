@@ -8,11 +8,10 @@
 #include <SPI.h>
 #include "async.hpp"
 #include "storage.hpp"
-#include "machine_state.hpp"
 #include "http.hpp"
 #include "webpage.hpp"
 #include "router.hpp"
-#include "wifi_info.hpp"
+#include "exceptions.hpp"
 
 
 #define RECEPTION_PID 6
@@ -20,19 +19,23 @@
 #define UDPMulticastAddress "224.0.2.4"
 #define UDPReceiveBuffSize 30
 #define EXTERNAL_PORT 1337
-#define AP_CONFIG_PASSWORD "GREENHOUSE_CONFIG"
+#define AP_CONFIG_PASSWORD "GHCONFIG"
 
+
+/// @brief global machine connection state for tracking if the device is connected to the server or not
+enum MachineConnectionState {
+    MACHINE_CONNECTED,
+    MACHINE_DISCONNECTED
+};
 
 /// @brief connection info for server and client connections
 /// @param ip: string representing target IP
 /// @param mac: string representing target mac address
-/// @param error: error for when returning connection info from methods
+/// @param exception: exception for when returning connection info from methods
 typedef struct {
     String ip;
-    String mac;
     int port;
-    NetworkReturnErrors error;
-} ConnectionInfo;
+} ServerInformation;
 
 
 /// @brief enum containing all network manager states. Each of these represents a different step in the network management process
@@ -42,7 +45,7 @@ typedef struct {
 /// @param CONNECTED the device is fully authenticated and connected to the server, and can commence regular operations
 /// @param STARTUP this is the wifi network connection sequence if the device has already connected to the wifi previously
 /// @param DOWN state when the device loses connection and must recover
-enum States {
+enum ConnectionStageIdentifier {
     INITIALIZING, 
     BROADCASTING,
     ASSOCIATING,
@@ -67,6 +70,85 @@ class Connection {
   Connection() : Startupserver(LOCAL_PORT), SSLlistener(LOCAL_PORT) {};
 };
 
+enum Layer4Encryption {
+  SSL,
+  NONE
+};
+
+class TCPClient {
+  private:
+  Layer4Encryption layer_4_encryption_type = NONE;
+
+  ParsedMessage parse_message(String &unparsed_message);
+  NetworkExceptions client_receive_message(WiFiClient &client, int timeout, String *message);
+
+  public:
+  TCPClient(Layer4Encryption layer_4_encryption)
+  Layer4Encryption get_encryption();
+
+  NetworkExceptions client_send_message(WiFiClient &client, HTTPMessage *message); // must free dynamically allocated message
+  HTTPMessage* receive_and_parse(WiFiClient &client, int timeout);
+};
+
+class TCPRequestClient : private TCPClient {
+  private:
+  WiFiClient &client;
+  ServerInformation server_information;
+
+  public:
+  TCPRequestClient(WiFiClient &client, Layer4Encryption layer_4_encryption, ServerInformation server_information);
+
+  Response request(Request *message);
+};
+
+template <typename R>
+class TCPListenerClient : private TCPClient {
+  private:
+  WiFiServer &listener;
+  Router router;
+
+  public:
+  TCPListenerClient(WiFiServer listener, Layer4Encryption layer_4_encryption, Router router);
+
+  R listen();
+};
+
+template<typename L, typename C = WiFiClient>
+class ConnectionStage {
+  private:
+  L listener;
+
+  public:
+  ConnectionStage();
+  ConnectionStage(int listener_port) : listener(listener_port) {};
+
+  L get_listener();
+
+  virtual void create_response() = 0;
+
+  virtual void send(C &client) = 0; // must free dynamically allocte
+  virtual ParsedMessage receive(C &client) = 0; // default implementation for wifi based code (reset receive)
+
+  virtual handle_received_message(ParsedMessage &message) = 0; // switch between response and request
+  virtual handle_request(ParsedRequest &request) = 0;
+  virtual handle_response(ParsedResponse &response) = 0;
+
+  virtual NetworkExceptions run() = 0;
+};
+
+class WifiInitialization : public ConnectionStage<WifiServer, WiFiClient> {
+  private:
+  String ssid_config();
+  int get_ap_channel(String &ssid);
+
+
+  String return_webpage_response(String &route);
+  WifiInfo receive_credentials(WiFiClient &client);
+
+  public:
+  WiFiInitialization(int listen_port);
+}
+
 class ConnectionManager {
   private:
   bool check_ssid_existence(String &ssid);
@@ -82,13 +164,13 @@ class ConnectionManager {
   
   bool home_connect(WifiInfo &home_wifi_info);
 
-  NetworkReturnErrors connect_wifi(WifiInfo &wifi_info);
+  NetworkExceptions connect_wifi(WifiInfo &wifi_info);
 
   bool initialization();
 
   WifiInfo receive_credentials(WiFiClient &client);
   
-  NetworkReturnErrors send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &received, int timeout); 
+  NetworkExceptions send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &received, int timeout); 
 
   bool broadcast(bool expidited);
 
@@ -96,7 +178,7 @@ class ConnectionManager {
 
   bool association(); // to be run inside broadcast when receive confirmation
 
-  void listener_error_handler(NetworkReturnErrors error);
+  void listener_exception_handler(NetworkExceptions exception);
 
   public:
   MachineState *machine_state;
@@ -110,13 +192,13 @@ class ConnectionManager {
 
   Router *router;
 
-  ConfigManager *storage;
+  StorageManager *storage;
 
-  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MachineState *machine_state);
-  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MachineState *machine_state, WifiInfo wifi_information);
-  ConnectionManager(TaskManager *task_manager, Router *routes, ConfigManager *storage, MachineState *machine_state, WifiInfo wifi_information, ConnectionInfo server_information);
+  ConnectionManager(TaskManager *task_manager, Router *routes, StorageManager *storage, MachineState *machine_state);
+  ConnectionManager(TaskManager *task_manager, Router *routes, StorageManager *storage, MachineState *machine_state, WifiInfo wifi_information);
+  ConnectionManager(TaskManager *task_manager, Router *routes, StorageManager *storage, MachineState *machine_state, WifiInfo wifi_information, ConnectionInfo server_information);
 
-  NetworkReturnErrors listener();
+  NetworkExceptions listener();
   ParsedResponse connected_send(String &request);
 
   void run();

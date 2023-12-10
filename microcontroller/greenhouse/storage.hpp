@@ -5,8 +5,6 @@
 #include <ArduinoJson.hpp>
 #include <Arduino.h>
 #include <SPIMemory.h>
-#include "wifi_info.hpp"
-#include "machine_state.hpp"
 
 #define IDENTIFIER_ADDRESS 9000
 #define PRESET_ADDRESS 5000
@@ -18,7 +16,21 @@
 
 #define CONFIG_JSON_SIZE 128
 
+// DO BELOW
 // there must be a memory sector for machine state, so that if the device disconnects while paused, it will stay paused after reconnecting
+
+/// @brief global machine operational state for tracking if the machine should be paused or not
+enum MachineOperationalState {
+    MACHINE_PAUSED = 'p', // in this case all devices should stop taking measurements
+    MACHINE_ACTIVE = 'a' // in this case devices should send data to the server
+};
+
+/// @brief enum of possible wifi connection authentication types supported by the network management software
+enum WifiNetworkTypes {
+  HOME = 'h',
+  ENTERPRISE = 'e',
+  OPEN = 'o'
+};
 
 class ConfigStruct {
   private:
@@ -36,6 +48,21 @@ class ConfigStruct {
   bool read();
 
   bool erase();
+};
+
+/// @brief global device state tracker for both connection and operational states. Critical for state driven operations on the device
+class MachineState : public ConfigStruct {
+    private:
+    MachineOperationalState operational_state;
+
+    public:
+    MachineState(SPIFlash *flash, int flash_address);
+
+    MachineOperationalState get_state();
+    void set_state(MachineOperationalState state);
+
+    void from_json(DynamicJsonDocument &data);
+    DynamicJsonDocument to_json();
 };
 
 class Preset : public ConfigStruct {
@@ -77,7 +104,7 @@ class Identifiers : public ConfigStruct {
 
 class WifiInfo : public ConfigStruct{
   private:
-  NetworkTypes type;
+  WifiNetworkTypes type;
   int channel;
   String ssid;
   String username = "";
@@ -153,6 +180,7 @@ class StorageManager {
   WifiInfo wifi_info;
   Preset preset_info;
   Identifiers identifier_info;
+  MachineState machine_state;
 
   SPIFlash flash;
 
@@ -160,6 +188,12 @@ class StorageManager {
   bool configured = false; // this must be set when the configuration is read at startup. Should also be set to true as soon as configuration data is written
 
   StorageManager(int start_address, int data_size, int device_reset_pin);
+
+  DataManager& get_data_manager();
+  WifiInfo& get_wifi();
+  Preset& get_preset();
+  Identifiers& get_identifiers();
+  MachineState& get_machine_state();
 
   void load_flash_configuration();
   bool write_flash_configuration(ConfigType configuration, DynamicJsonDocument &to_write);

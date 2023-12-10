@@ -20,7 +20,7 @@ class Route {
   /// @param request request object to process
   /// @param response response string to write response to
   /// @return NetworkReturnErrors contains the result code for the execution
-  virtual NetworkReturnErrors execute(ParsedRequest &request, String *response) {};
+  virtual NetworkReturnErrors execute(Request &request) {};
 };
 
 class Router {
@@ -30,7 +30,7 @@ class Router {
 
   public:
   bool add_route(Route *route);
-  NetworkReturnErrors execute_route(ParsedRequest &request, String *response);
+  NetworkReturnErrors execute_route(Request &request);
   ~Router();
 };
 

@@ -67,6 +67,39 @@ DynamicJsonDocument Identifiers::to_json() {
   return data;
 }
 
+////////////////////////////////////////////////////////////////////
+//////////////// Machine State /////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+MachineState::MachineState(SPIFlash *flash, int flash_address) : ConfigStruct(flash, flash_address) {}
+
+MachineOperationalState MachineState::get_state() {
+  return this->operational_state;
+}
+
+void MachineState::set_state(MachineOperationalState state) {
+  this->operational_state = state;
+}
+
+void MachineState::from_json(DynamicJsonDocument &data) {
+  char reported_operational_state = (char)data["operational_state"];
+  switch(reported_operational_state) {
+    case 'p':
+      this->operational_state = MACHINE_PAUSED;
+      break;
+    case 'a':
+      this->operational_state = MACHINE_ACTIVE;
+      break;
+  }
+}
+
+DynamicJsonDocument MachineState::to_json() {
+  DynamicJsonDocument data(CONFIG_JSON_SIZE);
+
+  data["operational_state"] = (char)this->operational_state;
+
+  return data;
+}
 
 ////////////////////////////////////////////////////////////////////
 //////////////// Preset ////////////////////////////////////////////
@@ -294,7 +327,8 @@ StorageManager::StorageManager(int start_address, int data_size, int device_rese
   identifier_info(&this->flash, start_address + BLOCK_SIZE),
   preset_info(&this->flash, start_address + BLOCK_SIZE * 2),
   wifi_info(&this->flash, start_address + BLOCK_SIZE * 3),
-  data_manager(&this->flash, start_address + BLOCK_SIZE * 4, data_size) {
+  machine_state(&this->flash, start_address + BLOCK_SIZE * 4),
+  data_manager(&this->flash, start_address + BLOCK_SIZE * 5, data_size) {
   if(this->data_manager.get_end_address() > this->flash.getCapacity()) { 
     return;
   }
@@ -305,6 +339,26 @@ void StorageManager::load_flash_configuration() {
   this->identifier_info.read();
   this->preset_info.read();
   this->wifi_info.read();
+}
+
+DataManager& StorageManager::get_data_manager() {
+  return this->data_manager;
+}
+
+WifiInfo& StorageManager::get_wifi() {
+  return this->wifi_info;
+}
+
+Preset& StorageManager::get_preset() {
+  return this->preset_info;
+}
+
+Identifiers& StorageManager::get_identifiers() {
+  return this->identifier_info;
+}
+
+MachineState& StorageManager::get_machine_state() {
+  return this->machine_state;
 }
 
 bool StorageManager::write_flash_configuration(ConfigType configuration, DynamicJsonDocument &to_write) {

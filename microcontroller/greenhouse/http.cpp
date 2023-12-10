@@ -5,7 +5,7 @@
 /// @brief return a string which corresponds to the http method enum value
 /// @param method http method enum to convert from
 /// @return String representing the stringified HTTP method
-String return_method(methods method) {
+String return_method_str(Method method) {
   String method_str;
   switch(method) {
     case GET:
@@ -27,59 +27,161 @@ String return_method(methods method) {
   return method_str;
 }
 
-/// @brief instantiate regex class based on char array pattern
-/// @param pattern the char array pattern
-Reg::Reg(char *pattern) {
-  this->pattern.Match(pattern);
+Method return_method_enum(String &method) {
+  Method method_enum;
+  
+  if(method.equals("GET")) {
+    method_enum = GET;
+  }
+  else if(method.equals("POST")) {
+    method_enum = POST;
+  }
+  else if(method.equals("PUT")) {
+    method_enum = PUT;
+  }
+  else if(method.equals("DELETE")) {
+    method_enum = DELETE;
+  }
+  else if(method.equals("PATCH")) {
+    method_enum = PATCH;
+  }
+  return method_enum;
 }
+
+
+///////////////////////////////////////////////////
+///////// Regex ///////////////////////////////////
+///////////////////////////////////////////////////
 
 /// @brief regex function to return a matching substring of a larger string
 /// @param content string representing the entire string
 /// @return String, the matching substring
-String Reg::match(String content) {
-  int size = content.length() * sizeof(char);
+String RegularExpressions::match(const String &content, const char* pattern_str) {
+  MatchState pattern;
 
-  void* temp = malloc(size);
-  char* converted = static_cast<char*>(temp);
+  char* char_array_content = new char[content.length() + 1];
+  strcpy(char_array_content, content.c_str());
 
-  content.toCharArray(converted, size);
+  pattern.Match(pattern_str);
 
-  this->pattern.Target(converted);
+  pattern.Target(char_array_content);
 
-  int start = this->pattern.MatchStart;
-  int length = this->pattern.MatchLength;
+  int start = pattern.MatchStart;
+  int length = pattern.MatchLength;
 
   String result = "";
   for(int x = start; x < start + length; x++) {
-    result.concat(converted[x]);
+    result.concat(content[x]);
   }
 
-  free(temp);
-  free(converted);
+  delete char_array_content;
+
   return result;
 }
 
+String RegularExpressions::get_body(const String &content) {
+  return RegularExpressions::match(content, RegularExpressions::json_regex);
+}
 
-/// @brief generate an HTTP request without a request body, good for simple http operations with the server
-/// @param method The method to use in the request, like POST or GET
-/// @param route the server API route to send the request to, must start with a "/"
-/// @param host the hostname/ip address of the desired server
-/// @param device_id the id of the device this function runs on, to be stored in a cookie for tracking requests server side
-/// @param op_state the operational state of the device, IDLE or ACTIVE, stored in a cookie to track device status on the server
-/// @param contains_body flag to say if the request should include a request body. If you have no json or webpage to serve, this should always be false
-/// @return String, the formatted http request containing all specified information
-String Requests::request(methods method, String route, String host, int device_id, MachineOperationalState op_state, bool contains_body = false) {
-  String request = return_method(method);
+String RegularExpressions::get_content_length(const String &content) {
+  return RegularExpressions::match(content, RegularExpressions::content_length_regex);
+}
+
+String RegularExpressions::get_host(const String &content) {
+  return RegularExpressions::match(content, RegularExpressions::host_regex);
+}
+
+String RegularExpressions::get_route(const String &content) {
+  return RegularExpressions::match(content, RegularExpressions::route_regex);
+}
+
+int RegularExpressions::get_status(const String &content) {
+  return RegularExpressions::match(content, RegularExpressions::status_regex).toInt();
+}
+
+Method RegularExpressions::get_method(const String &content) {
+  String method = RegularExpressions::match(content, RegularExpressions::method_regex);
+  return return_method_enum(method);
+}
+
+///////////////////////////////////////////////////
+///////// HTTPMessage /////////////////////////////
+///////////////////////////////////////////////////
+
+HTTPMessage::HTTPMessage() : body_type(NONE) {}
+
+HTTPMessage::HTTPMessage(DynamicJsonDocument body) : body(body), body_type(JSON) {}
+
+void HTTPMessage::set_body(DynamicJsonDocument body) {
+  this->body = body;
+  this->body_type = JSON;
+}
+
+BodyType HTTPMessage::get_body_type() {
+  return this->body_type;
+}
+
+DynamicJsonDocument& HTTPMessage::get_body() {
+  return this->body;
+}
+
+void HTTPMessage::set_exception(NetworkExceptions exception) {
+  this->exception = exception;
+}
+
+NetworkExceptions HTTPMessage::get_exception() {
+  return this->exception;
+}
+
+void HTTPMessage::set_body_type(BodyType type) {
+  this->body_type = type;
+}
+
+///////////////////////////////////////////////////
+///////// Request /////////////////////////////////
+///////////////////////////////////////////////////
+
+Request::Request(Method method, String route, String host, int device_id, MachineOperationalState machine_state) : method(method), route(route), host(host), device_id(device_id), machine_state(machine_state) {}
+
+Request::Request(Method method, String route, String host, int device_id, MachineOperationalState machine_state, DynamicJsonDocument body) : method(method), device_id(device_id), machine_state(machine_state), route(route), host(host), HTTPMessage(body) {}
+
+Request::Request(String &unparsed) {
+  this->method = RegularExpressions::get_method(unparsed);
+  this->route = RegularExpressions::get_route(unparsed);
+  this->host = RegularExpressions::get_host(unparsed);
+
+  String json = RegularExpressions::get_body(unparsed);
+
+  if(json.length()) {
+    DynamicJsonDocument doc(CONFIG_JSON_SIZE);
+    deserializeJson(doc, json);
+    this->set_body(doc);
+  }
+}
+
+Request::Request(Request* base_pointer) : method(base_pointer->method), 
+  route(base_pointer->route), 
+  host(base_pointer->host), 
+  device_id(base_pointer->device_id),
+  machine_state(base_pointer->machine_state) {
+    if(base_pointer->get_body_type() == JSON) {
+      this->set_body(base_pointer->get_body());
+    }
+}
+
+String Request::serialize() {
+  String request = return_method_str(this->method);
+  String body;
+
   request.concat(" ");
-  request.concat(route);
-  request.concat(" HTTP/1.1\r\n");
-  request.concat("Host: ");
-  request.concat(host);
-  request.concat("\r\n");
-  request.concat("Cookie: device_id=");
-  request.concat(device_id);
+  request.concat(this->route);
+  request.concat(" HTTP/1.1");
+  request.concat("\r\nHost: ");
+  request.concat(this->host);
+  request.concat("\r\nCookie: device_id=");
+  request.concat(this->device_id);
   request.concat("; status=");
-  switch(op_state) {
+  switch(this->machine_state) {
     case MACHINE_ACTIVE:
       request.concat("ACTIVE");
       break;
@@ -87,135 +189,87 @@ String Requests::request(methods method, String route, String host, int device_i
       request.concat("IDLE");
       break;
   }
-  request.concat("\r\n");
-
-  if(!contains_body) {
-    request.concat("\r\n");
+  if(this->get_body_type() == NONE) {
+    request.concat("\r\n\r\n");
+  }
+  else if(this->get_body_type()) {
+    serializeJson(this->get_body(), body);
+    request.concat("\r\nContent-Type: application/json");
+    request.concat("\r\nContent-Length: ");
+    request.concat(body.length());
+    request.concat("\r\n\r\n");
   }
 
   return request;
 }
 
+///////////////////////////////////////////////////
+///////// Response ////////////////////////////////
+///////////////////////////////////////////////////
 
-/// @brief generate a request with a json body
-/// @param method The method to use in the request, POST or GET
-/// @param route the hostname/ip address of the desired server
-/// @param host the hostname/ip address of the desired server
-/// @param device_id the id of the device this function runs on, to be stored in a cookie for tracking requests server side
-/// @param op_state the operational state of the device, IDLE or ACTIVE, stored in a cookie to track device status on the server
-/// @param body JSON object representing the request body
-/// @return formatted request containing all necessary information, including the request body
-String Requests::request(methods method, String route, String host, int device_id, MachineOperationalState op_state, DynamicJsonDocument body) {
-  String json;
-  serializeJson(body, json);
-  String request = Requests::request(method, route, host, device_id, op_state, true);
-  request.concat("Content-Type: application/json\r\n");
-  request.concat("Content-Length: ");
-  request.concat(json.length());
-  request.concat("\r\n\r\n");
-  request.concat(json);
+Response::Response(int status) : status(status) {}
 
-  return request;
+Response::Response(int status, DynamicJsonDocument body) : status(status), HTTPMessage(body) {}
+
+Response::Response(int status, BodyType file_type, String *file_content) : status(status), file_content(file_content) {
+  this->set_body_type(file_type);
 }
 
+Response::Response(String &unparsed) {
+  this->status = RegularExpressions::get_status(unparsed);
+  String json = RegularExpressions::get_body(unparsed);
 
-/// @brief use regex to parse an incoming request, from string to ParsedRequest object
-/// @param request the string representing a raw http request received from a server
-/// @return ParsedRequest, request object for use in code
-ParsedRequest Requests::parse_request(String request) {
-  ParsedRequest request_struct(DynamicJsonDocument(0));
-
-  request_struct.method = Requests::regex.GET_METHOD.match(request);
-  request_struct.route = Requests::regex.GET_ROUTE.match(request);
-  request_struct.host = Requests::regex.GET_HOST.match(request);
-  String json = Requests::regex.GET_JSON.match(request);
-
-  if(json.length()) {
-    DynamicJsonDocument doc(CONFIG_JSON_SIZE);
-    deserializeJson(doc, json);
-    request_struct.body = doc;
-  }
-
-  return request_struct;
-}
-
-
-/// @brief generate a string representation of an http response with no body
-/// @param status int representing http status, 200 for instance
-/// @param contains_body this should be false if no json is included in the request. Use the overload for that
-/// @return String, string representation of the response
-String Responses::response(int status, bool contains_body = false) {
-  String response = "HTTP/1.1 ";
-  response.concat(status);
-  response.concat(" OK\r\n");
-  
-  if(!contains_body) {
-    response.concat("\r\n\r\n");
-  }
-
-  return response;
-}
-
-/// @brief generate a string representation of an http response with no body
-/// @param status int representing http status, 200 for instance
-/// @param content JSON content representing response body
-/// @return String, string representation of the response
-String Responses::response(int status, DynamicJsonDocument content) {
-  String response = Responses::response(status, true);
-  String json;
-  serializeJson(content, json);
-
-  response.concat("Content-Type: application/json\r\n");
-  response.concat("Content-Length: ");
-  response.concat(json.length()); 
-  response.concat("\r\n\r\n");
-  response.concat(json);
-
-  return response;
-}
-
-
-/// @brief generate a string representation of an http response which includes webpage data (html, css, or js) as the body
-/// @param content String representation of the content to send
-/// @param type enum for type of file to be sent over http, HTML, CSS, or JS
-/// @return String, represents the http response contianing file content
-String Responses::file_response(String content, FileType type) {
-  String response = Responses::response(200, true);
-
-  switch(type) {
-    case HTML:
-      response.concat("Content-Type: text/html\r\n");
-      break;
-    case CSS:
-      response.concat("Content-Type: text/css\r\n");
-      break;
-    case JS:
-      response.concat("Content-Type: application/javascript\r\n");
-      break;
-  }
-
-  response.concat("Content-Length: ");
-  response.concat(content.length());
-  response.concat("\r\n\r\n");
-  response.concat(content);
-
-  return response;
-}
-
-
-/// @brief parse a response to a ParsedResponse object from a received string
-/// @param response string representing raw http response
-/// @return ParsedResponse, response object to be used in the code
-ParsedResponse Responses::parse_response(String response) {
-  ParsedResponse response_struct(DynamicJsonDocument(CONFIG_JSON_SIZE));
-
-  response_struct.status = Responses::regex.GET_STAT.match(response).toInt();
-
-  String json = Responses::regex.GET_JSON.match(response);
   if(json.length()) {
     DynamicJsonDocument doc = DynamicJsonDocument(CONFIG_JSON_SIZE);
     deserializeJson(doc, json);
-    response_struct.body = doc;
+    this->set_body(doc);
   }
-  return response_struct;
+}
+
+Response::Response(Response* base_pointer) : status(base_pointer->status) {
+  if(base_pointer->file_content->length()) {
+    this->file_content = base_pointer->file_content;
+    this->set_body_type(base_pointer->get_body_type());
+  }
+} 
+
+String Response::serialize() {
+  String response = "HTTP/1.1 ";
+  String body;
+
+  response.concat(status);
+  response.concat(" OK");
+  
+  if(!this->get_body_type()) {
+    response.concat("\r\n\r\n");
+  }
+
+  else {
+    serializeJson(this->get_body(), body);
+
+    switch(this->get_body_type()) {
+      case JSON:
+        serializeJson(this->get_body(), body);
+        response.concat("\r\nContent-Type: application/json");
+        break;
+      case HTML:
+        body = *this->file_content;
+        response.concat("\r\nContent-Type: text/html");
+        break;
+      case CSS:
+        body = *this->file_content;
+        response.concat("\r\nContent-Type: text/css");
+        break;
+      case JS:
+        body = *this->file_content;
+        response.concat("\r\nContent-Type: application/javascript");
+        break;
+    }
+    response.concat("\r\nContent-Length: ");
+    response.concat(body.length()); 
+    response.concat("\r\n\r\n");
+    response.concat(body);
+  }
+
+  return response;
 }
