@@ -7,14 +7,19 @@
 
 ConfigStruct::ConfigStruct(SPIFlash *flash, int address) : flash(flash), flash_address(address) {}
 
-bool ConfigStruct::write(DynamicJsonDocument &data) {
+StorageException ConfigStruct::write(DynamicJsonDocument &data) {
   String to_write;
 
-  this->from_json(data);
+  StorageException conversion_exception = this->from_json(data);
+  if(conversion_exception != STORAGE_OKAY) {
+    return conversion_exception
+  };
   this->erase();
 
   serializeJson(data, to_write);
-  return this->flash->writeStr(this->flash_address, to_write);
+  if(!this->flash->writeStr(this->flash_address, to_write)) {
+    return STORAGE_WRITE_FAILURE;
+  };
 }
 
 bool ConfigStruct::read() {
@@ -51,10 +56,15 @@ String Identifiers::get_device_name() {
   return this->device_name;
 }
 
-void Identifiers::from_json(DynamicJsonDocument &data) {
+StorageException Identifiers::from_json(DynamicJsonDocument &data) {
+  if(!data.containsKey("device_id") || !data.containsKey("project_id") || !data.containsKey("device_name")) {
+    return STORAGE_IDENTIFIER_FIELD_MISSING;
+  }
   this->device_id = data["device_id"];
   this->project_id = data["project_id"];
   this->device_name = (char *)&data["device_name"];
+
+  return STORAGE_OKAY
 }
 
 DynamicJsonDocument Identifiers::to_json() {
@@ -81,7 +91,11 @@ void MachineState::set_state(MachineOperationalState state) {
   this->operational_state = state;
 }
 
-void MachineState::from_json(DynamicJsonDocument &data) {
+StorageException MachineState::from_json(DynamicJsonDocument &data) {
+  if(!data.containsKey("operational_state")) {
+    return STORAGE_IDENTIFIER_FIELD_MISSING;
+  }
+
   char reported_operational_state = (char)data["operational_state"];
   switch(reported_operational_state) {
     case 'p':
@@ -91,6 +105,7 @@ void MachineState::from_json(DynamicJsonDocument &data) {
       this->operational_state = MACHINE_ACTIVE;
       break;
   }
+  return STORAGE_OKAY;
 }
 
 DynamicJsonDocument MachineState::to_json() {
@@ -127,12 +142,18 @@ float Preset::get_preset_id() {
   return this->preset_id;
 }
 
-void Preset::from_json(DynamicJsonDocument &data) {
+StorageException Preset::from_json(DynamicJsonDocument &data) {
+  if(!data.containsKey("preset_id") || !data.containsKey("temperature") || !data.containsKey("humidity") || !data.containsKey("moisture") || !data.containsKey("hours_daylight")) {
+    return STORAGE_PRESET_FIELD_MISSING;
+  }
+
   this->preset_id = data["preset_id"];
   this->temperature = data["temperature"];
   this->humidity = data["humidity"];
   this->moisture = data["moisture"];
   this->hours_daylight = data["hours_daylight"];
+
+  return STORAGE_OKAY;
 }
 
 DynamicJsonDocument Preset::to_json() {
@@ -160,7 +181,7 @@ WifiInfo::WifiInfo(String ssid, int channel, String password) : ssid(ssid), chan
 
 WifiInfo::WifiInfo(String ssid, int channel) : ssid(ssid), channel(channel), type(OPEN) {}
 
-NetworkTypes WifiInfo::get_type() {
+WifiNetworkTypes WifiInfo::get_type() {
   return this->type;
 }
 

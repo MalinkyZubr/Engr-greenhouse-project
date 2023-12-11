@@ -25,6 +25,12 @@ enum BodyType {
   JS
 };
 
+enum DeviceDirective {
+  DEVICE_NONE,
+  DEVICE_HARD_RESET,
+  DEVICE_NETWORK_RESET
+};
+
 String return_method_str(Method method);
 Method return_method_enum(String &method);
 
@@ -83,6 +89,9 @@ class Request : public HTTPMessage {
   Request(String &unparsed);
   Request(Request* base_pointer);
 
+  String get_route();
+  Method get_method();
+
   String serialize();
 };
 
@@ -90,6 +99,7 @@ class Response : public HTTPMessage {
   private:
   int status;
   String *file_content;
+  DeviceDirective directive = DEVICE_NONE;
 
   public:
   Response(int status);
@@ -97,6 +107,9 @@ class Response : public HTTPMessage {
   Response(int status, BodyType file_type, String *file_content);
   Response(String &unparsed);
   Response(Response* base_pointer);
+
+  void set_directive(DeviceDirective directive);
+  DeviceDirective get_directive();
 
   String serialize();
 };

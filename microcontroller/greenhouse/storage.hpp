@@ -5,6 +5,7 @@
 #include <ArduinoJson.hpp>
 #include <Arduino.h>
 #include <SPIMemory.h>
+#include "exceptions.hpp"
 
 #define IDENTIFIER_ADDRESS 9000
 #define PRESET_ADDRESS 5000
@@ -42,7 +43,7 @@ class ConfigStruct {
   ConfigStruct(SPIFlash *flash, int flash_address);
 
   virtual DynamicJsonDocument to_json() = 0;
-  virtual void from_json(DynamicJsonDocument &data) = 0;
+  virtual StorageException from_json(DynamicJsonDocument &data) = 0;
 
   bool write(DynamicJsonDocument &data);
   bool read();
@@ -52,17 +53,17 @@ class ConfigStruct {
 
 /// @brief global device state tracker for both connection and operational states. Critical for state driven operations on the device
 class MachineState : public ConfigStruct {
-    private:
-    MachineOperationalState operational_state;
+  private:
+  MachineOperationalState operational_state;
 
-    public:
-    MachineState(SPIFlash *flash, int flash_address);
+  public:
+  MachineState(SPIFlash *flash, int flash_address);
 
-    MachineOperationalState get_state();
-    void set_state(MachineOperationalState state);
+  MachineOperationalState get_state();
+  void set_state(MachineOperationalState state);
 
-    void from_json(DynamicJsonDocument &data);
-    DynamicJsonDocument to_json();
+  StorageException from_json(DynamicJsonDocument &data);
+  DynamicJsonDocument to_json();
 };
 
 class Preset : public ConfigStruct {
@@ -82,7 +83,7 @@ class Preset : public ConfigStruct {
   float get_hours_daylight();
   float get_preset_id();
 
-  void from_json(DynamicJsonDocument &data) override;
+  StorageException from_json(DynamicJsonDocument &data) override;
   DynamicJsonDocument to_json() override;
 };
 
@@ -93,12 +94,13 @@ class Identifiers : public ConfigStruct {
   String device_name;
 
   public:
+  Identifiers() {};
   Identifiers(SPIFlash *flash, int flash_address);
   int get_device_id();
   int get_project_id();
   String get_device_name();
 
-  void from_json(DynamicJsonDocument &data) override;
+  StorageException from_json(DynamicJsonDocument &data) override;
   DynamicJsonDocument to_json() override;
 };
 
@@ -124,7 +126,7 @@ class WifiInfo : public ConfigStruct{
 
   bool copy(WifiInfo &to_copy);
 
-  void from_json(DynamicJsonDocument &data) override;
+  StorageException from_json(DynamicJsonDocument &data) override;
   DynamicJsonDocument to_json() override;
 };
 

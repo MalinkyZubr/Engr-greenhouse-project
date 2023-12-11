@@ -145,6 +145,14 @@ Request::Request(Method method, String route, String host, int device_id, Machin
 
 Request::Request(Method method, String route, String host, int device_id, MachineOperationalState machine_state, DynamicJsonDocument body) : method(method), device_id(device_id), machine_state(machine_state), route(route), host(host), HTTPMessage(body) {}
 
+String Request::get_route() {
+  return this->route;
+}
+
+Method Request::get_method() {
+  return this->method;
+}
+
 Request::Request(String &unparsed) {
   this->method = RegularExpressions::get_method(unparsed);
   this->route = RegularExpressions::get_route(unparsed);
@@ -232,6 +240,14 @@ Response::Response(Response* base_pointer) : status(base_pointer->status) {
     this->set_body_type(base_pointer->get_body_type());
   }
 } 
+
+void Response::set_directive(DeviceDirective directive) {
+  this->directive = directive;
+}
+
+DeviceDirective Response::get_directive() {
+  return this->directive;
+}
 
 String Response::serialize() {
   String response = "HTTP/1.1 ";

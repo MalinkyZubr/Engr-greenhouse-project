@@ -1,107 +1,128 @@
 #include "full_connect_routes.hpp"
 
 
-/// @brief route telling the device to disconnect from the server and return to broadcasting mode (WIP to convert from device reset)
-/// @param route string for the route to set this object to listen for
-/// @param storage for interfacing with storage to make reset of network persistent
-/// @param machine_state global machine state to modify device behavior after network reset
-/// @param connection_manager connection manager, needed to change network state
-NetworkReset::NetworkReset(String route, ConfigManager *storage, MachineState *machine_state, ConnectionManager *connection_manager) : Route(route), storage(storage), machine_state(machine_state), connection_manager(connection_manager) {}
+Router full_connection_router(StorageManager *global_storage) {
+  Router router;
 
-NetworkReturnErrors NetworkReset::execute(ParsedRequest &request, String *response) { // find something else to do here
-  this->storage->reset();
-  this->machine_state->operational_state = MACHINE_PAUSED;
-  this->machine_state->connection_state = MACHINE_DISCONNECTED;
-  this->connection_manager->network_state = INITIALIZING;
+  return router
+    .add_route(new NetworkReset("/reset/network", POST))
+    .add_route(new DeviceReset("/reset/hard", DELETE))
+    .add_route(new SetTime("/time", POST, global_storage))
+    .add_route(new ConfigureDeviceIds("/configure/id", POST, global_storage))
+    .add_route(new ConfigureDevicePreset("/configure/preset", POST, global_storage))
+    .add_route(new PauseDevice("/configure/status", PUT, global_storage));
+}
 
-  return CONNECTION_FAILURE; // to break out of the conneciton loop
+Response storage_route_error_handler(StorageException exception, int okay_code = 200) {
+  Response response;
+
+  switch(exception) {
+    case STORAGE_IDENTIFIER_FIELD_MISSING:
+      response = Response(415);
+      break;
+    case STORAGE_WRITE_FAILURE:
+      response = Response(500);
+      break;
+    case STORAGE_OKAY:
+      response = Response(okay_code);
+      break;
+  }
+  
+  return response;
+}
+
+///////////////////////////////////////////////////
+////////////////// NetworkReset ///////////////////
+///////////////////////////////////////////////////
+
+NetworkReset::NetworkReset(const String route, const Method method) : Route(route, method) {}
+
+Response NetworkReset::execute(ParsedRequest &request) {
+  Response response(200);
+  response.set_directive(DEVICE_NETWORK_RESET);
+
+  return response;
 }
 
 
-/// @brief request to entirely reset the device (using the reset pin)
-/// @param route route for the device reset
-/// @param storage storage manager for executing the device reset
-DeviceReset::DeviceReset(String route, ConfigManager *storage) : Route(route), storage(storage) {}
+DeviceReset::DeviceReset(const String route, const Method method) : Route(route, method) {}
 
-NetworkReturnErrors DeviceReset::execute(ParsedRequest &request, String *response) {
-  // server must not check for response
-  this->storage->reset();
+Response DeviceReset::execute(ParsedRequest &request) {
+  Response response(200);
+  response.set_directive(DEVICE_HARD_RESET);
+  
+  return response;
 }
 
 
-/// @brief time sync request from the server to set the time on the device, and let the device know when its nighttime. This should be send twice every 24 hours, once at sunset, once at sunrise
-/// @param route route to listen on for time request
-/// @param common_data global common data struct used for storing whether or not it is day or nighttime
-SetTime::SetTime(String route, CommonData *common_data) : Route(route), common_data(common_data) {}
+SetTime::SetTime(const String route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
 
-NetworkReturnErrors SetTime::execute(ParsedRequest &request, String *response) {
-  bool nighttime = request.body["is_night"];
-  this->common_data->nighttime = nighttime;
+Response SetTime::execute(ParsedRequest &request) {
+  Response response;
 
-  return OKAY;
-}
-
-
-/// @brief route for configuring device identification fields
-/// @param route the route to listen on for device identification modification requests
-/// @param storage storage object to write configurations to
-ConfigureDeviceIds::ConfigureDeviceIds(String route, ConfigManager *storage) : Route(route), storage(storage) {}
-
-NetworkReturnErrors ConfigureDeviceIds::execute(ParsedRequest &request, String *response) {
-  Identifiers new_identifiers;
-  this->storage->deserialize_device_identifiers(new_identifiers, request.body);
-  if(this->storage->set_device_identifiers(new_identifiers)) {
-   *response = Responses::response(200, false);
-    return OKAY;
+  if(!request.get_body().containsKey("datetime")) {
+    response = Response(415);
   }
   else {
-    *response = Responses::response(500, false);
-    return STORAGE_WRITE_FAILURE;
+    DataManager data_manager = this->global_storage->get_data_manager();
+    data_manager.set_reference_datetime(request.get_body()["datetime"]);
+
+    response = Response(200);
   }
+
+  return response;
 }
 
 
-/// @brief route to listen on for preset configurations from the server
-/// @param route route on which device listens for preset config requests
-/// @param storage storage interface to write configurations to flash memory
-ConfigureDevicePreset::ConfigureDevicePreset(String route, ConfigManager *storage) : Route(route), storage(storage) {}
+ConfigureDeviceIds::ConfigureDeviceIds(const String route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
+
+Response ConfigureDeviceIds::execute(ParsedRequest &request) {
+  Response response;
+  StorageException exception = this->global_storage->get_identifiers().write(request.get_body());
+  
+  response = storage_route_error_handler(exception);
+
+  return response;
+}
+
+
+ConfigureDevicePreset::ConfigureDevicePreset(const String route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
 
 //error handling should also go here
-NetworkReturnErrors ConfigureDevicePreset::execute(ParsedRequest &request, String *response) {
-  Preset new_preset;
-  this->storage->deserialize_preset(new_preset, request.body);
-  if(this->storage->set_preset(new_preset)) {
-    *response = Responses::response(200, false);
-    return OKAY;
-  }
-  else {
-    *response = Responses::response(500, false);
-    return STORAGE_WRITE_FAILURE;
-  }
+Response ConfigureDevicePreset::execute(ParsedRequest &request) {
+  Response response;
+  StorageException exception = this->global_storage->get_preset().write(request.get_body());
+
+  response = storage_route_error_handler(exception);
+
+  return response;
 }
 
 
-/// @brief request from server to change the machine operational state, either to or from paused
-/// @param route route to listen for state change requests on
-/// @param machine_state global machine state to write requested status to
-PauseDevice::PauseDevice(String route, MachineState *machine_state) : Route(route), machine_state(machine_state) {}
+PauseDevice::PauseDevice(const String route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
 
-NetworkReturnErrors PauseDevice::execute(ParsedRequest &request, String *response) {
+Response PauseDevice::execute(ParsedRequest &request) {
+  Response response;
   bool paused = request.body["paused"];
-  if(paused && this->machine_state->operational_state != MACHINE_PAUSED) {
-    this->machine_state->operational_state = MACHINE_PAUSED;
-    *response = Responses::response(202, false);
+  StorageException exception
+
+  MachineState state_manager = this->global_storage->get_machine_state();
+  MachineOperationalState state = state_manager.get_state();
+
+  if(paused && state != MACHINE_PAUSED) {
+    exception = state_manager.from_json(request.get_body());
+    response = storage_route_error_handler(exception, 202);
   }
   else if(this->machine_state->operational_state == MACHINE_PAUSED) {
-    *response = Responses::response(429, false);
+    response = Response(429);
   }
   else if(!paused && this->machine_state->operational_state != MACHINE_ACTIVE) {
-    this->machine_state->operational_state = MACHINE_ACTIVE;
-    *response = Responses::response(200, false);
+    exception = state_manager.from_json(request.get_body());
+    response = storage_route_error_handler(exception);
   }
   else {
-    *response = Responses::response(429, false);
+    response = Response(429);
   }
 
-  return OKAY;
+  return response;
 }

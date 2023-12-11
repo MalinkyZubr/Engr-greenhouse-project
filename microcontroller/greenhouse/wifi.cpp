@@ -144,8 +144,7 @@ Response TCPRequestClient::request(Request *message) {
 ///////// TCPListenerClient ///////////////////////
 ///////////////////////////////////////////////////
 
-template <typename R>
-TCPListenerClient<R>::TCPListenerClient(WiFiServer listener, Layer4Encryption encryption, Router router) : listener(listener), router(router), TCPClient(encryption) {
+TCPListenerClient::TCPListenerClient(WiFiServer listener, Layer4Encryption encryption, Router router) : listener(listener), router(router), TCPClient(encryption) {
   switch(encryption) {
     case NONE:
       this->listener.begin();
@@ -156,8 +155,18 @@ TCPListenerClient<R>::TCPListenerClient(WiFiServer listener, Layer4Encryption en
   }
 }
 
-template <typename R>
-R TCPListenerClient<R>::listen() {
+NetworkExceptions TCPListenerClient::respond(Response response, WiFiClient &client) {
+  String response = response.serialize();
+  NetworkExceptions exception = NETWORK_OKAY;
+  if(!client.println(response)) {
+    exception = NETWORK_SERVER_CONNECTION_FAILURE;
+  }
+
+  client.stop();
+  return exception;
+}
+
+R TCPListenerClient::listen() {
   Request *received_ptr;
   Request received;
   WiFiClient client = this->listener.available();
@@ -165,7 +174,9 @@ R TCPListenerClient<R>::listen() {
   received_ptr = this->receive_and_parse(client, 5000);
   received = Request(received_ptr);
 
-  this->router
+  Response response = this->router->execute_route(received);
+  
+  return this->response(response, client);
 }
 
 ///////////////////////////////////////////////////

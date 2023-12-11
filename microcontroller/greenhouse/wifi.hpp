@@ -101,16 +101,18 @@ class TCPRequestClient : private TCPClient {
   Response request(Request *message);
 };
 
-template <typename R>
+
 class TCPListenerClient : private TCPClient {
   private:
   WiFiServer &listener;
+  Request* request_queue;
   Router router;
 
   public:
   TCPListenerClient(WiFiServer listener, Layer4Encryption layer_4_encryption, Router router);
 
-  R listen();
+  NetworkExceptions respond(Response response);
+  NetworkExceptions listen();
 };
 
 template<typename L, typename C = WiFiClient>

@@ -2,42 +2,34 @@
 #define ROUTER_HPP
 
 #include <Arduino.h>
-#include <WiFi101.h>
-#include "async.hpp"
+#include <ArduinoJson.h>
 #include "http.hpp"
 #include "exceptions.hpp"
 
 #define MAX_ROUTES 10
 
 
-template <typename R>
-typedef struct {
-  NetworkExceptions exception;
-  R return_value;
-}RouteReturn;
+class Route {
+    public:
+    const String route;
+    const Method method;
+
+    Route(const String route, const Method method);
+    bool requested(Request &request);
+
+    virtual Response execute(Request &request) {};
+};
 
 
-template <typename R = void*>
 class Router {
-  class Route;
-
-  public:
+  private:
   Route *routes[MAX_ROUTES];
   int num_routes;
 
-  class Route {
-    public:
-    const String route;
+  public:
+  Router& add_route(Route *route);
 
-    Route(const String route);
-    bool requested(String &requested_route);
-
-    virtual RouteReturn<R> execute(Request &request) {};
-  };
-
-  bool add_route(Route *route);
-
-  RouteReturn<R> execute_route(Request &request);
+  NetworkException execute_route(Request &request);
   ~Router();
 };
 
