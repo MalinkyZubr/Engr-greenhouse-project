@@ -1,5 +1,5 @@
-#ifndef REQUEST_ROUTES_HPP
-#define REQUEST_ROUTES_HPP
+#ifndef FULL_CONNECT_ROUTES_HPP
+#define FULL_CONNECT_ROUTES_HPP
 
 #include "wifi.hpp"
 #include "http.hpp"

@@ -5,33 +5,41 @@
 #include <WiFi101.h>
 #include "async.hpp"
 #include "http.hpp"
-#include "machine_state.hpp"
+#include "exceptions.hpp"
 
 #define MAX_ROUTES 10
 
-class Route {
-  public:
-  const String route;
 
-  Route(String route);
-  bool requested(String &requested_route);
+template <typename R>
+typedef struct {
+  NetworkExceptions exception;
+  R return_value;
+}RouteReturn;
 
-  /// @brief abstract function needed in all routes to allow execution of code
-  /// @param request request object to process
-  /// @param response response string to write response to
-  /// @return NetworkReturnErrors contains the result code for the execution
-  virtual NetworkReturnErrors execute(Request &request) {};
-};
 
+template <typename R = void*>
 class Router {
-  private:
+  class Route;
+
+  public:
   Route *routes[MAX_ROUTES];
   int num_routes;
 
-  public:
+  class Route {
+    public:
+    const String route;
+
+    Route(const String route);
+    bool requested(String &requested_route);
+
+    virtual RouteReturn<R> execute(Request &request) {};
+  };
+
   bool add_route(Route *route);
-  NetworkReturnErrors execute_route(Request &request);
+
+  RouteReturn<R> execute_route(Request &request);
   ~Router();
 };
+
 
 #endif
