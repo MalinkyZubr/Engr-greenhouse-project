@@ -10,8 +10,9 @@
 #include "storage.hpp"
 #include "http.hpp"
 #include "webpage.hpp"
-#include "router.hpp"
 #include "exceptions.hpp"
+#include "startup_webpage_routes.hpp"
+#include "full_connect_routes.hpp"
 
 
 #define RECEPTION_PID 6
@@ -95,6 +96,8 @@ class TCPRequestClient : private TCPClient {
   WiFiClient &client;
   ServerInformation server_information;
 
+  Response receive_response(WiFiClient &client);
+
   public:
   TCPRequestClient(WiFiClient &client, Layer4Encryption layer_4_encryption, ServerInformation server_information);
 
@@ -108,17 +111,20 @@ class TCPListenerClient : private TCPClient {
   Request* request_queue;
   Router router;
 
+  NetworkExceptions respond(Response &response);
+  NetworkExceptions listen();
+
   public:
   TCPListenerClient(WiFiServer listener, Layer4Encryption layer_4_encryption, Router router);
-
-  NetworkExceptions respond(Response response);
-  NetworkExceptions listen();
 };
 
 template<typename L, typename C = WiFiClient>
 class ConnectionStage {
   private:
   L listener;
+  TCPClient *message_handler;
+
+  void configure_message_handler();
 
   public:
   ConnectionStage();
@@ -136,6 +142,8 @@ class ConnectionStage {
   virtual handle_response(ParsedResponse &response) = 0;
 
   virtual NetworkExceptions run() = 0;
+
+  ~ConnectionStage();
 };
 
 class WifiInitialization : public ConnectionStage<WifiServer, WiFiClient> {
@@ -143,12 +151,11 @@ class WifiInitialization : public ConnectionStage<WifiServer, WiFiClient> {
   String ssid_config();
   int get_ap_channel(String &ssid);
 
-
-  String return_webpage_response(String &route);
   WifiInfo receive_credentials(WiFiClient &client);
 
   public:
   WiFiInitialization(int listen_port);
+  NetworkExceptions run() override;
 }
 
 class ConnectionManager {

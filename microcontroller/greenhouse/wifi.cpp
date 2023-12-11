@@ -118,8 +118,19 @@ HTTPMessage* TCPClient::receive_and_parse(WiFiClient &client, int timeout=5000) 
 
 TCPRequestClient::TCPRequestClient(WiFiClient &client, Layer4Encryption encryption, ServerInformation server_information) : TCPClient(encryption), client(client), server_information(server_information) {}
 
-Response TCPRequestClient::request(Request *message) {
+Response TCPRequestClient::receive_response(WiFiClient &client) {
   Response *response_pointer;
+  Response response;
+
+  response_pointer = this->receive_and_parse(this->client, 10000);
+
+  this->client.stop();
+
+  response = Response(response_pointer);
+  return response;
+}
+
+Response TCPRequestClient::request(Request *message) {
   Response response;
 
   switch(this->get_encryption()) {
@@ -132,11 +143,8 @@ Response TCPRequestClient::request(Request *message) {
   }
 
   NetworkExceptions send_exception = this->client_send_message(this->client, message);
-  response_pointer = this->receive_and_parse(this->client, 10000);
+  response = this->receive_response();
 
-  this->client.stop();
-
-  response = Response(response_pointer);
   return response;
 }
 
@@ -153,9 +161,11 @@ TCPListenerClient::TCPListenerClient(WiFiServer listener, Layer4Encryption encry
       this->listener.beginSSL();
       break;
   }
+
+  this->message_handler = new 
 }
 
-NetworkExceptions TCPListenerClient::respond(Response response, WiFiClient &client) {
+NetworkExceptions TCPListenerClient::respond(Response &response, WiFiClient &client) {
   String response = response.serialize();
   NetworkExceptions exception = NETWORK_OKAY;
   if(!client.println(response)) {
@@ -166,17 +176,22 @@ NetworkExceptions TCPListenerClient::respond(Response response, WiFiClient &clie
   return exception;
 }
 
-R TCPListenerClient::listen() {
+NetworkExceptions TCPListenerClient::listen() {
   Request *received_ptr;
   Request received;
   WiFiClient client = this->listener.available();
 
   received_ptr = this->receive_and_parse(client, 5000);
-  received = Request(received_ptr);
+  if(received_ptr->get_exception() != NETWORK_OKAY) {
+    delete received_ptr;
+    return received_ptr->get_exception();
+  }
+
+  received = Request(received_ptr); // this frees the pointer memory
 
   Response response = this->router->execute_route(received);
   
-  return this->response(response, client);
+  return this->respond(response, client);
 }
 
 ///////////////////////////////////////////////////
@@ -184,13 +199,13 @@ R TCPListenerClient::listen() {
 ///////////////////////////////////////////////////
 
 template <typename L, typename C>
-L ConnectionStage<L, C>::get_listener() {
-  return this->listener;
+void ConnectionStage<L, C>::configure_message_handler() {
+ // need another attribute for this
 }
 
 template <typename L, typename C>
-NetworkExceptionHandler *get_exception_handler() {
-  return this->handler;
+L ConnectionStage<L, C>::get_listener() {
+  return this->listener;
 }
 
 template <typename L, typename C>
@@ -246,47 +261,6 @@ int WifiInitialization::get_ap_channel(String &ssid) {
   return -1;
 }
 
-WifiInfo WifiInitialization::handle_credendtials() {
-  temporary_wifi_information.ssid = request.body["ssid"].as<String>();
-  temporary_wifi_information.password = request.body["password"].as<String>();
-  if(strcmp(request.body["type"], "enterprise")) {
-    temporary_wifi_information.username = request.body["username"].as<String>();
-    temporary_wifi_information.type = ENTERPRISE;
-  }
-  temporary_wifi_information.type = HOME;
-  int channel = this->get_ap_channel(temporary_wifi_information.ssid);
-  if(channel == -1) {
-    response = Responses::response(503, false); // if the network isnt found, return 503 error
-  }
-  else {
-    temporary_wifi_information.channel = channel;
-    response = Responses::response(200, false); // otherwise tell the client everything worked
-    credentials_received = true;
-  }
-}
-
-String WifiInitialization::return_webpage_response(String &route) {
-  Response response;
-
-  if(route.equals("/submit")) { // there should probably be some validation here!
-    
-  }
-  else if(route.equals("/")) {
-    response = Responses::file_response(webpage_html, HTML);
-  }
-  else if(route.equals("/styles.css")) {
-    response = Responses::file_response(webpage_css, CSS);
-  }
-  else if(route.equals("/app.js")) {
-    response = Responses::file_response(webpage_js, JS);
-  }
-  else {
-    response = Responses::response(404, false);
-  }
-
-  return response;
-}
-
 /// @brief function used during wifi provisioning to receive credentials for AP association from served webpage. Serves webpage and submits respones to client
 /// @param client wifi client to use for communications with the requesting device
 /// @return WifiInfo object to return and apply to the flash memory and to the server
@@ -295,61 +269,11 @@ WifiInfo WifiInitialization::receive_credentials(WiFiClient &client) {
   bool credentials_received = false;
   WifiInfo temporary_wifi_information;
 
+  Router router = startup_router(&temporary_wifi_information, &credentials_received);
+  TCPListenerClient listener()
+
   while(!credentials_received && this->network_state != DOWN) {
-    ParsedMessage message = this->rest_receive(client, 10000);
-
-    if(message.error == CONNECTION_FAILURE || message.error == WIFI_FAILURE) {
-      temporary_wifi_information.error = message.error;
-      break;
-    }
-
-    String response;
-
-    switch(message.type) {
-      case(REQUEST):
-        ParsedRequest& request = message.request;
-        String& route = request.route;
-        if(route.equals("/submit")) { // there should probably be some validation here!
-          temporary_wifi_information.ssid = request.body["ssid"].as<String>();
-          temporary_wifi_information.password = request.body["password"].as<String>();
-          if(strcmp(request.body["type"], "enterprise")) {
-            temporary_wifi_information.username = request.body["username"].as<String>();
-            temporary_wifi_information.type = ENTERPRISE;
-          }
-          temporary_wifi_information.type = HOME;
-          int channel = this->get_ap_channel(temporary_wifi_information.ssid);
-          if(channel == -1) {
-            response = Responses::response(503, false); // if the network isnt found, return 503 error
-          }
-          else {
-            temporary_wifi_information.channel = channel;
-            response = Responses::response(200, false); // otherwise tell the client everything worked
-            credentials_received = true;
-          }
-        }
-        else if(route.equals("/")) {
-          response = Responses::file_response(webpage_html, HTML);
-        }
-        else if(route.equals("/styles.css")) {
-          response = Responses::file_response(webpage_css, CSS);
-        }
-        else if(route.equals("/app.js")) {
-          response = Responses::file_response(webpage_js, JS);
-        }
-        else {
-          response = Responses::response(404, false);
-        }
-        break;
-
-      case(RESPONSE):
-        break;
-
-      client.println(response);
-    }
-  }
-
-  if(!credentials_received) {
-    temporary_wifi_information.error = WIFI_FAILURE;
+    
   }
 
   return temporary_wifi_information;

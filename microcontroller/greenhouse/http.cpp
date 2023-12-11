@@ -175,6 +175,7 @@ Request::Request(Request* base_pointer) : method(base_pointer->method),
     if(base_pointer->get_body_type() == JSON) {
       this->set_body(base_pointer->get_body());
     }
+    delete base_pointer;
 }
 
 String Request::serialize() {
@@ -239,6 +240,7 @@ Response::Response(Response* base_pointer) : status(base_pointer->status) {
     this->file_content = base_pointer->file_content;
     this->set_body_type(base_pointer->get_body_type());
   }
+  delete base_pointer;
 } 
 
 void Response::set_directive(DeviceDirective directive) {
