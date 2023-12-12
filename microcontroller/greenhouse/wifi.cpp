@@ -232,21 +232,63 @@ UDPResponse UDPClient::receive_udp(int timeout) {
 ///////// ConnectionStage /////////////////////////
 ///////////////////////////////////////////////////
 
-template <typename L, typename C>
-void ConnectionStage<L, C>::configure_message_handler() {
+template <typename L, typename H, typename R>
+void ConnectionStage<L, H, R>::configure_message_handler() {
  // need another attribute for this
 }
 
-template <typename L, typename C>
-L ConnectionStage<L, C>::get_listener() {
+template <typename L, typename H, typename R>
+L ConnectionStage<L, H, R>::get_listener() {
   return this->listener;
 }
 
+template <typename L, typename H, typename R>
+H* ConnectionStage<L, H, R>::get_handler() {
+  return this->message_handler;
+}
+
+template <typename L, typename H, typename R>
+void ConnectionStage<L, H, R>::set_handler(H* message_handler) {
+  this->message_handler = message_handler;
+}
+
+template <typename L, typename H, typename R>
+ConnectionStage<L, H, R>::~ConnectionStage() {
+  delete this->message_handler;
+}
+
 ///////////////////////////////////////////////////
-///////// StageWifiInitialization //////////////////////
+///////// StageReturn /////////////////////////////
 ///////////////////////////////////////////////////
 
-StageWifiInitialization::StageWifiInitialization(int listen_port, StorageManager *global_storage) : ConnectionStage(listen_port), global_storage(global_storage) {
+template<typename R>
+StageReturn<R>::StageReturn(NetworkExceptions exception, R return_value) : exception(exception), return_value(return_value) {};
+
+template<typename R>
+R StageReturn<R>::get_return_value() {
+  return this->return_value;
+}
+
+template<typename R>
+NetworkExceptions StageReturn<R>::get_exception() {
+  return this->exception;
+}
+
+template<typename R>
+void StageReturn<R>::set_return_value(R return_value) {
+  this->return_value = return_value;
+}
+
+template<typename R>
+void StageReturn<R>::set_exception(NetworkExceptions exception) {
+  this->exception = exception;
+}
+
+///////////////////////////////////////////////////
+///////// StageWifiInitialization /////////////////
+///////////////////////////////////////////////////
+
+StageWifiInitialization::StageWifiInitialization(int listen_port) : ConnectionStage(listen_port) {
   Router router;
   router
     .add_route(new ReceiveCredentials("/submit", POST, &this->temporary_wifi_info, &this->wifi_configured_flag))
@@ -254,7 +296,7 @@ StageWifiInitialization::StageWifiInitialization(int listen_port, StorageManager
     .add_route(new SendCSS("/styles", GET))
     .add_route(new SendJS("/script", GET));
   
-  this->message_handler = new TCPListenerClient(this->get_listener(), ENCRYPTION_NONE, router);
+  this->set_handler(new TCPListenerClient(this->get_listener(), ENCRYPTION_NONE, router));
 }
 
 String StageWifiInitialization::ssid_config() {
@@ -302,7 +344,7 @@ bool StageWifiInitialization::start_access_point() {
 NetworkExceptions StageWifiInitialization::receive_credentials(WiFiClient &client) {
   NetworkExceptions exception;
   while(!this->wifi_configured) {
-    exception = this->message_handler->listen();
+    exception = this->get_handler()->listen();
 
     if(this->wifi_configured) { // better error handling here maybe?
       break;
@@ -355,19 +397,22 @@ NetworkExceptions StageWifiInitialization::connect_wifi(WiFiInfo &info) {
   return NETWORK_OKAY;
 }
 
-NetworkExceptions StageWifiInitialization::run() {
+StageReturn<WifiInfo> StageWifiInitialization::run() {
   String ssid; 
+  StageReturn<WifiInfo> stage_return;
   NetworkExceptions exception;
 
   if(!check_wifi_module_status()) {
-    return NETWORK_WIFI_FAILURE;
+    stage_return.set_exception(NETWORK_WIFI_FAILURE);
+    return stage_return
   }
 
   bool connection_success = false;
 
   while(!connection_success) {
     if(!this->start_access_point()) {
-      return NETWORK_WIFI_FAILURE;
+      stage_return.set_exception(NETWORK_WIFI_FAILURE);
+      return stage_return;
     }
 
     exception = this->receive_credentials(); // handle errors
@@ -385,198 +430,116 @@ NetworkExceptions StageWifiInitialization::run() {
     }
   }
 
-  this->global_storage->get_wifi().copy(this->temporary_wifi_information);
+  exception = NETWORK_OKAY;
+  stage_return.set_exception(exception);
+  stage_return.set_return_value(this->temporary_wifi_information);
 
-  return NETWORK_OKAY;
-}
-
-StageWifiInitialization::~StageWifiInitialization() {
-  delete this->message_handler;
+  return stage_return;
 }
 
 ///////////////////////////////////////////////////
 ///////// Broadcasting ////////////////////////////
 ///////////////////////////////////////////////////
 
-
-
-/// @brief send a multicast UDP packet to the specified server multicast address. Sends packet, and waits until a timeout for a response. 
-/// @param json_data json schema to send to the server
-/// @param address multicast address to send the UDP packet to 
-/// @param receive_buffer char buffer for receiving responses from the server
-/// @param buff_size size of the char buffer
-/// @param receive_json json object to deserialize received responses into
-/// @param timeout timeout interval in milliseconds. Defaults to 10000
-/// @return NetworkReturnErrors, contains error code to be handled by calling function
-NetworkReturnErrors ConnectionManager::send_broadcast(String &json_data, IPAddress &address, char *receive_buffer, int buff_size, DynamicJsonDocument &receive_json, int timeout = 10000) {
-  this->state_connection.UDPserver.beginPacket(address, EXTERNAL_PORT);
-  this->state_connection.UDPserver.write(json_data.c_str());
-  this->state_connection.UDPserver.endPacket();
-
-  NetworkReturnErrors return_code;
-
-  long start = millis();
-  while(!this->state_connection.UDPserver.parsePacket() && this->network_state != DOWN && (millis() - start < timeout)) {}
-  if(this->network_state == DOWN) {
-    return_code = WIFI_FAILURE;
-  }
-  else if(timeout < millis() - start) {
-    return_code = TIMEOUT;
-  }
-  else {
-    this->state_connection.UDPserver.read(receive_buffer, buff_size);
-    deserializeJson(receive_json, receive_buffer);
-    String server_ip = receive_json["server_ip"];
-    this->server_information.ip = server_ip;
-    return_code = OKAY;
-  }
-  return return_code;
+StageBroadcasting::StageBroadcasting(ConnectionInformation local_information, ConnectionInformation multicast_information, const Identifiers &device_identifiers) : local_information(local_information), multicast_information(multicast_information), device_identifiers(device_identifiers) {
+  this->set_handler(new UDPClient(this->get_listener(), local_information.port, multicast_information));
 }
 
+StageReturn<ConnectionInformation> StageBroadcasting::run() {
+  NetworkExceptions exception;
+  ConnectionInformation returned_connection_information;
+  StageReturn<ConnectionInformation> stage_return;
 
-/// @brief function to govern broadcasting operations. This makes the server aware of the existience of this device, so it can be placed in the registration queue, associate, and begin normal operations.
-/// This is basically a layer 3 version of LLDP protocol https://en.wikipedia.org/wiki/Link_Layer_Discovery_Protocol
-/// @param expidited this flag is set when the device has previously connected to the server (eg, if the device has a device ID stored in memory). Setting this flag will allow the device to skip manual registration by the user, and be put directly into full operation with the server.
-/// @return bool to say if broadcasting succeeded
-/// @todo is this function actually configuring server information on the device side?
-bool ConnectionManager::broadcast(bool expidited) {
-  this->state_connection.UDPserver.begin(LOCAL_PORT);
+  UDPRequest request(this->local_information->ip, this->device_identifiers);
+  UDPResponse response;
 
-  DynamicJsonDocument doc(sizeof(this->own_information) + 20);
-  doc["ip"] = this->own_information.ip;
-  doc["mac"] = this->own_information.mac;
-  doc["name"] = this->storage->config.identifying_information.device_name;
-  doc["id"] = this->storage->config.identifying_information.device_id;
-  doc["expidited"] = expidited;
+  bool received_acknowledgement = false;
 
-  DynamicJsonDocument received(32);
+  while(received_acknowledgement) {
+    exception = this->get_listener()->send_udp(request);
+    response = this->get_listener()->receive_udp();
+    exception = response.get_exception();
 
-  String json_data;
-
-  IPAddress external_address_object;
-  external_address_object.fromString(UDPMulticastAddress);
-
-  serializeJson(doc, json_data);
-
-  char receive_buffer[UDPReceiveBuffSize];
-
-  bool discovered = false;
-  NetworkReturnErrors return_value;
-
-  while(!discovered && this->network_state != DOWN) {
-    return_value = this->send_broadcast(json_data, external_address_object, receive_buffer, UDPReceiveBuffSize, received);
-
-    switch(return_value) {
-      case OKAY:
-        discovered = true;
+    switch(exception) {
+      case NETWORK_TIMEOUT:
         break;
-      case TIMEOUT:
-        continue;
-      case WIFI_FAILURE:
+      case NETWORK_OKAY:
+        returned_connection_information.ip = response.get_server_ip();
+        returned_connection_information.port = response.get_server_port();
+        stage_return.set_return_value(returned_connection_information);
+
+        this->received_acknowledgement = true;
         break;
     }
-    delay(10000);
   }
 
-  if(!discovered) {
-    return false;
-  }
-
-  this->state_connection.UDPserver.stop();
-  this->network_state = ASSOCIATING;
-  return true;
+  return stage_return;
 }
 
+
+///////////////////////////////////////////////////
+///////// Association /////////////////////////////
+///////////////////////////////////////////////////
+
+StageAssociation::StageAssociation(ConnectionInformation server_information, Identifiers &identifiers, MachineState &machine_state) : server_information(server_information), identifiers(identifiers), machine_state(machine_state) {
+  this->set_handler(new TCPRequestClient(this->get_listener(), ENCRYPTION_SSL, this->server_information));
+}
 
 /// @brief function designed to connect to server using the object's ssl client. Makes 5 attempts at 5 second intervals to connect
 /// @return if the function fails to connect after 5 attempts, return false
-bool ConnectionManager::connect_to_server() {
-  for(int x = 0; x < 5; x++) {
-    if(this->state_connection.SSLclient.connect(this->server_information.ip.c_str(), EXTERNAL_PORT)) {
-      return true;
+NetworkExceptions StageAssociation::test_server_connection() {
+  for(int x = 0; x < 3; x++) {
+    if(this->get_listener().connectSSL(this->server_information.ip.c_str(), this->server_information.port)) {
+      delay(1000);
+      this->get_listener().stop();
+      return NETWORK_OKAY;
     }
     delay(5000);
   }
-  return false;
+  return NETWORK_SERVER_CONNECTION_FAILURE;
 }
 
+Request StageAssociation::generate_registration_request() {
+  Request registration_request(POST, "/devices/confirm", this->server_information.ip, this->identifiers.get_device_id(), this->machine_state.get_state());
+  return registration_request;
+}
 
-/// @brief after the server acknowledges udp broadcast, see broadcast method, the device must make the first ssl connection request to the server, so that it can sync its configuration with the server database and enter full operation
-/// @return bool to say if the association succeeded
-bool ConnectionManager::association() { // make first ssl request to associate with server
+StageReturn<AssociationReturnStruct> StageAssociation::run() {
+  AssociationReturnStruct received_configuration;
+  NetworkExceptions exception;
+  Identifiers identifier;
+  Preset preset;
+  StageReturn<AssociationReturnStruct> stage_return;
+
+  Request registration_request;
+  Response registration_response;
+
+  int failure_count = 0;
   bool associated = false;
-  int fail_counter = 0;
 
-  Identifiers device_identifiers;
-  Preset device_preset;
-  
-  while(!associated && fail_counter < 3) {
-    if(!this->state_connection.SSLclient.connected() && !this->connect_to_server()) {
-      this->network_state = BROADCASTING; // if server connection fails, go back to broadcasting
-      return false;
-    }
+  registration_request = this->generate_registration_request();
 
-    DynamicJsonDocument doc(CONFIG_JSON_SIZE);
-    DynamicJsonDocument preset(CONFIG_JSON_SIZE);
+  while(!associated && failure_count < 3) {
+    registration_response = this->get_handler().request(registration_request);
+    exception = registration_response.exception;
 
-    this->storage->retrieve_config_to_json(this->storage->identifier_address, doc);
-    this->storage->retrieve_config_to_json(this->storage->preset_address, preset);
+    received_configuration.identifier.from_json(registration_response.get_body());
+    received_configuration.preset.from_json(registration_response.get_body());
 
-    doc["preset"] = preset;
-
-    String data = Requests::request(POST, String("/devices/confirm"), this->server_information.ip, this->storage->config.identifying_information.device_id, this->machine_state->operational_state, doc); // the device_id should default to 0 before reading from flash
-    this->state_connection.SSLclient.println(data); // THERE MUST BE A WAY TO PACKAGE THE PRESET NAME IN HERE TOO
-
-    ParsedMessage message = this->rest_receive(this->state_connection.SSLclient, 10000); // the device should receive a response here, make sure the server actually does that
-
-    this->state_connection.SSLclient.stop();
-
-    String response;
-
-    switch(message.type) {
-      case RESPONSE:
-        switch(message.error) {
-          case WIFI_FAILURE:
-            return false;
-            break;
-          case CONNECTION_FAILURE:
-          case TIMEOUT:
-            fail_counter++;
-            continue;
-          case OKAY:
-            this->storage->deserialize_device_identifiers(device_identifiers, message.response.body);
-            this->storage->set_device_identifiers(device_identifiers);
-
-            preset = message.response.body["preset"];
-
-            this->storage->deserialize_preset(device_preset, preset);
-            this->storage->set_preset(device_preset);
-            
-            associated = true;
+    switch(exception) {
+      case NETWORK_SERVER_CONNECTION_FAILURE:
+        failure_count++;
+        if(failure_count >= 3) {
+          stage_return.set_exception(exception);
         }
         break;
-      case REQUEST: // this needs work. If the request is an unregister, that should be handleded accordingly. Also check to see that routes are closing connections right
-        this->connect_to_server();
-        this->router->execute_route(message.request, &response);
-        this->state_connection.SSLclient.stop();
+      case NETWORK_OKAY:
+        associated = true;
         break;
     }
-
-    this->state_connection.SSLclient.stop(); // remember to close the connection after each request
-
-    if(!this->storage->writer->reference_datetime) {
-      this->storage->set_reference_datetime(message.response.body["reference_time"]);
-    }
   }
 
-  if(!associated) {
-    return false;
-  }
-
-  this->network_state = CONNECTED;
-  this->machine_state->connection_state = MACHINE_CONNECTED;
-
-  return true;
+  return stage_return
 }
 
 

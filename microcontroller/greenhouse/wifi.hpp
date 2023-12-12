@@ -130,10 +130,33 @@ class UDPClient {
   UDPResponse receive_udp(int timeout);
 };
 
-template<typename L, typename C = WiFiClient>
+typedef struct {
+  Identifiers identifier;
+  Preset preset;
+} AssociationReturnStruct;
+
+template<typename R>
+class StageReturn {
+  private:
+  NetworkExceptions exception;
+  R return_value;
+
+  public:
+  StageReturn() {};
+  StageReturn(NetworkExceptions exception, R return_value);
+
+  R get_return_value();
+  NetworkExceptions get_exception();
+
+  void set_return_value(R return_value);
+  void set_exception(NetworkExceptions exception);
+};
+
+template<typename L, typename H, typename R>
 class ConnectionStage {
   private:
   L listener;
+  H *message_handler;
 
   public:
   ConnectionStage() {};
@@ -141,16 +164,19 @@ class ConnectionStage {
 
   L get_listener();
 
-  virtual NetworkExceptions run() = 0;
+  void set_handler(H* message_handler)
+  H* get_handler();
+
+  virtual StageReturn<R> run() = 0;
+
+  ~ConnectionStage();
 };
 
-class StageWifiInitialization : public ConnectionStage<WifiServer, WiFiClient> {
+// add common templated interface for the message handler
+class StageWifiInitialization : public ConnectionStage<WifiServer, TCPListenerClient, WifiInfo> {
   private:
-  TCPListenerClient *message_handler;
-
   WifiInfo temporary_wifi_information;
   bool wifi_configured = false;
-  StorageManager *global_storage
 
   String ssid_config();
   bool start_access_point();
@@ -160,16 +186,34 @@ class StageWifiInitialization : public ConnectionStage<WifiServer, WiFiClient> {
   NetworkExceptions connect_wifi(WiFiInfo &info);
 
   public:
-  StageWifiInitialization(int listen_port, StorageManager *global_storage);
-  NetworkExceptions run() override;
+  StageWifiInitialization(int listen_port);
+  StageReturn<WifiInfo> run() override;
 
-  ~StageWifiInitialization();
 }
 
-class StageBroadcasting : public ConnectionStage<WiFiUDP, WiFiUDP> {
+class StageBroadcasting : public ConnectionStage<WiFiUDP, UDPClient, ConnectionInformation> {
   private:
+  ConnectionInformation multicast_information;
+  ConnectionInformation local_information;
+  Identifiers &device_identifiers;
 
   public:
+  StageBroadcasting(ConnectionInformation local_information, ConnectionInformation multicast_information, const Identifiers &device_identifiers);
+  StageReturn<ConnectionInformation> run() override;
+}
+
+class StageAssociation : public ConnectionStage<WiFiSSLClient, TCPRequestClient, AssociationReturnStruct> {
+  private:
+  ConnectionInformation server_information;
+  Identifiers &identifiers;
+  MachineState &machine_state;
+
+  NetworkExceptions test_server_connection();
+  Request generate_registration_request();
+
+  public:
+  StageAssociation(ConnectionInformation server_information, Identifiers &identifiers, MachineState &machine_state)
+  StageReturn<AssociationReturnStruct> run() override;
 }
 
 class ConnectionManager {

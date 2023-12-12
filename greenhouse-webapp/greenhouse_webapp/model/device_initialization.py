@@ -133,7 +133,7 @@ class DeviceManager:
         """
         if device_ip not in self.scans:
             raise IndexError("The IP has not been detected by any scan!")
-        message: RegistrationSchema = RegistrationSchema(server_ip=self.ip_address).model_dump_json().encode()
+        message: RegistrationSchema = RegistrationSchema(server_ip=self.ip_address, server_port=self.port).model_dump_json().encode()
         await self.loop.sock_sendall(self.sock, message)
         self.registration_queue[device_ip] = asyncio.Condition()
         self.scans.pop(device_ip)

@@ -9,4 +9,5 @@ class ClientSchema(BaseModel):
     
 class RegistrationSchema(BaseModel):
     server_ip: str
+    server_port: int
     

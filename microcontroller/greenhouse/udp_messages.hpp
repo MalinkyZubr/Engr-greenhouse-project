@@ -30,10 +30,12 @@ class UDPRequest : public UDPMessage {
 class UDPResponse : public UDPMessage {
   private:
   String server_ip;
+  int server_port;
 
   public:
   UDPResponse(String &response_string);
   String get_server_ip();
+  int get_server_port();
 };
 
 #endif

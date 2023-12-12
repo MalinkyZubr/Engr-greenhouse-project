@@ -63,21 +63,15 @@ class DeviceConfigurationSchema(BaseModel):
     device_id: Optional[int]
     project_id: Optional[str]
     
-class DeviceRegistrationSchema(DeviceConfigurationSchema):
-    """schema representing the request from the IoT device to the server to request registration
-
-    Args:
-        preset, Optional[DeviceRegistrationPreset]: schema containing all information about the preset the device believes it is assigned
-    """
-    preset: Optional[DeviceRegistrationPreset]
     
-class DeviceRegistrationResponse(DeviceRegistrationSchema):
+class DeviceRegistrationResponse(DeviceConfigurationSchema):
     """Schema holding the response from the server to the IoT device when the IoT device requests association
 
     Args:
         inherits all fields from DeviceRegistrationSchema
         reference_time, float: current unix timestamp for the device to sync to
     """
+    preset: Optional[DeviceRegistrationPreset]
     reference_time: float
     
 class ClientDeviceDataSchema(DeviceDataSchema):
@@ -520,7 +514,7 @@ async def register_device(device_ip: str, project_name: Optional[str] = None) ->
     return JSONResponse("Device registered successfully", 200)
 
 @router.post("/confirm")
-async def confirm_registration(stored_device_info: DeviceRegistrationSchema, request: Request) -> DeviceRegistrationResponse:
+async def confirm_registration(stored_device_info: DeviceConfigurationSchema, request: Request) -> DeviceRegistrationResponse:
     """Step 3 of the device registration process (see register_device and send_registration). Waits for a request from an IoT device containing
     device information. This information should be from the flash memory unit on the IoT device. If the device knows its own ID, it must be in the database
     and so there is no need to create a new entry in the database. If however, it is the devices first time connecting, it needs a new database entry.
@@ -528,7 +522,7 @@ async def confirm_registration(stored_device_info: DeviceRegistrationSchema, req
     If the device was disconnected, and an unregister request was sent before it reconnected, this method will detect that and automatically unregister the device
 
     Args:
-        stored_device_info (DeviceRegistrationSchema): contains the data stored on the flash memory of the device (if any)
+        stored_device_info (DeviceConfigurationSchema): contains the data stored on the flash memory of the device (if any)
         request (Request): the raw request received by the api, used to extract the ip of the device in question
 
     Raises:

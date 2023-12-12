@@ -49,8 +49,13 @@ UDPResponse::UDPResponse(String &response_string) {
   deserializeJson(response_data, response_string);
   
   this->server_ip = (char*)&response_data["server_ip"];
+  this->server_port = response_data["server_port"];
 }
 
 String UDPResponse::get_server_ip() {
   return server_ip;
+}
+
+int UDPResponse::get_server_port() {
+  return this->server_port;
 }
