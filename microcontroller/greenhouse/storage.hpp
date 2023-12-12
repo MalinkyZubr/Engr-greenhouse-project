@@ -28,9 +28,9 @@ enum MachineOperationalState {
 
 /// @brief enum of possible wifi connection authentication types supported by the network management software
 enum WifiNetworkTypes {
-  HOME = 'h',
-  ENTERPRISE = 'e',
-  OPEN = 'o'
+  WIFI_HOME = 'h',
+  WIFI_ENTERPRISE = 'e',
+  WIFI_OPEN = 'o'
 };
 
 class ConfigStruct {
@@ -104,7 +104,7 @@ class Identifiers : public ConfigStruct {
   DynamicJsonDocument to_json() override;
 };
 
-class WifiInfo : public ConfigStruct{
+class WifiInfo : public ConfigStruct {
   private:
   WifiNetworkTypes type;
   int channel;
@@ -118,7 +118,7 @@ class WifiInfo : public ConfigStruct{
   WifiInfo(String ssid, int channel, String password);
   WifiInfo(String ssid, int channel, String password, String username);
 
-  NetworkTypes get_type();
+  WifiNetworkTypes get_type();
   String get_ssid();
   String get_username();
   String get_password();

@@ -6,6 +6,8 @@
 #include "storage.hpp"
 #include "async.hpp"
 #include "webpage.hpp"
+#include "network_utils.hpp"
+
 
 class ReceiveCredentials : public Route {
     private:

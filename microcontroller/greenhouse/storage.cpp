@@ -175,11 +175,11 @@ DynamicJsonDocument Preset::to_json() {
 
 WifiInfo::WifiInfo(SPIFlash *flash, int flash_address) : ConfigStruct(flash, flash_address) {}
 
-WifiInfo::WifiInfo(String ssid, int channel, String password, String username) : ssid(ssid), channel(channel), username(username), password(password), type(ENTERPRISE) {}
+WifiInfo::WifiInfo(String ssid, int channel, String password, String username) : ssid(ssid), channel(channel), username(username), password(password), type(WIFI_ENTERPRISE) {}
 
-WifiInfo::WifiInfo(String ssid, int channel, String password) : ssid(ssid), channel(channel), password(password), type(HOME) {}
+WifiInfo::WifiInfo(String ssid, int channel, String password) : ssid(ssid), channel(channel), password(password), type(WIFI_HOME) {}
 
-WifiInfo::WifiInfo(String ssid, int channel) : ssid(ssid), channel(channel), type(OPEN) {}
+WifiInfo::WifiInfo(String ssid, int channel) : ssid(ssid), channel(channel), type(WIFI_OPEN) {}
 
 WifiNetworkTypes WifiInfo::get_type() {
   return this->type;
@@ -217,16 +217,16 @@ void WifiInfo::from_json(DynamicJsonDocument &data) {
   
   switch(type.c_str()[0]) {
     case 'h':
-      this->type = HOME;
+      this->type = WIFI_HOME;
       this->password = (char *)&data["password"];
       break;
     case 'e':
-      this->type = ENTERPRISE;
+      this->type = WIFI_ENTERPRISE;
       this->password = (char *)&data["password"];
       this->username = (char *)&data["username"];
       break;
     case 'o':
-      this->type = OPEN;
+      this->type = WIFI_OPEN;
   } 
   this->channel = data["channel"];
 

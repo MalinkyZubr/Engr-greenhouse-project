@@ -1,16 +1,5 @@
 #include "startup_webpage_routes.hpp"
 
-
-Router startup_router(WifiInfo *temporary_wifi_info, bool *wifi_configured_flag) {
-  Router router;
-
-  return router
-    .add_route(new ReceiveCredentials("/submit", POST, temporary_wifi_info, wifi_configured_flag))
-    .add_route(new SendHTML("/", GET))
-    .add_route(new SendCSS("/styles", GET))
-    .add_route(new SendJS("/script", GET));
-}
-
 ////////////////////////////////////////////////////
 /////////////// ReceiveCredentials /////////////////
 ////////////////////////////////////////////////////

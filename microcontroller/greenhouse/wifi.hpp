@@ -13,6 +13,8 @@
 #include "exceptions.hpp"
 #include "startup_webpage_routes.hpp"
 #include "full_connect_routes.hpp"
+#include "network_utils.hpp"
+#include "udp_messages.hpp"
 
 
 #define RECEPTION_PID 6
@@ -25,8 +27,8 @@
 
 /// @brief global machine connection state for tracking if the device is connected to the server or not
 enum MachineConnectionState {
-    MACHINE_CONNECTED,
-    MACHINE_DISCONNECTED
+  MACHINE_CONNECTED,
+  MACHINE_DISCONNECTED
 };
 
 /// @brief connection info for server and client connections
@@ -34,9 +36,9 @@ enum MachineConnectionState {
 /// @param mac: string representing target mac address
 /// @param exception: exception for when returning connection info from methods
 typedef struct {
-    String ip;
+    IPAddress ip;
     int port;
-} ServerInformation;
+} ConnectionInformation;
 
 
 /// @brief enum containing all network manager states. Each of these represents a different step in the network management process
@@ -47,12 +49,12 @@ typedef struct {
 /// @param STARTUP this is the wifi network connection sequence if the device has already connected to the wifi previously
 /// @param DOWN state when the device loses connection and must recover
 enum ConnectionStageIdentifier {
-    INITIALIZING, 
-    BROADCASTING,
-    ASSOCIATING,
-    CONNECTED, 
-    STARTUP,
-    DOWN
+  STAGE_INITIALIZING, 
+  STAGE_BROADCASTING,
+  STAGE_ASSOCIATING,
+  STAGE_CONNECTED, 
+  STAGE_STARTUP,
+  STAGE_DOWN
 };
 
 
@@ -72,11 +74,11 @@ class Connection {
 };
 
 enum Layer4Encryption {
-  SSL,
-  NONE
+  ENCRYPTION_SSL,
+  ENCRYPTION_NONE
 };
 
-class TCPClient {
+class NetworkClient {
   private:
   Layer4Encryption layer_4_encryption_type = NONE;
 
@@ -84,78 +86,90 @@ class TCPClient {
   NetworkExceptions client_receive_message(WiFiClient &client, int timeout, String *message);
 
   public:
-  TCPClient(Layer4Encryption layer_4_encryption)
+  NetworkClient(Layer4Encryption layer_4_encryption)
   Layer4Encryption get_encryption();
 
   NetworkExceptions client_send_message(WiFiClient &client, HTTPMessage *message); // must free dynamically allocated message
   HTTPMessage* receive_and_parse(WiFiClient &client, int timeout);
 };
 
-class TCPRequestClient : private TCPClient {
+class TCPRequestClient : private NetworkClient {
   private:
   WiFiClient &client;
-  ServerInformation server_information;
+  ConnectionInformation server_information;
 
   Response receive_response(WiFiClient &client);
 
   public:
-  TCPRequestClient(WiFiClient &client, Layer4Encryption layer_4_encryption, ServerInformation server_information);
+  TCPRequestClient(WiFiClient &client, Layer4Encryption layer_4_encryption, ConnectionInformation &server_information);
 
   Response request(Request *message);
 };
 
-
-class TCPListenerClient : private TCPClient {
+class TCPListenerClient : private NetworkClient {
   private:
   WiFiServer &listener;
   Request* request_queue;
   Router router;
 
-  NetworkExceptions respond(Response &response);
-  NetworkExceptions listen();
+  NetworkExceptions respond(Response &response, WiFiClient &client);
 
   public:
-  TCPListenerClient(WiFiServer listener, Layer4Encryption layer_4_encryption, Router router);
+  TCPListenerClient(WiFiServer &listener, Layer4Encryption layer_4_encryption, Router router);
+  NetworkExceptions listen();
+};
+
+class UDPClient {
+  private:
+  WiFiUDP &udp_server;
+  ConnectionInformation multicast_information;
+
+  public:
+  UDPClient(WiFiUDP &udp_server, int local_port, ConnectionInformation multicast_information)
+  NetworkExceptions send_udp(UDPRequest &request);
+  UDPResponse receive_udp(int timeout);
 };
 
 template<typename L, typename C = WiFiClient>
 class ConnectionStage {
   private:
   L listener;
-  TCPClient *message_handler;
-
-  void configure_message_handler();
 
   public:
-  ConnectionStage();
+  ConnectionStage() {};
   ConnectionStage(int listener_port) : listener(listener_port) {};
 
   L get_listener();
 
-  virtual void create_response() = 0;
-
-  virtual void send(C &client) = 0; // must free dynamically allocte
-  virtual ParsedMessage receive(C &client) = 0; // default implementation for wifi based code (reset receive)
-
-  virtual handle_received_message(ParsedMessage &message) = 0; // switch between response and request
-  virtual handle_request(ParsedRequest &request) = 0;
-  virtual handle_response(ParsedResponse &response) = 0;
-
   virtual NetworkExceptions run() = 0;
-
-  ~ConnectionStage();
 };
 
-class WifiInitialization : public ConnectionStage<WifiServer, WiFiClient> {
+class StageWifiInitialization : public ConnectionStage<WifiServer, WiFiClient> {
   private:
-  String ssid_config();
-  int get_ap_channel(String &ssid);
+  TCPListenerClient *message_handler;
 
-  WifiInfo receive_credentials(WiFiClient &client);
+  WifiInfo temporary_wifi_information;
+  bool wifi_configured = false;
+  StorageManager *global_storage
+
+  String ssid_config();
+  bool start_access_point();
+  NetworkExceptions receive_credentials(WiFiClient &client);
+  bool enterprise_connect(WifiInfo &info);
+  bool home_connect(WiFiInfo &info);
+  NetworkExceptions connect_wifi(WiFiInfo &info);
 
   public:
-  WiFiInitialization(int listen_port);
+  StageWifiInitialization(int listen_port, StorageManager *global_storage);
   NetworkExceptions run() override;
+
+  ~StageWifiInitialization();
+}
+
+class StageBroadcasting : public ConnectionStage<WiFiUDP, WiFiUDP> {
+  private:
+
+  public:
 }
 
 class ConnectionManager {
