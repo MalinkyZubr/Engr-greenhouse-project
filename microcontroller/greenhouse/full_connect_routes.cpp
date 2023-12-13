@@ -1,18 +1,6 @@
 #include "full_connect_routes.hpp"
 
 
-Router full_connection_router(StorageManager *global_storage) {
-  Router router;
-
-  return router
-    .add_route(new NetworkReset("/reset/network", POST))
-    .add_route(new DeviceReset("/reset/hard", DELETE))
-    .add_route(new SetTime("/time", POST, global_storage))
-    .add_route(new ConfigureDeviceIds("/configure/id", POST, global_storage))
-    .add_route(new ConfigureDevicePreset("/configure/preset", POST, global_storage))
-    .add_route(new PauseDevice("/configure/status", PUT, global_storage));
-}
-
 Response storage_route_error_handler(StorageException exception, int okay_code = 200) {
   Response response;
 

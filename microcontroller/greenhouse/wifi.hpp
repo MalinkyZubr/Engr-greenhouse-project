@@ -216,6 +216,19 @@ class StageAssociation : public ConnectionStage<WiFiSSLClient, TCPRequestClient,
   StageReturn<AssociationReturnStruct> run() override;
 }
 
+class StageFullConnection : public ConnectionStage<WiFiServer, TCPListenerClient, > {
+  private:
+  WiFiSSLClient wifi_ssl_object;
+  TCPRequestClient request_client;
+  ConnectionInformation server_information
+
+  NetworkExceptions handle_incoming();
+  Response send_request(Request &request);
+
+  public:
+  StageFullConnection(ConnectionInformation server_information);
+}
+
 class ConnectionManager {
   private:
   bool check_ssid_existence(String &ssid);

@@ -542,6 +542,27 @@ StageReturn<AssociationReturnStruct> StageAssociation::run() {
   return stage_return
 }
 
+///////////////////////////////////////////////////
+///////// FullConnection //////////////////////////
+///////////////////////////////////////////////////
+
+StageFullConnection::StageFullConnection(ConnectionInformation server_information) : request_client(this->wifi_ssl_object, ENCRYPTION_SSL, server_information), server_information(server_information) {
+  Router router;
+  router
+    .add_route(new NetworkReset("/reset/network", POST))
+    .add_route(new DeviceReset("/reset/hard", DELETE))
+    .add_route(new SetTime("/time", POST, global_storage))
+    .add_route(new ConfigureDeviceIds("/configure/id", POST, global_storage))
+    .add_route(new ConfigureDevicePreset("/configure/preset", POST, global_storage))
+    .add_route(new PauseDevice("/configure/status", PUT, global_storage));
+
+  this->set_handler(new TCPListenerClient(this->get_listener(), ENCRYPTION_SSL, router));
+}
+
+NetworkExceptions StageFullConnection::handle_incoming() {
+  
+}
+
 
 /// @brief listener function to listen for incoming requests from the server, and forward them to the router for processing.
 /// @return NetworkReturnErrors to say if the operation succeeded, or if it failed, what caused the failure
