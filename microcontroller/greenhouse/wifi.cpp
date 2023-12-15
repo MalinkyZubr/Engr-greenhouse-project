@@ -258,11 +258,25 @@ ConnectionStage<L, H, R>::~ConnectionStage() {
 }
 
 ///////////////////////////////////////////////////
+///////// StageReturnBase /////////////////////////
+///////////////////////////////////////////////////
+
+StageReturnBase::StageReturnBase(NetworkExceptions exception) : exception(exception) {}
+
+NetworkExceptions StageReturnBase::get_exception() {
+  return this->exception;
+}
+
+void StageReturnBase::set_exception(NetworkExceptions exception) {
+  this->exception = exception;
+}
+
+///////////////////////////////////////////////////
 ///////// StageReturn /////////////////////////////
 ///////////////////////////////////////////////////
 
 template<typename R>
-StageReturn<R>::StageReturn(NetworkExceptions exception, R return_value) : exception(exception), return_value(return_value) {};
+StageReturn<R>::StageReturn(NetworkExceptions exception, R return_value) : StageReturnBase(exception), return_value(return_value) {};
 
 template<typename R>
 R StageReturn<R>::get_return_value() {
@@ -270,18 +284,55 @@ R StageReturn<R>::get_return_value() {
 }
 
 template<typename R>
-NetworkExceptions StageReturn<R>::get_exception() {
-  return this->exception;
-}
-
-template<typename R>
 void StageReturn<R>::set_return_value(R return_value) {
   this->return_value = return_value;
 }
 
-template<typename R>
-void StageReturn<R>::set_exception(NetworkExceptions exception) {
-  this->exception = exception;
+///////////////////////////////////////////////////
+///////// StageWifiBaseClass //////////////////////
+///////////////////////////////////////////////////
+
+/// @brief connect to an enterprise authenticated AP with username and password
+/// @param info WifiInfo reference to wifi info object containing configuration information for AP connection
+/// @return bool to say if the connection succeeded or not
+bool StageWifiBaseClass::enterprise_connect(WifiInfo &info) { // pls fix my malloc bs
+  tstr1xAuthCredentials auth;
+  strcpy((char *) auth.au8UserName, info.username.c_str());
+  strcpy((char *) auth.au8Passwd, info.password.c_str());
+
+  bool wifi_status = m2m_wifi_connect_sc(info.get_ssid().c_str(), info.get_ssid().length(), M2M_WIFI_SEC_802_1X, &auth, info.channel, false);
+
+  return wifi_status == M2M_SUCCESS;
+}
+
+/// @brief simple AP connection function that connects to home wifi AP with just a password
+/// @param info wifi information containing credentials necessary for connection
+/// @return bool to say if connection succeeded or not
+bool StageWifiBaseClass::home_connect(WiFiInfo &info) {
+  bool status = WiFi.begin(info.get_ssid(), info.get_password());
+  return status == WL_CONNECTED;
+}
+
+/// @brief function for switching between different connection functions based on the type enum specified in the wifi info
+/// @param info wifi information necessary for connection to an AP, contains the network type
+/// @return NetworkReturnErrors enum containing error or okay message after execution
+NetworkExceptions StageWifiBaseClass::connect_wifi(WiFiInfo &info) {
+  bool result;
+
+  switch(info.type) {
+    case WIFI_ENTERPRISE:
+      result = this->enterprise_connect(info);
+      break;
+    case WIFI_HOME:
+      result = this->home_connect(info);
+      break;
+    case WIFI_OPEN:
+      break;
+  }
+  if(!result) {
+    return NETWORK_AUTHENTICATION_FAILURE;
+  }
+  return NETWORK_OKAY;
 }
 
 ///////////////////////////////////////////////////
@@ -354,56 +405,13 @@ NetworkExceptions StageWifiInitialization::receive_credentials(WiFiClient &clien
   return exception
 }
 
-/// @brief connect to an enterprise authenticated AP with username and password
-/// @param info WifiInfo reference to wifi info object containing configuration information for AP connection
-/// @return bool to say if the connection succeeded or not
-bool StageWifiInitialization::enterprise_connect(WifiInfo &info) { // pls fix my malloc bs
-  tstr1xAuthCredentials auth;
-  strcpy((char *) auth.au8UserName, info.username.c_str());
-  strcpy((char *) auth.au8Passwd, info.password.c_str());
-
-  bool wifi_status = m2m_wifi_connect_sc(info.get_ssid().c_str(), info.get_ssid().length(), M2M_WIFI_SEC_802_1X, &auth, info.channel, false);
-
-  return wifi_status == M2M_SUCCESS;
-}
-
-/// @brief simple AP connection function that connects to home wifi AP with just a password
-/// @param info wifi information containing credentials necessary for connection
-/// @return bool to say if connection succeeded or not
-bool StageWifiInitialization::home_connect(WiFiInfo &info) {
-  bool status = WiFi.begin(info.get_ssid(), info.get_password());
-  return status == WL_CONNECTED;
-}
-
-/// @brief function for switching between different connection functions based on the type enum specified in the wifi info
-/// @param info wifi information necessary for connection to an AP, contains the network type
-/// @return NetworkReturnErrors enum containing error or okay message after execution
-NetworkExceptions StageWifiInitialization::connect_wifi(WiFiInfo &info) {
-  bool result;
-
-  switch(info.type) {
-    case WIFI_ENTERPRISE:
-      result = this->enterprise_connect(info);
-      break;
-    case WIFI_HOME:
-      result = this->home_connect(info);
-      break;
-    case WIFI_OPEN:
-      break;
-  }
-  if(!result) {
-    return NETWORK_AUTHENTICATION_FAILURE;
-  }
-  return NETWORK_OKAY;
-}
-
-StageReturn<WifiInfo> StageWifiInitialization::run() {
+StageReturn<WifiInfo>* StageWifiInitialization::run() {
   String ssid; 
-  StageReturn<WifiInfo> stage_return;
+  StageReturn<WifiInfo> stage_return = new StageReturn<WifiInfo>();
   NetworkExceptions exception;
 
   if(!check_wifi_module_status()) {
-    stage_return.set_exception(NETWORK_WIFI_FAILURE);
+    stage_return->set_exception(NETWORK_WIFI_FAILURE);
     return stage_return
   }
 
@@ -411,7 +419,7 @@ StageReturn<WifiInfo> StageWifiInitialization::run() {
 
   while(!connection_success) {
     if(!this->start_access_point()) {
-      stage_return.set_exception(NETWORK_WIFI_FAILURE);
+      stage_return->set_exception(NETWORK_WIFI_FAILURE);
       return stage_return;
     }
 
@@ -431,10 +439,28 @@ StageReturn<WifiInfo> StageWifiInitialization::run() {
   }
 
   exception = NETWORK_OKAY;
-  stage_return.set_exception(exception);
-  stage_return.set_return_value(this->temporary_wifi_information);
+  stage_return->set_exception(exception);
+  stage_return->set_return_value(this->temporary_wifi_information);
 
   return stage_return;
+}
+
+///////////////////////////////////////////////////
+///////// StageWifiStartup ////////////////////////
+///////////////////////////////////////////////////
+
+StageWifiStartup::StageWifiStartup(WifiInfo &wifi_info) : wifi_info(wifi_info) {}
+
+StageReturn<WifiInfo>* run() {
+  NetworkExceptions exception;
+  StageReturn<WifiInfo> stage_return = new StageReturn<WifiInfo>();
+
+  exception = this->connect_wifi(this->wifi_info)
+
+  stage_return->set_exception(exception);
+  stage_return->set_return_value(this->wifi_info);
+
+  return stage_return
 }
 
 ///////////////////////////////////////////////////
@@ -445,10 +471,10 @@ StageBroadcasting::StageBroadcasting(ConnectionInformation local_information, Co
   this->set_handler(new UDPClient(this->get_listener(), local_information.port, multicast_information));
 }
 
-StageReturn<ConnectionInformation> StageBroadcasting::run() {
+StageReturn<ConnectionInformation>* StageBroadcasting::run() {
   NetworkExceptions exception;
   ConnectionInformation returned_connection_information;
-  StageReturn<ConnectionInformation> stage_return;
+  StageReturn<ConnectionInformation> stage_return = new StageReturn<ConnectionInformation>();
 
   UDPRequest request(this->local_information->ip, this->device_identifiers);
   UDPResponse response;
@@ -466,7 +492,7 @@ StageReturn<ConnectionInformation> StageBroadcasting::run() {
       case NETWORK_OKAY:
         returned_connection_information.ip = response.get_server_ip();
         returned_connection_information.port = response.get_server_port();
-        stage_return.set_return_value(returned_connection_information);
+        stage_return->set_return_value(returned_connection_information);
 
         this->received_acknowledgement = true;
         break;
@@ -504,12 +530,12 @@ Request StageAssociation::generate_registration_request() {
   return registration_request;
 }
 
-StageReturn<AssociationReturnStruct> StageAssociation::run() {
+StageReturn<AssociationReturnStruct>* StageAssociation::run() {
   AssociationReturnStruct received_configuration;
   NetworkExceptions exception;
   Identifiers identifier;
   Preset preset;
-  StageReturn<AssociationReturnStruct> stage_return;
+  StageReturn<AssociationReturnStruct> stage_return = new StageReturn<AssociationReturnStruct>();
 
   Request registration_request;
   Response registration_response;
@@ -530,7 +556,7 @@ StageReturn<AssociationReturnStruct> StageAssociation::run() {
       case NETWORK_SERVER_CONNECTION_FAILURE:
         failure_count++;
         if(failure_count >= 3) {
-          stage_return.set_exception(exception);
+          stage_return->set_exception(exception);
         }
         break;
       case NETWORK_OKAY:
@@ -546,7 +572,7 @@ StageReturn<AssociationReturnStruct> StageAssociation::run() {
 ///////// FullConnection //////////////////////////
 ///////////////////////////////////////////////////
 
-StageFullConnection::StageFullConnection(ConnectionInformation server_information) : request_client(this->wifi_ssl_object, ENCRYPTION_SSL, server_information), server_information(server_information) {
+StageFullConnection::StageFullConnection(ConnectionInformation &server_information) : request_client(this->wifi_ssl_object, ENCRYPTION_SSL, server_information), server_information(server_information) {
   Router router;
   router
     .add_route(new NetworkReset("/reset/network", POST))
@@ -560,93 +586,131 @@ StageFullConnection::StageFullConnection(ConnectionInformation server_informatio
 }
 
 NetworkExceptions StageFullConnection::handle_incoming() {
-  
-}
+  NetworkExceptions exception;
+  int failure_count = 0;
 
+  while(failure_count < 7) {
+    exception = this->get_handler().listen();
 
-/// @brief listener function to listen for incoming requests from the server, and forward them to the router for processing.
-/// @return NetworkReturnErrors to say if the operation succeeded, or if it failed, what caused the failure
-NetworkReturnErrors ConnectionManager::listener() {
-  this->state_connection.SSLlistener.beginSSL();
-  WiFiClient client;
-  ParsedMessage message;
-  String response;
-  NetworkReturnErrors error;
-
-  int connection_failure_counter = 0;
-  bool fail = false;
-
-  while(this->network_state == CONNECTED && connection_failure_counter < 10) {
-    client = this->state_connection.SSLlistener.available();
-    message = this->rest_receive(client, 3000);
-
-    error = message.error;
-    switch(error) {
-      case CONNECTION_FAILURE: // connection failures are bad, if 10 happen in a row that means the server probably died
-        connection_failure_counter++;
-        if(connection_failure_counter > 10) {
-          fail = true;
-        }
+    switch(exception) {
+      case NETWORK_TIMEOUT:
         break;
-      case TIMEOUT: // timeouts are totally fine and can just be ignored :)
-        continue;
-      case WIFI_FAILURE:
-        fail = true;
+      case NETWORK_SERVER_CONNECTION_FAILURE:
+        failure_count++;
         break;
-      default:
-        connection_failure_counter = 0;
+      case NETWORK_OKAY:
+        failure_count = 0;
+        break;
     }
-    if(fail) {
-      break;
-    }
-    // assuming the message is in fact a request, deal with deciding that later
-    NetworkReturnErrors result = this->router->execute_route(message.request, &response);
-
-    client.println(response);
-
-    client.stop(); // more robust client closing in the case several requests occur within the span of one operation
   }
-
-  return error;
+  return exception;
 }
 
+Response StageFullConnection::send_request(Request &request) {
+  Response response;
 
-/// @brief process listener errors, and sets network + machine state accordingly
-/// @param error the error 
-void ConnectionManager::listener_error_handler(NetworkReturnErrors error) {
-  switch(error) {
-    case WIFI_FAILURE:
-      this->network_state = DOWN;
-      this->machine_state->connection_state = MACHINE_DISCONNECTED;
-      break;
-    case CONNECTION_FAILURE:
-      this->network_state = BROADCASTING;
-      this->machine_state->connection_state = MACHINE_DISCONNECTED;
-      break;
-  }
-}
-
-
-/// @brief send a request to the server over SSL, and wait for a response
-/// @param request request string, formatted using HTTP 
-/// @return ParsedResponse containing the response from the server
-ParsedResponse ConnectionManager::connected_send(String &request) {
-  this->connect_to_server();
-
-  this->state_connection.SSLclient.println(request);
-
-  ParsedResponse response = this->rest_receive(this->state_connection.SSLclient, 10000).response;
-
-  this->state_connection.SSLclient.stop();
+  response = this->request_client.request(&request);
 
   return response;
 }
 
+StageReturn<bool>* StageFullConnection::run() {
+  StageReturn<bool> stage_return = new StageReturn<bool>();
+  stage_return->set_return_value(true);
+
+  NetworkExceptions exception;
+
+  exception = this->handle_incoming();
+
+  stage_return->set_exception(exception);
+
+  return stage_return;
+}
+
+///////////////////////////////////////////////////
+///////// Connectionmanager ///////////////////////
+///////////////////////////////////////////////////
+
+ConnectionManager::ConnectionManager(ConnectionInformation local_connection_information, ConnectionInformation multicast_information, StorageManager *global_storage) : local_connection_information(local_connection_information), multicast_information(multicast_information), (global_storage) {
+
+}
+
+void ConnectionManager::set_stage_object(ConnectionStageIdentifier stage) {
+  delete this->stage;
+
+  switch(this->stage_identifier) {
+    case STAGE_INITIALIZING:
+      this->stage = new StageWifiInitialization(this->local_port);
+      break;
+    case STAGE_STARTUP:
+      this->stage = new StageWifiStartup(this->global_storage->get_wifi());
+      break;
+    case STAGE_BROADCASTING:
+      this->stage = new StageBroadcasting(this->server_information, this->multicast_information, this->global_storage->get_identifiers());
+      break;
+    case STAGE_ASSOCIATING:
+      this->stage = new StageAssociation(this->server_information, this->global_storage->get_identifiers(), this->global_storage->get_machine_state().get_state());
+      break;
+    case STAGE_CONNECTED:
+      this->stage = new StageFullConnection(this->server_information);
+      break;
+  }
+}
+
+void ConnectionManager::handle_error(NetworkExceptions exception) {
+  switch(exception) {
+    case NETWORK_WIFI_FAILURE:
+      this->stage_identifier = STAGE_STARTUP;
+      break;
+    case NETWORK_AUTHENTICATION_FAILURE:
+      this->stage_identifier = STAGE_INITIALIZING;
+      break;
+    case NETWORK_SERVER_CONNECTION_FAILURE:
+      this->stage_identifier = STAGE_BROADCASTING;
+      break;
+  }
+}
+
+void ConnectionManager::handle_returns(StageReturnBase *return_value) {
+  if(*return_value->get_exception() != NETWORK_OKAY) {
+    this->handle_error(*return_value->get_exception());
+    return
+  }
+
+  switch(this->stage_identifier) {
+    case STAGE_INITIALIZING:
+      this->global_storage->get_wifi().copy(*return_value->get_return_value());
+      this->stage_identifier = STAGE_BROADCASTING;
+      break;
+    case STAGE_STARTUP:
+      this->stage_identifier = STAGE_BROADCASTING;
+      break;
+    case STAGE_BROADCASTING:
+      this->server_information = *return_value->get_return_value();
+      this->stage_identifier = STAGE_ASSOCIATING;
+      break;
+    case STAGE_ASSOCIATING:
+      this->stage_identifier = STAGE_CONNECTED;
+      break;
+    case STAGE_CONNECTED:
+      break;
+  }
+
+  delete return_value;
+}
+
+void ConnectionManager::run() {
+  StageReturnBase *return_value;
+
+  return_value = this->stage->run();
+
+  this->handle_returns(return_value);
+}
 
 /// @brief Core network management code. State driven, running different functions based on machine network state. This should be the only function in void loop, everythign else is a pseudo-async task in the device task manager
 void ConnectionManager::run() { // goes in void_loop
   bool status;
-  switch(this->network_state) {
+  switch(this->stage) {
     case INITIALIZING:
       status = this->initialization();
       break;

@@ -37,6 +37,7 @@ class ConfigStruct {
   private:
   int flash_address;
   SPIFlash *flash;
+  bool is_configured = false;
 
   public:
   ConfigStruct() {};
@@ -45,9 +46,12 @@ class ConfigStruct {
   virtual DynamicJsonDocument to_json() = 0;
   virtual StorageException from_json(DynamicJsonDocument &data) = 0;
 
-  bool write(DynamicJsonDocument &data);
-  bool read();
+  void set_configured();
+  void set_unconfigured();
+  bool check_is_configured();
 
+  StorageException write(DynamicJsonDocument &data);
+  bool read();
   bool erase();
 };
 
