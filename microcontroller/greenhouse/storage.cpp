@@ -54,7 +54,7 @@ void ConfigStruct::set_unconfigured() {
   this->is_configured = false;
 }
 
-bool ConfigStruct::check_is_configured() {
+bool ConfigStruct::check_is_configured() const {
   return this->is_configured;
 }
 
@@ -64,15 +64,15 @@ bool ConfigStruct::check_is_configured() {
 
 Identifiers::Identifiers(SPIFlash *flash, int flash_address) : ConfigStruct(flash, flash_address) {}
 
-int Identifiers::get_device_id() {
+int Identifiers::get_device_id() const {
   return this->device_id;
 }
 
-int Identifiers::get_project_id() {
+int Identifiers::get_project_id() const {
   return this->project_id;
 }
 
-String Identifiers::get_device_name() {
+String Identifiers::get_device_name() const {
   return this->device_name;
 }
 
@@ -103,7 +103,7 @@ DynamicJsonDocument Identifiers::to_json() {
 
 MachineState::MachineState(SPIFlash *flash, int flash_address) : ConfigStruct(flash, flash_address) {}
 
-MachineOperationalState MachineState::get_state() {
+MachineOperationalState MachineState::get_state() const {
   return this->operational_state;
 }
 
@@ -142,23 +142,23 @@ DynamicJsonDocument MachineState::to_json() {
 
 Preset::Preset(SPIFlash *flash, int flash_address) : ConfigStruct(flash, flash_address) {}
 
-float Preset::get_temperature() {
+float Preset::get_temperature() const {
   return this->temperature;
 }
 
-float Preset::get_humidity() {
+float Preset::get_humidity() const {
   return this->humidity;
 }
 
-float Preset::get_moisture() {
+float Preset::get_moisture() const {
   return this->moisture;
 }
 
-float Preset::get_hours_daylight() {
+float Preset::get_hours_daylight() const {
   return this->hours_daylight;
 }
 
-float Preset::get_preset_id() {
+float Preset::get_preset_id() const {
   return this->preset_id;
 }
 
@@ -201,27 +201,27 @@ WifiInfo::WifiInfo(String ssid, int channel, String password) : ssid(ssid), chan
 
 WifiInfo::WifiInfo(String ssid, int channel) : ssid(ssid), channel(channel), type(WIFI_OPEN) {}
 
-WifiNetworkTypes WifiInfo::get_type() {
+WifiNetworkTypes WifiInfo::get_type() const {
   return this->type;
 }
 
-String WifiInfo::get_ssid() {
+String WifiInfo::get_ssid() const {
   return this->ssid;
 }
 
-String WifiInfo::get_username() {
+String WifiInfo::get_username() const {
   return this->username;
 }
 
-String WifiInfo::get_password() {
+String WifiInfo::get_password() const {
   return this->password;
 }
 
-int WifiInfo::get_channel() {
+int WifiInfo::get_channel() const {
   return this->channel;
 }
 
-bool WifiInfo::copy(WifiInfo &to_copy) {
+bool WifiInfo::copy(WifiInfo to_copy) {
   this->type = to_copy.type;
   this->channel = to_copy.channel;
   this->ssid = to_copy.ssid;
@@ -343,8 +343,12 @@ void DataManager::set_reference_datetime(int timestamp) {
   this->reference_datetime = timestamp;
 }
 
-int DataManager::get_end_address() {
+int DataManager::get_end_address() const {
   return this->flash_address + this->max_size;
+}
+
+bool DataManager::check_is_storing() const {
+  return this->is_storing;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -413,8 +417,24 @@ bool StorageManager::write_flash_configuration(ConfigType configuration, Dynamic
   }
 }
 
-bool StorageManager::write_flash_configuration(WifiInfo &wifi_info) {
+bool StorageManager::write_flash_configuration(WifiInfo wifi_info) {
   this->wifi_info.copy(wifi_info);
+}
+
+void StorageManager::set_network_state(NetworkState state) {
+  this->network_state = state;
+}
+
+NetworkState StorageManager::get_network_state() const{
+  return this->network_state;
+}
+
+void StorageManager::set_common_data(CommonDataBuffer &common) {
+  this->common_data = common;
+}
+
+CommonDataBuffer StorageManager::get_common_data() const {
+  return this->common_data;
 }
 
 void StorageManager::hard_reset() {

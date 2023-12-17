@@ -22,8 +22,6 @@
 
 #define TIMER_INTERVAL_S 5
 
-#include "machine_state.hpp"
-
 
 enum Actions {ENABLE, DISABLE, EXECUTE};
 

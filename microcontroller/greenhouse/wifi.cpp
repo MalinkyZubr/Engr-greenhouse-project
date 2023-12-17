@@ -8,7 +8,7 @@
 /// @brief the wifi watchdog watches to see if the connection to the wireless AP is stable. if connection is lost, it sets the network state to down. This is meant to be a Task manager task @see TaskManager
 /// @param connected_manager the connection manager for which the watchdog is checking wifi status
 /// @param machine_state machine state with which the watchdog tracks and sets machine connection state on wifi failure
-WiFiWatchdog::WiFiWatchdog(ConnectionManager *connected_manager, MachineState *machine_state) : connected_manager(connected_manager), machine_state(machine_state) {}
+WiFiWatchdog::WiFiWatchdog(ConnectionManager *connected_manager, StorageManager *global_storage) : connected_manager(connected_manager), global_storage(global_storage) {}
 
 
 /// @brief checks the wifi status of the connection manager. if the connection to AP is down, machine network state is set to MACHINE_DISCONNETED and the network state is set to down
@@ -16,9 +16,9 @@ void WiFiWatchdog::check_wifi_status() {
   int Wifi_status = WiFi.status();
 
   // check if the wifi is disconnected, first and foremost
-  if((Wifi_status == WL_CONNECTION_LOST || Wifi_status == WL_DISCONNECTED) && (this->connected_manager->network_state != DOWN && this->connected_manager->network_state != INITIALIZING)) {
-    this->machine_state->connection_state = MACHINE_DISCONNECTED;
-    this->connected_manager->network_state = DOWN;
+  if(Wifi_status == WL_CONNECTION_LOST || Wifi_status == WL_DISCONNECTED) {
+    this->global_storage->set_network_state(MACHINE_DISCONNECTED);
+    this->connected_manager->set_stage_identifier(STAGE_STARTUP);
   }
 }
 
@@ -32,13 +32,13 @@ void WiFiWatchdog::callback() {
 ///////// NetworkClient ///////////////////////////
 ///////////////////////////////////////////////////
 
-NetworkClient::NetworkClient(Layer4Encryption layer_4_encryption = NONE) : layer_4_encryption_type(layer_4_encryption) {}
+NetworkClient::NetworkClient(Layer4Encryption layer_4_encryption = ENCRYPTION_NONE) : layer_4_encryption_type(layer_4_encryption) {}
 
 Layer4Encryption NetworkClient::get_encryption() {
   return this->layer_4_encryption_type;
 }
 
-NetworkExceptions NetworkClient::client_receive_message(WiFiClient &client, int timeout, String *message) {
+NetworkException NetworkClient::client_receive_message(WiFiClient &client, int timeout, String *message) {
   String current_line = "";
 
   long long start_time = millis();
@@ -48,16 +48,16 @@ NetworkExceptions NetworkClient::client_receive_message(WiFiClient &client, int 
       char c = client.read();
 
       start_time = millis();
-      if(c == "\n" && current_line.equals("")) {
+      if(c == '\n' && current_line.equals("")) {
         if(current_line.length() == 0) {
           break;
         }
         else {
-          message->concat(current_line + "\n");
+          message->concat(current_line + '\n');
           current_line = "";
         }
       }
-      else if(c != *"\r") {
+      else if(c != '\r') {
         current_line.concat(c);
       }
     }
@@ -68,11 +68,11 @@ NetworkExceptions NetworkClient::client_receive_message(WiFiClient &client, int 
   else if(((millis() - start_time) > timeout)) {
     return NETWORK_TIMEOUT;
   }
-  return NETWORK_OKAY
+  return NETWORK_OKAY;
 }
 
-NetworkExceptions NetworkClient::client_send_message(WiFiClient &client, HTTPMessage *message) {
-  NetworkExceptions return_error = NETWORK_OKAY;
+NetworkException NetworkClient::client_send_message(WiFiClient &client, HTTPMessage *message) {
+  NetworkException return_error = NETWORK_OKAY;
   String serialized_message = message->serialize();
 
   bool status = client.println(serialized_message);
@@ -85,9 +85,9 @@ NetworkExceptions NetworkClient::client_send_message(WiFiClient &client, HTTPMes
 }
 
 HTTPMessage* NetworkClient::parse_message(String &unparsed_message) {
-  HTTPMessage *received;
+  HTTPMessage *received = nullptr;
 
-  if(message.startsWith("HTTP")) {
+  if(unparsed_message.startsWith("HTTP")) {
     received = new Response(unparsed_message);
   }
   else {
@@ -101,7 +101,7 @@ HTTPMessage* NetworkClient::receive_and_parse(WiFiClient &client, int timeout=50
   String unparsed;
   HTTPMessage *received;
 
-  NetworkExceptions receive_error = this->client_receive_message(client, timeout, &unparsed);
+  NetworkException receive_error = this->client_receive_message(client, timeout, &unparsed);
   if(receive_error == NETWORK_OKAY) {
     received = this->parse_message(unparsed);
   }
@@ -122,7 +122,7 @@ Response TCPRequestClient::receive_response(WiFiClient &client) {
   Response *response_pointer;
   Response response;
 
-  response_pointer = this->receive_and_parse(this->client, 10000);
+  response_pointer = dynamic_cast<Response*>(this->receive_and_parse(this->client, 10000));
 
   this->client.stop();
 
@@ -142,8 +142,8 @@ Response TCPRequestClient::request(Request *message) {
       break;
   }
 
-  NetworkExceptions send_exception = this->client_send_message(this->client, message);
-  response = this->receive_response();
+  NetworkException send_exception = this->client_send_message(this->client, message);
+  response = this->receive_response(this->client);
 
   return response;
 }
@@ -163,10 +163,10 @@ TCPListenerClient::TCPListenerClient(WiFiServer &listener, Layer4Encryption encr
   }
 }
 
-NetworkExceptions TCPListenerClient::respond(Response &response, WiFiClient &client) {
-  String response = response.serialize();
-  NetworkExceptions exception = NETWORK_OKAY;
-  if(!client.println(response)) {
+NetworkException TCPListenerClient::respond(Response &response, WiFiClient &client) {
+  String response_str = response.serialize();
+  NetworkException exception = NETWORK_OKAY;
+  if(!client.println(response_str)) {
     exception = NETWORK_SERVER_CONNECTION_FAILURE;
   }
 
@@ -174,12 +174,12 @@ NetworkExceptions TCPListenerClient::respond(Response &response, WiFiClient &cli
   return exception;
 }
 
-NetworkExceptions TCPListenerClient::listen() {
+NetworkException TCPListenerClient::listen() {
   Request *received_ptr;
   Request received;
   WiFiClient client = this->listener.available();
 
-  received_ptr = this->receive_and_parse(client, 5000);
+  received_ptr = dynamic_cast<Request*>(this->receive_and_parse(client, 5000));
   if(received_ptr->get_exception() != NETWORK_OKAY) {
     delete received_ptr;
     return received_ptr->get_exception();
@@ -187,7 +187,7 @@ NetworkExceptions TCPListenerClient::listen() {
 
   received = Request(received_ptr); // this frees the pointer memory
 
-  Response response = this->router->execute_route(received);
+  Response response = this->router.execute_route(received);
   
   return this->respond(response, client);
 }
@@ -196,24 +196,25 @@ NetworkExceptions TCPListenerClient::listen() {
 ///////// UDPClient ///////////////////////////////
 ///////////////////////////////////////////////////
 
-UDPClient::UDPClient(WiFiUDP &udp_server, int local_port, ConnectionInformation multicast_information) : udp_server(udp_server), multicast_information(multicast_information) {
-  this->udp_server.begin(local_port);
+UDPClient::UDPClient(WiFiUDP &udp_server, ConnectionInformation &local_information, ConnectionInformation &multicast_information) : udp_server(udp_server), multicast_information(multicast_information) {
+  this->udp_server.begin(local_information.port);
 }
 
-NetworkExceptions UDPClient::send_udp(UDPRequest &request) {
+NetworkException UDPClient::send_udp(UDPRequest &request) {
   String request_string = request.to_string();
 
   this->udp_server.beginPacket(this->multicast_information.ip, this->multicast_information.port);
   this->udp_server.write(request_string.c_str());
   this->udp_server.endPacket();
 
-  return NETWORK_OKAY
+  return NETWORK_OKAY;
 }
 
 UDPResponse UDPClient::receive_udp(int timeout) {
   UDPResponse response;
 
   char receive_buffer[32];
+  String response_string;
 
   long long start = millis();
 
@@ -222,8 +223,9 @@ UDPResponse UDPClient::receive_udp(int timeout) {
     response.set_exception(NETWORK_TIMEOUT);
   }
   else {
+    response_string = receive_buffer;
     this->udp_server.read(receive_buffer, 32);
-    response = UDPResponse(receive_buffer);
+    response = UDPResponse(response_string);
   }
   return response;
 }
@@ -232,13 +234,13 @@ UDPResponse UDPClient::receive_udp(int timeout) {
 ///////// ConnectionStage /////////////////////////
 ///////////////////////////////////////////////////
 
-template <typename L, typename H, typename R>
-void ConnectionStage<L, H, R>::configure_message_handler() {
- // need another attribute for this
-}
+// template <typename L, typename H, typename R>
+// void ConnectionStage<L, H, R>::configure_message_handler() {
+//  // need another attribute for this
+// }
 
 template <typename L, typename H, typename R>
-L ConnectionStage<L, H, R>::get_listener() {
+L& ConnectionStage<L, H, R>::get_listener() {
   return this->listener;
 }
 
@@ -261,22 +263,14 @@ ConnectionStage<L, H, R>::~ConnectionStage() {
 ///////// StageReturnBase /////////////////////////
 ///////////////////////////////////////////////////
 
-StageReturnBase::StageReturnBase(NetworkExceptions exception) : exception(exception) {}
-
-NetworkExceptions StageReturnBase::get_exception() {
-  return this->exception;
-}
-
-void StageReturnBase::set_exception(NetworkExceptions exception) {
-  this->exception = exception;
-}
+StageReturnBase::StageReturnBase(NetworkException exception) : exception(exception) {}
 
 ///////////////////////////////////////////////////
 ///////// StageReturn /////////////////////////////
 ///////////////////////////////////////////////////
 
 template<typename R>
-StageReturn<R>::StageReturn(NetworkExceptions exception, R return_value) : StageReturnBase(exception), return_value(return_value) {};
+StageReturn<R>::StageReturn(NetworkException exception, R return_value) : StageReturnBase(exception), return_value(return_value) {};
 
 template<typename R>
 R StageReturn<R>::get_return_value() {
@@ -288,6 +282,16 @@ void StageReturn<R>::set_return_value(R return_value) {
   this->return_value = return_value;
 }
 
+template<typename R>
+NetworkException StageReturn<R>::get_exception() {
+  return this->exception;
+}
+
+template<typename R>
+void StageReturn<R>::set_exception(NetworkException exception) {
+  this->exception = exception;
+}
+
 ///////////////////////////////////////////////////
 ///////// StageWifiBaseClass //////////////////////
 ///////////////////////////////////////////////////
@@ -297,10 +301,10 @@ void StageReturn<R>::set_return_value(R return_value) {
 /// @return bool to say if the connection succeeded or not
 bool StageWifiBaseClass::enterprise_connect(WifiInfo &info) { // pls fix my malloc bs
   tstr1xAuthCredentials auth;
-  strcpy((char *) auth.au8UserName, info.username.c_str());
-  strcpy((char *) auth.au8Passwd, info.password.c_str());
+  strcpy((char *) auth.au8UserName, info.get_username().c_str());
+  strcpy((char *) auth.au8Passwd, info.get_password().c_str());
 
-  bool wifi_status = m2m_wifi_connect_sc(info.get_ssid().c_str(), info.get_ssid().length(), M2M_WIFI_SEC_802_1X, &auth, info.channel, false);
+  bool wifi_status = m2m_wifi_connect_sc((char*)info.get_ssid().c_str(), info.get_ssid().length(), M2M_WIFI_SEC_802_1X, &auth, info.get_channel(), false);
 
   return wifi_status == M2M_SUCCESS;
 }
@@ -308,7 +312,7 @@ bool StageWifiBaseClass::enterprise_connect(WifiInfo &info) { // pls fix my mall
 /// @brief simple AP connection function that connects to home wifi AP with just a password
 /// @param info wifi information containing credentials necessary for connection
 /// @return bool to say if connection succeeded or not
-bool StageWifiBaseClass::home_connect(WiFiInfo &info) {
+bool StageWifiBaseClass::home_connect(WifiInfo &info) {
   bool status = WiFi.begin(info.get_ssid(), info.get_password());
   return status == WL_CONNECTED;
 }
@@ -316,10 +320,10 @@ bool StageWifiBaseClass::home_connect(WiFiInfo &info) {
 /// @brief function for switching between different connection functions based on the type enum specified in the wifi info
 /// @param info wifi information necessary for connection to an AP, contains the network type
 /// @return NetworkReturnErrors enum containing error or okay message after execution
-NetworkExceptions StageWifiBaseClass::connect_wifi(WiFiInfo &info) {
+NetworkException StageWifiBaseClass::connect_wifi(WifiInfo &info) {
   bool result;
 
-  switch(info.type) {
+  switch(info.get_type()) {
     case WIFI_ENTERPRISE:
       result = this->enterprise_connect(info);
       break;
@@ -339,10 +343,10 @@ NetworkExceptions StageWifiBaseClass::connect_wifi(WiFiInfo &info) {
 ///////// StageWifiInitialization /////////////////
 ///////////////////////////////////////////////////
 
-StageWifiInitialization::StageWifiInitialization(int listen_port) : ConnectionStage(listen_port) {
+StageWifiInitialization::StageWifiInitialization(int listen_port) : StageWifiBaseClass(listen_port) {
   Router router;
   router
-    .add_route(new ReceiveCredentials("/submit", POST, &this->temporary_wifi_info, &this->wifi_configured_flag))
+    .add_route(new ReceiveCredentials("/submit", POST, &this->temporary_wifi_information, &this->wifi_configured))
     .add_route(new SendHTML("/", GET))
     .add_route(new SendCSS("/styles", GET))
     .add_route(new SendJS("/script", GET));
@@ -357,7 +361,7 @@ String StageWifiInitialization::ssid_config() {
   int ssid_number = 0;
   bool allowed = false;
   if(num_networks == -1) {
-    return false;
+    return "";
   }
 
   while(!allowed) {
@@ -380,7 +384,7 @@ bool StageWifiInitialization::start_access_point() {
   bool status;
 
   ssid = this->ssid_config();
-  status = WiFi.beginAP(converted, AP_CONFIG_PASSWORD);
+  status = WiFi.beginAP((char*) ssid.c_str(), AP_CONFIG_PASSWORD);
   if (status != WL_AP_LISTENING) {
     return false;
   }
@@ -392,8 +396,8 @@ bool StageWifiInitialization::start_access_point() {
 /// @param client wifi client to use for communications with the requesting device
 /// @return WifiInfo object to return and apply to the flash memory and to the server
 /// @todo upgrade this to an SSL server connection
-NetworkExceptions StageWifiInitialization::receive_credentials(WiFiClient &client) {
-  NetworkExceptions exception;
+NetworkException StageWifiInitialization::receive_credentials() {
+  NetworkException exception;
   while(!this->wifi_configured) {
     exception = this->get_handler()->listen();
 
@@ -402,17 +406,17 @@ NetworkExceptions StageWifiInitialization::receive_credentials(WiFiClient &clien
     }
   }
 
-  return exception
+  return exception;
 }
 
 StageReturn<WifiInfo>* StageWifiInitialization::run() {
   String ssid; 
-  StageReturn<WifiInfo> stage_return = new StageReturn<WifiInfo>();
-  NetworkExceptions exception;
+  StageReturn<WifiInfo>* stage_return = new StageReturn<WifiInfo>();
+  NetworkException exception;
 
   if(!check_wifi_module_status()) {
     stage_return->set_exception(NETWORK_WIFI_FAILURE);
-    return stage_return
+    return stage_return;
   }
 
   bool connection_success = false;
@@ -451,16 +455,16 @@ StageReturn<WifiInfo>* StageWifiInitialization::run() {
 
 StageWifiStartup::StageWifiStartup(WifiInfo &wifi_info) : wifi_info(wifi_info) {}
 
-StageReturn<WifiInfo>* run() {
-  NetworkExceptions exception;
-  StageReturn<WifiInfo> stage_return = new StageReturn<WifiInfo>();
+StageReturn<WifiInfo>* StageWifiStartup::run() {
+  NetworkException exception;
+  StageReturn<WifiInfo>* stage_return = new StageReturn<WifiInfo>();
 
-  exception = this->connect_wifi(this->wifi_info)
+  exception = this->connect_wifi(this->wifi_info);
 
   stage_return->set_exception(exception);
   stage_return->set_return_value(this->wifi_info);
 
-  return stage_return
+  return stage_return;
 }
 
 ///////////////////////////////////////////////////
@@ -468,22 +472,22 @@ StageReturn<WifiInfo>* run() {
 ///////////////////////////////////////////////////
 
 StageBroadcasting::StageBroadcasting(ConnectionInformation local_information, ConnectionInformation multicast_information, const Identifiers &device_identifiers) : local_information(local_information), multicast_information(multicast_information), device_identifiers(device_identifiers) {
-  this->set_handler(new UDPClient(this->get_listener(), local_information.port, multicast_information));
+  this->set_handler(new UDPClient(this->get_listener(), local_information, multicast_information));
 }
 
 StageReturn<ConnectionInformation>* StageBroadcasting::run() {
-  NetworkExceptions exception;
+  NetworkException exception;
   ConnectionInformation returned_connection_information;
-  StageReturn<ConnectionInformation> stage_return = new StageReturn<ConnectionInformation>();
+  StageReturn<ConnectionInformation>* stage_return = new StageReturn<ConnectionInformation>();
 
-  UDPRequest request(this->local_information->ip, this->device_identifiers);
+  UDPRequest request(this->local_information.ip, this->device_identifiers);
   UDPResponse response;
 
   bool received_acknowledgement = false;
 
   while(received_acknowledgement) {
-    exception = this->get_listener()->send_udp(request);
-    response = this->get_listener()->receive_udp();
+    exception = this->get_handler()->send_udp(request);
+    response = this->get_handler()->receive_udp(5000);
     exception = response.get_exception();
 
     switch(exception) {
@@ -513,9 +517,9 @@ StageAssociation::StageAssociation(ConnectionInformation server_information, Ide
 
 /// @brief function designed to connect to server using the object's ssl client. Makes 5 attempts at 5 second intervals to connect
 /// @return if the function fails to connect after 5 attempts, return false
-NetworkExceptions StageAssociation::test_server_connection() {
+NetworkException StageAssociation::test_server_connection() {
   for(int x = 0; x < 3; x++) {
-    if(this->get_listener().connectSSL(this->server_information.ip.c_str(), this->server_information.port)) {
+    if(this->get_listener().connectSSL(this->server_information.ip, this->server_information.port)) {
       delay(1000);
       this->get_listener().stop();
       return NETWORK_OKAY;
@@ -532,10 +536,10 @@ Request StageAssociation::generate_registration_request() {
 
 StageReturn<AssociationReturnStruct>* StageAssociation::run() {
   AssociationReturnStruct received_configuration;
-  NetworkExceptions exception;
+  NetworkException exception;
   Identifiers identifier;
   Preset preset;
-  StageReturn<AssociationReturnStruct> stage_return = new StageReturn<AssociationReturnStruct>();
+  StageReturn<AssociationReturnStruct>* stage_return = new StageReturn<AssociationReturnStruct>();
 
   Request registration_request;
   Response registration_response;
@@ -546,8 +550,8 @@ StageReturn<AssociationReturnStruct>* StageAssociation::run() {
   registration_request = this->generate_registration_request();
 
   while(!associated && failure_count < 3) {
-    registration_response = this->get_handler().request(registration_request);
-    exception = registration_response.exception;
+    registration_response = this->get_handler()->request(&registration_request);
+    exception = registration_response.get_exception();
 
     received_configuration.identifier.from_json(registration_response.get_body());
     received_configuration.preset.from_json(registration_response.get_body());
@@ -565,14 +569,14 @@ StageReturn<AssociationReturnStruct>* StageAssociation::run() {
     }
   }
 
-  return stage_return
+  return stage_return;
 }
 
 ///////////////////////////////////////////////////
 ///////// FullConnection //////////////////////////
 ///////////////////////////////////////////////////
 
-StageFullConnection::StageFullConnection(ConnectionInformation &server_information) : request_client(this->wifi_ssl_object, ENCRYPTION_SSL, server_information), server_information(server_information) {
+StageFullConnection::StageFullConnection(ConnectionInformation &server_information, StorageManager *global_storage) : request_client(this->wifi_ssl_object, ENCRYPTION_SSL, server_information), server_information(server_information) {
   Router router;
   router
     .add_route(new NetworkReset("/reset/network", POST))
@@ -585,12 +589,12 @@ StageFullConnection::StageFullConnection(ConnectionInformation &server_informati
   this->set_handler(new TCPListenerClient(this->get_listener(), ENCRYPTION_SSL, router));
 }
 
-NetworkExceptions StageFullConnection::handle_incoming() {
-  NetworkExceptions exception;
+NetworkException StageFullConnection::handle_incoming() {
+  NetworkException exception;
   int failure_count = 0;
 
   while(failure_count < 7) {
-    exception = this->get_handler().listen();
+    exception = this->get_handler()->listen();
 
     switch(exception) {
       case NETWORK_TIMEOUT:
@@ -615,10 +619,10 @@ Response StageFullConnection::send_request(Request &request) {
 }
 
 StageReturn<bool>* StageFullConnection::run() {
-  StageReturn<bool> stage_return = new StageReturn<bool>();
+  StageReturn<bool>* stage_return = new StageReturn<bool>();
   stage_return->set_return_value(true);
 
-  NetworkExceptions exception;
+  NetworkException exception;
 
   exception = this->handle_incoming();
 
@@ -631,16 +635,20 @@ StageReturn<bool>* StageFullConnection::run() {
 ///////// Connectionmanager ///////////////////////
 ///////////////////////////////////////////////////
 
-ConnectionManager::ConnectionManager(ConnectionInformation local_connection_information, ConnectionInformation multicast_information, StorageManager *global_storage) : local_connection_information(local_connection_information), multicast_information(multicast_information), (global_storage) {
-
+ConnectionManager::ConnectionManager(ConnectionInformation local_connection_information, ConnectionInformation multicast_information, StorageManager *global_storage) : local_connection_information(local_connection_information), multicast_information(multicast_information), global_storage(global_storage) {
+  if(true) { // modify this later
+    this->set_stage_object(STAGE_INITIALIZING);
+  }
 }
 
 void ConnectionManager::set_stage_object(ConnectionStageIdentifier stage) {
   delete this->stage;
 
-  switch(this->stage_identifier) {
+  this->stage_identifier = stage;
+
+  switch(stage) {
     case STAGE_INITIALIZING:
-      this->stage = new StageWifiInitialization(this->local_port);
+      this->stage = new StageWifiInitialization(this->local_connection_information.port);
       break;
     case STAGE_STARTUP:
       this->stage = new StageWifiStartup(this->global_storage->get_wifi());
@@ -649,54 +657,68 @@ void ConnectionManager::set_stage_object(ConnectionStageIdentifier stage) {
       this->stage = new StageBroadcasting(this->server_information, this->multicast_information, this->global_storage->get_identifiers());
       break;
     case STAGE_ASSOCIATING:
-      this->stage = new StageAssociation(this->server_information, this->global_storage->get_identifiers(), this->global_storage->get_machine_state().get_state());
+      this->stage = new StageAssociation(this->server_information, this->global_storage->get_identifiers(), this->global_storage->get_machine_state());
       break;
     case STAGE_CONNECTED:
-      this->stage = new StageFullConnection(this->server_information);
+      this->stage = new StageFullConnection(this->server_information, this->global_storage);
       break;
   }
 }
 
-void ConnectionManager::handle_error(NetworkExceptions exception) {
+void ConnectionManager::handle_error(NetworkException exception) {
   switch(exception) {
     case NETWORK_WIFI_FAILURE:
-      this->stage_identifier = STAGE_STARTUP;
+      this->set_stage_object(STAGE_STARTUP);
       break;
     case NETWORK_AUTHENTICATION_FAILURE:
-      this->stage_identifier = STAGE_INITIALIZING;
+      this->set_stage_object(STAGE_INITIALIZING);
       break;
     case NETWORK_SERVER_CONNECTION_FAILURE:
-      this->stage_identifier = STAGE_BROADCASTING;
+      this->set_stage_object(STAGE_BROADCASTING);
       break;
   }
 }
 
 void ConnectionManager::handle_returns(StageReturnBase *return_value) {
-  if(*return_value->get_exception() != NETWORK_OKAY) {
-    this->handle_error(*return_value->get_exception());
-    return
+  if(return_value->get_exception() != NETWORK_OKAY) {
+    this->handle_error(return_value->get_exception());
+    return;
   }
 
   switch(this->stage_identifier) {
     case STAGE_INITIALIZING:
-      this->global_storage->get_wifi().copy(*return_value->get_return_value());
-      this->stage_identifier = STAGE_BROADCASTING;
+      this->global_storage->get_wifi().copy(dynamic_cast<StageReturn<WifiInfo>*>(return_value)->get_return_value());
+      this->set_stage_object(STAGE_BROADCASTING);
       break;
     case STAGE_STARTUP:
-      this->stage_identifier = STAGE_BROADCASTING;
+      this->set_stage_object(STAGE_BROADCASTING);
       break;
     case STAGE_BROADCASTING:
-      this->server_information = *return_value->get_return_value();
-      this->stage_identifier = STAGE_ASSOCIATING;
+      this->server_information = dynamic_cast<StageReturn<ConnectionInformation>*>(return_value)->get_return_value();
+      this->set_stage_object(STAGE_ASSOCIATING);
       break;
     case STAGE_ASSOCIATING:
-      this->stage_identifier = STAGE_CONNECTED;
+      this->set_stage_object(STAGE_CONNECTED);
       break;
     case STAGE_CONNECTED:
       break;
   }
 
   delete return_value;
+}
+
+Response ConnectionManager::send_request(Request &request) {
+  Response response;
+
+  if(this->stage_identifier == STAGE_CONNECTED) {
+    StageFullConnection* stage = dynamic_cast<StageFullConnection*>(this->stage);
+    response = stage->send_request(request);
+  }
+  else {
+    response.set_exception(NETWORK_NOT_ACTIVE);
+  }
+
+  return response;
 }
 
 void ConnectionManager::run() {
@@ -707,40 +729,10 @@ void ConnectionManager::run() {
   this->handle_returns(return_value);
 }
 
-/// @brief Core network management code. State driven, running different functions based on machine network state. This should be the only function in void loop, everythign else is a pseudo-async task in the device task manager
-void ConnectionManager::run() { // goes in void_loop
-  bool status;
-  switch(this->stage) {
-    case INITIALIZING:
-      status = this->initialization();
-      break;
-    case BROADCASTING:
-      if(this->storage->configured) { // the server device_initializer object will have an expidited field, that can tell the association setup thing if the setup should be expidited (no async event)
-        status = this->broadcast(true);
-      }
-      else {
-        status = this->broadcast(false);
-      }
-      break;
-    case ASSOCIATING:
-      status = this->association();
-      break;
-    case CONNECTED:
-      this->listener();
-      break;
-    case STARTUP:
-    case DOWN:
-      switch(this->connect_wifi(this->wifi_information)) {
-        case NOT_FOUND:
-          break;
-        case AUTHENTICATION_FAILURE:
-          this->network_state = INITIALIZING; // if credentials are no longer valid, reset the wifi data
-          break;
-        case OKAY:
-          this->network_state = BROADCASTING;
-          break;
-      }
-      delay(5000);
-      break;
-  }
+void ConnectionManager::set_stage_identifier(ConnectionStageIdentifier stage) {
+  this->stage_identifier = stage;
+}
+
+ConnectionStageIdentifier ConnectionManager::get_stage_identifier() {
+  return this->stage_identifier;
 }

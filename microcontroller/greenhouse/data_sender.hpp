@@ -4,21 +4,18 @@
 
 #include "wifi.hpp"
 #include "storage.hpp"
-#include "machine_state.hpp"
 #include "async.hpp"
 #include "http.hpp"
 
 
 class DataSender : Callable {
   private:
-  CommonData *common_data;
-  MachineState *machine_state;
-  ConfigManager *storage;
+  StorageManager *global_storage;
   ConnectionManager *connection_manager;
 
   public:
   void flush_data_storage_to_server();
-  DataSender(CommonData *common_data, MachineState *machine_state, ConfigManager *config_manager, ConnectionManager *connection_manager);
+  DataSender(StorageManager *global_storage, ConnectionManager *connection_manager);
   void callback();
 };
 

@@ -16,12 +16,9 @@
 #include "storage.hpp"
 #include "environmentManagement.hpp"
 #include "router.hpp"
-#include "request_routes.hpp"
 #include "data_sender.hpp"
 #include "http.hpp"
-#include "machine_state.hpp"
 #include "wifi.hpp"
-#include "wifi_info.hpp"
 
 #include "TimerInterrupt.h"
 #include "ISR_Timer.h"

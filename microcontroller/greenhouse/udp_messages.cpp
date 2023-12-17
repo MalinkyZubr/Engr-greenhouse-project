@@ -5,11 +5,11 @@
 //////////// UDPRequest ///////////////////
 ///////////////////////////////////////////
 
-void UDPMessage::set_exception(NetworkExceptions exception) {
+void UDPMessage::set_exception(NetworkException exception) {
   this->exception = exception;
 }
 
-NetworkExceptions UDPMessage::get_exception() {
+NetworkException UDPMessage::get_exception() {
   return this->exception;
 }
 
@@ -17,7 +17,7 @@ NetworkExceptions UDPMessage::get_exception() {
 //////////// UDPRequest ///////////////////
 ///////////////////////////////////////////
 
-UDPRequest::UDPRequest(String ip_address, Identifiers &identifiers) : ip_address(ip_address), device_name(identifiers.get_device_name()), device_id(identifiers.get_device_id()) {
+UDPRequest::UDPRequest(String ip_address, const Identifiers &identifiers) : ip_address(ip_address), device_name(identifiers.get_device_name()), device_id(identifiers.get_device_id()) {
   if(!this->device_name.equals("") && !this->device_id.equals("")) {
     this->expidited = true;
   }

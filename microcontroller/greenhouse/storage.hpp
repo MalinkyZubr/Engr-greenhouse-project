@@ -20,6 +20,12 @@
 // DO BELOW
 // there must be a memory sector for machine state, so that if the device disconnects while paused, it will stay paused after reconnecting
 
+/// @brief global machine connection state for tracking if the device is connected to the server or not
+enum NetworkState {
+  MACHINE_CONNECTED,
+  MACHINE_DISCONNECTED
+};
+
 /// @brief global machine operational state for tracking if the machine should be paused or not
 enum MachineOperationalState {
     MACHINE_PAUSED = 'p', // in this case all devices should stop taking measurements
@@ -32,6 +38,13 @@ enum WifiNetworkTypes {
   WIFI_ENTERPRISE = 'e',
   WIFI_OPEN = 'o'
 };
+
+typedef struct {
+  float temperature;
+  float humidity;
+  float moisture;
+  float light_exposure;
+} CommonDataBuffer;
 
 class ConfigStruct {
   private:
@@ -48,7 +61,7 @@ class ConfigStruct {
 
   void set_configured();
   void set_unconfigured();
-  bool check_is_configured();
+  bool check_is_configured() const;
 
   StorageException write(DynamicJsonDocument &data);
   bool read();
@@ -63,7 +76,7 @@ class MachineState : public ConfigStruct {
   public:
   MachineState(SPIFlash *flash, int flash_address);
 
-  MachineOperationalState get_state();
+  MachineOperationalState get_state() const;
   void set_state(MachineOperationalState state);
 
   StorageException from_json(DynamicJsonDocument &data);
@@ -79,13 +92,14 @@ class Preset : public ConfigStruct {
   int preset_id = -1;
 
   public:
+  Preset() {};
   Preset(SPIFlash *flash, int flash_address);
 
-  float get_temperature();
-  float get_humidity();
-  float get_moisture();
-  float get_hours_daylight();
-  float get_preset_id();
+  float get_temperature() const;
+  float get_humidity() const;
+  float get_moisture() const;
+  float get_hours_daylight() const;
+  float get_preset_id() const;
 
   StorageException from_json(DynamicJsonDocument &data) override;
   DynamicJsonDocument to_json() override;
@@ -100,9 +114,10 @@ class Identifiers : public ConfigStruct {
   public:
   Identifiers() {};
   Identifiers(SPIFlash *flash, int flash_address);
-  int get_device_id();
-  int get_project_id();
-  String get_device_name();
+
+  int get_device_id() const;
+  int get_project_id() const;
+  String get_device_name() const;
 
   StorageException from_json(DynamicJsonDocument &data) override;
   DynamicJsonDocument to_json() override;
@@ -118,17 +133,18 @@ class WifiInfo : public ConfigStruct {
 
   public:
   WifiInfo::WifiInfo(SPIFlash *flash, int flash_address);
+  WifiInfo() {};
   WifiInfo(String ssid, int channel);
   WifiInfo(String ssid, int channel, String password);
   WifiInfo(String ssid, int channel, String password, String username);
 
-  WifiNetworkTypes get_type();
-  String get_ssid();
-  String get_username();
-  String get_password();
-  int get_channel();
+  WifiNetworkTypes get_type() const;
+  String get_ssid() const;
+  String get_username() const;
+  String get_password() const;
+  int get_channel() const;
 
-  bool copy(WifiInfo &to_copy);
+  bool copy(WifiInfo to_copy);
 
   StorageException from_json(DynamicJsonDocument &data) override;
   DynamicJsonDocument to_json() override;
@@ -144,14 +160,17 @@ class DataManager {
   int flash_address;
   int max_size;
 
-  public:
-  float reference_datetime = 0;
   bool is_full = false;
   bool is_storing;
 
+  public:
+  float reference_datetime = 0;
+
   DataManager(SPIFlash *flash, int start_address, int max_size);
   void set_reference_datetime(int timestamp);
-  int get_end_address();
+  int get_end_address() const;
+
+  bool check_is_storing() const;
   
   bool write_data(DynamicJsonDocument &data);
   bool read_data(DynamicJsonDocument &data_output);
@@ -187,6 +206,8 @@ class StorageManager {
   Preset preset_info;
   Identifiers identifier_info;
   MachineState machine_state;
+  NetworkState network_state;
+  CommonDataBuffer common_data;
 
   SPIFlash flash;
 
@@ -203,7 +224,13 @@ class StorageManager {
 
   void load_flash_configuration();
   bool write_flash_configuration(ConfigType configuration, DynamicJsonDocument &to_write);
-  bool write_flash_configuration(WifiInfo &wifi_info);
+  bool write_flash_configuration(WifiInfo wifi_info);
+
+  void set_network_state(NetworkState state);
+  NetworkState get_network_state() const;
+
+  void set_common_data(CommonDataBuffer &common);
+  CommonDataBuffer get_common_data() const;
 
   void hard_reset();
 };

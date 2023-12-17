@@ -25,18 +25,12 @@
 #define AP_CONFIG_PASSWORD "GHCONFIG"
 
 
-/// @brief global machine connection state for tracking if the device is connected to the server or not
-enum MachineConnectionState {
-  MACHINE_CONNECTED,
-  MACHINE_DISCONNECTED
-};
-
 /// @brief connection info for server and client connections
 /// @param ip: string representing target IP
 /// @param mac: string representing target mac address
 /// @param exception: exception for when returning connection info from methods
 typedef struct {
-    IPAddress ip;
+    String ip;
     int port;
 } ConnectionInformation;
 
@@ -57,22 +51,6 @@ enum ConnectionStageIdentifier {
   STAGE_DOWN
 };
 
-
-/// @brief struct containing all the necessary objects for serving different connection types during association and operations
-/// @param UDPserver: udp server object for sending and receiving UDP requests during broadcast phase
-/// @param Startupserver: insecure wifiserver for communicating with client during wifi provisioning process (webpage for wifi setup)
-/// @param SSLclient: sending secure requests to server during regular operations
-/// @param SSLlistener: listen for and respond to requests from the server
-class Connection {
-  public:
-  WiFiUDP UDPserver;
-  WiFiServer Startupserver; 
-  WiFiSSLClient SSLclient; // for sending requests to the server
-  WiFiServer SSLlistener; // you should use beginSSL on this for receiving https connections
-
-  Connection() : Startupserver(LOCAL_PORT), SSLlistener(LOCAL_PORT) {};
-};
-
 enum Layer4Encryption {
   ENCRYPTION_SSL,
   ENCRYPTION_NONE
@@ -80,16 +58,16 @@ enum Layer4Encryption {
 
 class NetworkClient {
   private:
-  Layer4Encryption layer_4_encryption_type = NONE;
+  Layer4Encryption layer_4_encryption_type = ENCRYPTION_NONE;
 
-  ParsedMessage parse_message(String &unparsed_message);
-  NetworkExceptions client_receive_message(WiFiClient &client, int timeout, String *message);
+  HTTPMessage* parse_message(String &unparsed_message);
+  NetworkException client_receive_message(WiFiClient &client, int timeout, String *message);
 
   public:
-  NetworkClient(Layer4Encryption layer_4_encryption)
+  NetworkClient(Layer4Encryption layer_4_encryption);
   Layer4Encryption get_encryption();
 
-  NetworkExceptions client_send_message(WiFiClient &client, HTTPMessage *message); // must free dynamically allocated message
+  NetworkException client_send_message(WiFiClient &client, HTTPMessage *message); // must free dynamically allocated message
   HTTPMessage* receive_and_parse(WiFiClient &client, int timeout);
 };
 
@@ -112,11 +90,11 @@ class TCPListenerClient : private NetworkClient {
   Request* request_queue;
   Router router;
 
-  NetworkExceptions respond(Response &response, WiFiClient &client);
+  NetworkException respond(Response &response, WiFiClient &client);
 
   public:
   TCPListenerClient(WiFiServer &listener, Layer4Encryption layer_4_encryption, Router router);
-  NetworkExceptions listen();
+  NetworkException listen();
 };
 
 class UDPClient {
@@ -125,8 +103,8 @@ class UDPClient {
   ConnectionInformation multicast_information;
 
   public:
-  UDPClient(WiFiUDP &udp_server, int local_port, ConnectionInformation multicast_information)
-  NetworkExceptions send_udp(UDPRequest &request);
+  UDPClient(WiFiUDP &udp_server, ConnectionInformation &local_information, ConnectionInformation &multicast_information);
+  NetworkException send_udp(UDPRequest &request);
   UDPResponse receive_udp(int timeout);
 };
 
@@ -136,14 +114,14 @@ typedef struct {
 } AssociationReturnStruct;
 
 class StageReturnBase {
-  NetworkExceptions exception;
+  NetworkException exception;
 
   public:
   StageReturnBase() {};
-  StageReturnBase(NetworkExceptions exception);
+  StageReturnBase(NetworkException exception);
 
-  NetworkExceptions get_exception();
-  void set_exception(NetworkExceptions exception);
+  virtual NetworkException get_exception() = 0;
+  virtual void set_exception(NetworkException exception) = 0;
 };
 
 template<typename R>
@@ -153,17 +131,23 @@ class StageReturn : public StageReturnBase {
 
   public:
   StageReturn() {};
-  StageReturn(NetworkExceptions exception, R return_value);
+  StageReturn(NetworkException exception, R return_value);
 
   R get_return_value();
-  NetworkExceptions get_exception();
-
   void set_return_value(R return_value);
-  void set_exception(NetworkExceptions exception);
+
+  NetworkException get_exception();
+  void set_exception(NetworkException exception);
+};
+
+class ConnectionStageBase {
+  public:
+  virtual StageReturnBase *run() = 0;
+  virtual ~ConnectionStageBase() {};
 };
 
 template<typename L, typename H, typename R>
-class ConnectionStage {
+class ConnectionStage : public ConnectionStageBase {
   private:
   L listener;
   H *message_handler;
@@ -172,23 +156,25 @@ class ConnectionStage {
   ConnectionStage() {};
   ConnectionStage(int listener_port) : listener(listener_port) {};
 
-  L get_listener();
+  L& get_listener();
 
-  void set_handler(H* message_handler)
+  void set_handler(H* message_handler);
   H* get_handler();
 
-  virtual StageReturn<R> *run() = 0;
+  virtual StageReturnBase *run() override = 0;
 
   ~ConnectionStage();
 };
 
-class StageWifiBaseClass : public ConnectionStage<WifiServer, TCPListenerClient, WifiInfo> {
+class StageWifiBaseClass : public ConnectionStage<WiFiServer, TCPListenerClient, WifiInfo> {
   private:
   bool enterprise_connect(WifiInfo &info);
-  bool home_connect(WiFiInfo &info);
+  bool home_connect(WifiInfo &info);
 
   public:
-  NetworkExceptions connect_wifi(WiFiInfo &info);
+  StageWifiBaseClass() {};
+  StageWifiBaseClass(int listener_port) : ConnectionStage(listener_port) {};
+  NetworkException connect_wifi(WifiInfo &info);
 };
 
 // add common templated interface for the message handler
@@ -199,7 +185,7 @@ class StageWifiInitialization : public StageWifiBaseClass {
 
   String ssid_config();
   bool start_access_point();
-  NetworkExceptions receive_credentials(WiFiClient &client);
+  NetworkException receive_credentials();
 
   public:
   StageWifiInitialization(int listen_port);
@@ -219,7 +205,8 @@ class StageBroadcasting : public ConnectionStage<WiFiUDP, UDPClient, ConnectionI
   private:
   ConnectionInformation multicast_information;
   ConnectionInformation local_information;
-  Identifiers &device_identifiers;
+  const Identifiers &device_identifiers;
+  bool received_acknowledgement = false;
 
   public:
   StageBroadcasting(ConnectionInformation local_information, ConnectionInformation multicast_information, const Identifiers &device_identifiers);
@@ -232,11 +219,11 @@ class StageAssociation : public ConnectionStage<WiFiSSLClient, TCPRequestClient,
   Identifiers &identifiers;
   MachineState &machine_state;
 
-  NetworkExceptions test_server_connection();
+  NetworkException test_server_connection();
   Request generate_registration_request();
 
   public:
-  StageAssociation(ConnectionInformation server_information, Identifiers &identifiers, MachineState &machine_state)
+  StageAssociation(ConnectionInformation server_information, Identifiers &identifiers, MachineState &machine_state);
   StageReturn<AssociationReturnStruct> *run() override;
 };
 
@@ -245,47 +232,53 @@ class StageFullConnection : public ConnectionStage<WiFiServer, TCPListenerClient
   private:
   WiFiSSLClient wifi_ssl_object;
   TCPRequestClient request_client;
-  ConnectionInformation server_information
+  ConnectionInformation server_information;
 
-  NetworkExceptions handle_incoming();
+  NetworkException handle_incoming();
 
   public:
-  StageFullConnection(ConnectionInformation &server_information);
+  StageFullConnection(ConnectionInformation &server_information, StorageManager *global_storage);
   Response send_request(Request &request);
   StageReturn<bool>* run() override;
 };
 
 class ConnectionManager {
   private:
+  ConnectionStageBase* stage;
   ConnectionInformation local_connection_information;
   ConnectionInformation server_information;
   ConnectionInformation multicast_information;
 
   ConnectionStageIdentifier stage_identifier;
-  ConnectionStage* stage;
 
   StorageManager *global_storage;
 
   void set_stage_object(ConnectionStageIdentifier stage);
-  void handle_returns(StageReturn *return_value);
-  void handle_error(NetworkExceptions exception);
+  void handle_returns(StageReturnBase *return_value);
+  void handle_error(NetworkException exception);
 
   public:
-  ConnectionManager(int local_port, StorageManager *global_storage)
+  ConnectionManager(ConnectionInformation local_connection_information, ConnectionInformation multicast_information, StorageManager *global_storage);
+
+  void set_stage_identifier(ConnectionStageIdentifier stage);
+  ConnectionStageIdentifier get_stage_identifier();
+
+  Response send_request(Request &request);
+
   void run();
 };
 
 class WiFiWatchdog : public Callable {
   private:
   int wifi_fail_counter = 0;
-  MachineState *machine_state;
+  StorageManager *global_storage;
 
   void check_wifi_status();
 
   public:
   ConnectionManager *connected_manager;
 
-  WiFiWatchdog(ConnectionManager *connected_manager, MachineState *machine_state);
+  WiFiWatchdog(ConnectionManager *connected_manager, StorageManager *global_storage);
   void callback();
 };
 

@@ -8,12 +8,12 @@
 
 class UDPMessage {
   private:
-  NetworkExceptions exception = NETWORK_OKAY;
+  NetworkException exception = NETWORK_OKAY;
 
   public:
-  void set_exception(NetworkExceptions exception);
-  NetworkExceptions get_exception();
-}
+  void set_exception(NetworkException exception);
+  NetworkException get_exception();
+};
 
 class UDPRequest : public UDPMessage {
   private:
@@ -23,7 +23,7 @@ class UDPRequest : public UDPMessage {
   bool expidited;
 
   public:
-  UDPRequest(String ip_address, Identifiers &identifiers);
+  UDPRequest(String ip_address, const Identifiers &identifiers);
   String to_string();
 };
 
@@ -33,6 +33,7 @@ class UDPResponse : public UDPMessage {
   int server_port;
 
   public:
+  UDPResponse() {};
   UDPResponse(String &response_string);
   String get_server_ip();
   int get_server_port();

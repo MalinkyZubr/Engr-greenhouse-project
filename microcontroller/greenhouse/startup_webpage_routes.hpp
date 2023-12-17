@@ -21,22 +21,21 @@ class ReceiveCredentials : public Route {
 
 class SendHTML : public Route {
     public:
-    SendHTML(const String route);
+    SendHTML(const String route, const Method method);
     Response execute(Request &request) override;
 };
 
 class SendCSS : public Route {
     public:
-    SendCSS(const String route);
+    SendCSS(const String route, const Method method);
     Response execute(Request &request) override;
 };
 
 class SendJS : public Route {
     public:
-    SendJS(const String route);
+    SendJS(const String route, const Method method);
     Response execute(Request &request) override;
 };
 
-Router startup_router(WifiInfo *temporary_wifi_info, bool *wifi_configured_flag);
 
 #endif

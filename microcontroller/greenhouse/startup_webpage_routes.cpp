@@ -15,7 +15,7 @@ Response ReceiveCredentials::execute(Request &request) {
   WifiNetworkTypes type;
   int channel;
 
-  ssid = body["ssid"];
+  ssid = (char*)body["ssid"];
   channel = get_ap_channel(ssid); // must have valid reference to this functuion
   
   switch(channel) {
@@ -38,7 +38,7 @@ Response ReceiveCredentials::execute(Request &request) {
   
   response = Response(200);
 
-  this->wifi_configured_flag = true;
+  *this->wifi_configured_flag = true;
   
   return response;
 }
@@ -47,7 +47,7 @@ Response ReceiveCredentials::execute(Request &request) {
 /////////////// SendHTML ///////////////////////////
 ////////////////////////////////////////////////////
 
-SendHTML::SendHTML(const String route) : route(route) {}
+SendHTML::SendHTML(const String route, const Method method) : Route(route, method) {}
 
 Response SendHTML::execute(Request &request) {
   Response response(200, HTML, webpage_html);
@@ -58,7 +58,7 @@ Response SendHTML::execute(Request &request) {
 /////////////// SendCSS ////////////////////////////
 ////////////////////////////////////////////////////
 
-SendCSS::SendCSS(const String route) : route(route) {}
+SendCSS::SendCSS(const String route, const Method method) : Route(route, method) {}
 
 Response SendCSS::execute(Request &request) {
   Response response(200, CSS, webpage_css);
@@ -69,7 +69,7 @@ Response SendCSS::execute(Request &request) {
 /////////////// SendJS /////////////////////////////
 ////////////////////////////////////////////////////
 
-SendJS::SendJS(const String route) : route(route) {}
+SendJS::SendJS(const String route, const Method method) : Route(route, method) {}
 
 Response SendJS::execute(Request &request) {
   Response response(200, JS, webpage_js);

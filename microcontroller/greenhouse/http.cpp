@@ -125,11 +125,11 @@ DynamicJsonDocument& HTTPMessage::get_body() {
   return this->body;
 }
 
-void HTTPMessage::set_exception(NetworkExceptions exception) {
+void HTTPMessage::set_exception(NetworkException exception) {
   this->exception = exception;
 }
 
-NetworkExceptions HTTPMessage::get_exception() {
+NetworkException HTTPMessage::get_exception() {
   return this->exception;
 }
 
@@ -141,9 +141,9 @@ void HTTPMessage::set_body_type(BodyType type) {
 ///////// Request /////////////////////////////////
 ///////////////////////////////////////////////////
 
-Request::Request(Method method, String route, String host, int device_id, MachineOperationalState machine_state) : method(method), route(route), host(host), device_id(device_id), machine_state(machine_state) {}
+Request::Request(Method method, const char* route, String host, int device_id, MachineOperationalState machine_state) : method(method), route(route), host(host), device_id(device_id), machine_state(machine_state) {}
 
-Request::Request(Method method, String route, String host, int device_id, MachineOperationalState machine_state, DynamicJsonDocument body) : method(method), device_id(device_id), machine_state(machine_state), route(route), host(host), HTTPMessage(body) {}
+Request::Request(Method method, const char* route, String host, int device_id, MachineOperationalState machine_state, DynamicJsonDocument body) : method(method), device_id(device_id), machine_state(machine_state), route(route), host(host), HTTPMessage(body) {}
 
 String Request::get_route() {
   return this->route;
@@ -155,7 +155,7 @@ Method Request::get_method() {
 
 Request::Request(String &unparsed) {
   this->method = RegularExpressions::get_method(unparsed);
-  this->route = RegularExpressions::get_route(unparsed);
+  this->route = (char*)RegularExpressions::get_route(unparsed).c_str();
   this->host = RegularExpressions::get_host(unparsed);
 
   String json = RegularExpressions::get_body(unparsed);
@@ -220,7 +220,7 @@ Response::Response(int status) : status(status) {}
 
 Response::Response(int status, DynamicJsonDocument body) : status(status), HTTPMessage(body) {}
 
-Response::Response(int status, BodyType file_type, String *file_content) : status(status), file_content(file_content) {
+Response::Response(int status, BodyType file_type, const char* file_content) : status(status), file_content(file_content) {
   this->set_body_type(file_type);
 }
 
@@ -236,7 +236,7 @@ Response::Response(String &unparsed) {
 }
 
 Response::Response(Response* base_pointer) : status(base_pointer->status) {
-  if(base_pointer->file_content->length()) {
+  if(strlen(base_pointer->file_content)) {
     this->file_content = base_pointer->file_content;
     this->set_body_type(base_pointer->get_body_type());
   }

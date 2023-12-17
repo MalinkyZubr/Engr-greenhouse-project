@@ -139,11 +139,12 @@ void EnvironmentManager::update_interfaces() {
 /// @param desired_humidity desired humidity percentage to maintain
 /// @param desired_moisture desired moisture to maintain
 /// @param hours_sunlight hours sunlight to achieve per 24 hour period
-EnvironmentManager::EnvironmentManager(MachineState *machine_state, Configuration *config, CommonData *common_data, int pump_pin, int heating_pin, int fan_pin, int led_pin, float desired_temperature, float desired_humidity, float desired_moisture, int hours_sunlight) : machine_state(machine_state), config(config), common_data(common_data), pump(pump_pin), heater(heating_pin), fan(fan_pin), led(led_pin), temperature(desired_temperature), humidity(desired_humidity), moisture(desired_moisture) {}
+EnvironmentManager::EnvironmentManager(MachineState *machine_state, StorageManager *global_storage) : machine_state(machine_state), global_storage(global_storage) {}
 
 
 /// @brief main function for environment manager, reads all sensor data and activates or deactivates control systems accordingly
 void EnvironmentManager::device_activation() {
+  this->global_storage->get_data_manager().
   // check conditions for light
   if(this->common_data->nighttime && this->hours_sunlight_ms > (this->common_data->light_increment * CONTROL_INTERVAL * 1000) && !this->led.status) {
     this->led.set_strip_high();

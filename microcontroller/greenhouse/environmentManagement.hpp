@@ -7,7 +7,6 @@
 #include <BH1750.h>
 #include <DHT.h>
 #include "async.hpp"
-#include "machine_state.hpp"
 #include "storage.hpp"
 
 #define MILLISECONDS_IN_HOUR 3600000
@@ -78,13 +77,12 @@ class EnvironmentManager : public Callable {
   Device heater;
   Device fan;
   LedStrip led;
-  CommonData *common_data;
-  Configuration *config;
+  StorageManager *global_storage;
 
   Interval::relation check_status();
 
   public:
-  EnvironmentManager(MachineState *machine_state, Configuration *config, CommonData *common_data, int pump_pin, int heating_pin, int fan_pin, int led_pin, float desired_temperature, float desired_humidity, float desired_moisture, int hours_sunlight);
+  EnvironmentManager(MachineState *machine_state, StorageManager *global_storage);
 
   void update_interfaces();
 
@@ -135,13 +133,13 @@ class HumidityTemperature {
 class Sensors : public Callable {
   private:
   MachineState *machine_state;
-  CommonData *common_data;
+  StorageManager *global_storage;
   Moisture moisture;
   Light light;
   HumidityTemperature humtemp;
 
   public:
-  Sensors(MachineState *machine_state, CommonData *common_data, int humtemp_pin, int moisture_pin);
+  Sensors(MachineState *machine_state, StorageManager* global_storage, int humtemp_pin, int moisture_pin);
 
   void submit_readings();
   void callback() override {

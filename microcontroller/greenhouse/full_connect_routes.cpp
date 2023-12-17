@@ -23,9 +23,9 @@ Response storage_route_error_handler(StorageException exception, int okay_code =
 ////////////////// NetworkReset ///////////////////
 ///////////////////////////////////////////////////
 
-NetworkReset::NetworkReset(const String route, const Method method) : Route(route, method) {}
+NetworkReset::NetworkReset(const char* route, const Method method) : Route(route, method) {}
 
-Response NetworkReset::execute(ParsedRequest &request) {
+Response NetworkReset::execute(Request &request) {
   Response response(200);
   response.set_directive(DEVICE_NETWORK_RESET);
 
@@ -33,9 +33,9 @@ Response NetworkReset::execute(ParsedRequest &request) {
 }
 
 
-DeviceReset::DeviceReset(const String route, const Method method) : Route(route, method) {}
+DeviceReset::DeviceReset(const char* route, const Method method) : Route(route, method) {}
 
-Response DeviceReset::execute(ParsedRequest &request) {
+Response DeviceReset::execute(Request &request) {
   Response response(200);
   response.set_directive(DEVICE_HARD_RESET);
   
@@ -43,9 +43,9 @@ Response DeviceReset::execute(ParsedRequest &request) {
 }
 
 
-SetTime::SetTime(const String route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
+SetTime::SetTime(const char* route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
 
-Response SetTime::execute(ParsedRequest &request) {
+Response SetTime::execute(Request &request) {
   Response response;
 
   if(!request.get_body().containsKey("datetime")) {
@@ -62,9 +62,9 @@ Response SetTime::execute(ParsedRequest &request) {
 }
 
 
-ConfigureDeviceIds::ConfigureDeviceIds(const String route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
+ConfigureDeviceIds::ConfigureDeviceIds(const char* route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
 
-Response ConfigureDeviceIds::execute(ParsedRequest &request) {
+Response ConfigureDeviceIds::execute(Request &request) {
   Response response;
   StorageException exception = this->global_storage->get_identifiers().write(request.get_body());
   
@@ -74,10 +74,10 @@ Response ConfigureDeviceIds::execute(ParsedRequest &request) {
 }
 
 
-ConfigureDevicePreset::ConfigureDevicePreset(const String route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
+ConfigureDevicePreset::ConfigureDevicePreset(const char* route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
 
 //error handling should also go here
-Response ConfigureDevicePreset::execute(ParsedRequest &request) {
+Response ConfigureDevicePreset::execute(Request &request) {
   Response response;
   StorageException exception = this->global_storage->get_preset().write(request.get_body());
 
@@ -87,25 +87,24 @@ Response ConfigureDevicePreset::execute(ParsedRequest &request) {
 }
 
 
-PauseDevice::PauseDevice(const String route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
+PauseDevice::PauseDevice(const char* route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
 
-Response PauseDevice::execute(ParsedRequest &request) {
+Response PauseDevice::execute(Request &request) {
   Response response;
-  bool paused = request.body["paused"];
-  StorageException exception
+  bool paused = request.get_body()["paused"];
+  StorageException exception;
 
-  MachineState state_manager = this->global_storage->get_machine_state();
-  MachineOperationalState state = state_manager.get_state();
+  MachineOperationalState state = this->global_storage->get_machine_state().get_state();
 
   if(paused && state != MACHINE_PAUSED) {
-    exception = state_manager.from_json(request.get_body());
+    exception = this->global_storage->get_machine_state().from_json(request.get_body());
     response = storage_route_error_handler(exception, 202);
   }
-  else if(this->machine_state->operational_state == MACHINE_PAUSED) {
+  else if(state == MACHINE_PAUSED) {
     response = Response(429);
   }
-  else if(!paused && this->machine_state->operational_state != MACHINE_ACTIVE) {
-    exception = state_manager.from_json(request.get_body());
+  else if(!paused && state != MACHINE_ACTIVE) {
+    exception = this->global_storage->get_machine_state().from_json(request.get_body());
     response = storage_route_error_handler(exception);
   }
   else {

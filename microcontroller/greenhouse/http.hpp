@@ -36,12 +36,12 @@ Method return_method_enum(String &method);
 
 class RegularExpressions {
   public:
-  static const char* json_regex = R"(\{[^}]*\})";
-  static const char* content_length_regex = R"((?<=Content-Length: )\d+)";
-  static const char* host_regex = R"((?<=Host: )\S+)";
-  static const char* route_regex = R"(/([^ ]+)(?=\sHTTP))";
-  static const char* status_regex = R"(\d\d\d)";
-  static const char* method_regex = R"(^([A-Z]+)\b)";
+  static inline const char* json_regex = R"(\{[^}]*\})";
+  static inline const char* content_length_regex = R"((?<=Content-Length: )\d+)";
+  static inline const char* host_regex = R"((?<=Host: )\S+)";
+  static inline const char* route_regex = R"(/([^ ]+)(?=\sHTTP))";
+  static inline const char* status_regex = R"(\d\d\d)";
+  static inline const char* method_regex = R"(^([A-Z]+)\b)";
 
   static String match(const String &content, const char* pattern_str);
   static String get_body(const String &content);
@@ -50,14 +50,14 @@ class RegularExpressions {
   static String get_route(const String &content);
   static int get_status(const String &content);
   static Method get_method(const String &content);
-}
+};
 
 
 class HTTPMessage {
   private:
   BodyType body_type;
   DynamicJsonDocument body = DynamicJsonDocument(0);
-  NetworkExceptions exception = NETWORK_OKAY;
+  NetworkException exception = NETWORK_OKAY;
 
   public:
   HTTPMessage();
@@ -66,8 +66,8 @@ class HTTPMessage {
   BodyType get_body_type();
   DynamicJsonDocument& get_body();
 
-  void set_exception(NetworkExceptions exception);
-  NetworkExceptions get_exception();
+  void set_exception(NetworkException exception);
+  NetworkException get_exception();
 
   void set_body(DynamicJsonDocument body);
   void set_body_type(BodyType type);
@@ -78,14 +78,15 @@ class HTTPMessage {
 class Request : public HTTPMessage {
   private:
   Method method;
-  String route;
+  const char* route;
   String host;
   int device_id;
   MachineOperationalState machine_state;
 
   public:
-  Request(Method method, String route, String host, int device_id, MachineOperationalState machine_state);
-  Request(Method method, String route, String host, int device_id, MachineOperationalState machine_state, DynamicJsonDocument body);
+  Request() {};
+  Request(Method method, const char* route, String host, int device_id, MachineOperationalState machine_state);
+  Request(Method method, const char* route, String host, int device_id, MachineOperationalState machine_state, DynamicJsonDocument body);
   Request(String &unparsed);
   Request(Request* base_pointer);
 
@@ -98,13 +99,14 @@ class Request : public HTTPMessage {
 class Response : public HTTPMessage {
   private:
   int status;
-  String *file_content;
+  const char* file_content;
   DeviceDirective directive = DEVICE_NONE;
 
   public:
+  Response() {};
   Response(int status);
   Response(int status, DynamicJsonDocument body);
-  Response(int status, BodyType file_type, String *file_content);
+  Response(int status, BodyType file_type, const char* file_content);
   Response(String &unparsed);
   Response(Response* base_pointer);
 
@@ -121,7 +123,7 @@ enum ReceiveType {
 
 class ParsedMessage {
   public:
-  NetworkExceptions error = OKAY;
+  NetworkException error = NETWORK_OKAY;
   ReceiveType type;
   Response response;
   Request request;
