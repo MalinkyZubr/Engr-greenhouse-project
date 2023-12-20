@@ -8,6 +8,7 @@ let interval_regex = new RegExp('(?!00)\\d{2}-(?!00)\\d{2}-(?!00)\\d{2}');
 let REGEX_ERROR = 'must be mm-dd-yy'
 
 
+
 export class ProjectManager {
     constructor(archived = false) {
         // declare the variables for datatype, data retrieval technique, and date interval
@@ -27,7 +28,7 @@ export class ProjectManager {
         this.upper_interval_input.value = '';
 
         if (!archived) {
-            this.archive_button = document.getElementById('archive-project');
+            this.archive_button = document.getElementById('archive-proect');
             this.update_type = 'static';
             this.interval_display.style.display = 'none';
             this.data_view_div = document.getElementById('data-view-type');

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+    </head>
+    <body> <!-- the script will just get the necessary templating data from parent page. Main script with updates and stuff will go on parent page. This wont be loaded wiht iframe, just by the parent page js -->
+        <div id={{ list_id }}>
+            <div class="header">
+                <h2>{{ list_name }}</h2>
+            </div>
+            <div class="table">
+                <table class="table">
+                    <thead>
+                        <tr>{{ table_header }}</tr>
+                    </thead>
+                    <tbody id="table">
+                        <!-- rows of stuff will go here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </body>
+</html>
