@@ -8,27 +8,7 @@ export abstract class ListElement extends Widget{
     constructor(list_element_data: object, parent_list: HTMLElement) {
         super(list_element_data, parent_list);
     }
-
-    public generate_html(): string {
-        var object_template_copy: string = this.object_html_template.substring(0, this.object_html_template.length);
-        var modified: string = object_template_copy;
-
-        for(const field in this.parameters) {
-            modified = object_template_copy.replace("{{ " + field + " }}", String(this.parameters[field]));
-            if(modified === object_template_copy) {
-                throw new Error("The parameter was not found in the template");
-            }
-            object_template_copy = modified;
-        }
-
-        object_template_copy = `<tr><td>${object_template_copy}</td></tr>`;
-        return object_template_copy;
-    }
-
-    public get_parameters(): P {
-        return this.parameters;
-    }
-
+    
     public update(parameters: P): void {
         this.parameters = parameters;
     }

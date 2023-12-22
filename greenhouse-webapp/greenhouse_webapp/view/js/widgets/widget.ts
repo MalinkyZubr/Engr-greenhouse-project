@@ -5,9 +5,14 @@ export abstract class Widget {
     abstract widget_name: string;
     private template_parameters: RegExpMatchArray | null;
     private widget_data: object;
+    private widget_parent: HTMLElement
 
-    constructor(widget_data: object, parent_element: HTMLElement, widget_key?: string) { // should only call on dom loaded event
+    constructor(widget_data: object, parent_element: HTMLElement, element_id: string, widget_key?: string) { // should only call on dom loaded event
+        if(!this.get_widget_html().includes("id={{ element_id }}")) {
+            throw new Error(`The html for the widget ${this.get_widget_name()} with id ${element_id} does not have an element_id field`)
+        }
         this.widget_data = widget_data;
+        this.widget_parent = parent_element;
 
         this.template_parameters = this.locate_template_parameters();
         this.load_widget_data(widget_data);
@@ -56,6 +61,10 @@ export abstract class Widget {
 
     public get_widget_data(): object {
         return this.widget_data;
+    }
+
+    public get_widget_name(): string {
+        return this.widget_name;
     }
 }
 
