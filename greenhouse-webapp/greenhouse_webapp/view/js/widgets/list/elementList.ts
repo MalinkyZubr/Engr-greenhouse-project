@@ -1,21 +1,27 @@
-import { Widget } from "../widget.ts"
+import { StandardWidget, Widget } from "../widget.ts"
 
 export interface ObjectTemplateParameters {
     item_id: string | number;
 }
 
 export abstract class ListElement extends Widget{
+    abstract widget_html: string;
+
     constructor(list_element_data: object, parent_list: HTMLElement) {
         super(list_element_data, parent_list);
     }
     
-    public update(parameters: P): void {
-        this.parameters = parameters;
+    public insert_widget_to_parent_page(widget_html: string, element_id: string): HTMLElement {
+        var html_object_widget: HTMLDivElement = document.createElement("div");
+        html_object_widget.innerHTML = widget_html;
+
+        this.get_widget_parent().appendChild(html_object_widget);
+        return this.get_element_by_id(element_id);
     }
 
-    public equals(parameters: P): boolean {
-        for(const field in parameters) {
-            if(this.parameters[field] != parameters[field]) {
+    public equals(widget_data: object): boolean {
+        for(const field in widget_data) {
+            if(this.get_widget_data[field] != widget_data[field]) {
                 return false;
             }
         }
@@ -23,36 +29,50 @@ export abstract class ListElement extends Widget{
     }
 }
 
-export abstract class List<P extends ObjectTemplateParameters, T extends ObjectTemplate<P>> {
-    private parent_list: HTMLElement;
-    private node_object_list: Map<string | number, T>;
+export abstract class List extends StandardWidget {
+    public widget_html: string = 
+        `<div id={{ element_id }}>
+            <div class="header">
+                <h2>{{ list_name }}</h2>
+            </div>
+            <div class="table">
+                <table class="table">
+                    <thead>
+                        <tr>{{ table_header }}</tr>
+                    </thead>
+                    <tbody id="table">
+                        <!-- rows of stuff will go here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>`
+    private node_object_list: Map<string | number, ListElement>;
 
-    public constructor(parent_list: HTMLElement) {
-        this.parent_list = parent_list;
-        this.node_object_list = new Map<string | number, T>();
+    public constructor(list_data: object, parent_element: HTMLElement, widget_key: string) {
+        super(list_data, parent_element, widget_key)
+        this.node_object_list = new Map<string | number, ListElement>();
     }
 
-    public set_parent_list(parent_list: HTMLElement) {
-        this.parent_list = parent_list;
+    public get_list_element(element_id: string): object | undefined {
+        var element: ListElement | undefined = this.node_object_list.get(element_id);
+
+        if(element) {
+            return element.get_widget_data();
+        }
+        return element;
     }
 
     private get_node(id: string | number) : Element {
-        var list_element: Element | null | undefined = this.parent_list.querySelector(`#${String(id)}`);
+        var list_element: Element | null | undefined = this.get_widget_parent().querySelector(`#${String(id)}`);
         if(list_element === null || list_element === undefined) {
             throw new Error("The node does not exist")
         }
         return list_element;
     }
 
-    private frontend_append(node_object: T): void {
-        var text_node: Text = document.createTextNode(node_object.generate_html());
-        
-        this.parent_list.appendChild(text_node);
-    }
-
-    public append(parameters: P): void {
-        var node_object: T = this.create_node(parameters);
-        this.node_object_list.set(node_object.get_parameters().item_id, node_object);
+    public append(widget_data: object): void {
+        var list_element: ListElement = this.create_list_element(widget_data, this.get_widget_parent())
+        this.node_object_list.set(list_element.get_element_id(), list_element);
 
         this.frontend_append(node_object);
     }
@@ -103,8 +123,7 @@ export abstract class List<P extends ObjectTemplateParameters, T extends ObjectT
         return parameters_list;
     }  
 
-    abstract object_to_parameters(obj: object): P;
-    abstract create_node(parameters: P): T;
+    abstract create_list_element(element_data: object, this_list_html: HTMLElement): ListElement;
 }
 
 export async function request_server_data(host: string, route: string): Promise<Map<string | number, object> | null> {
