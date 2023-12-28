@@ -61,7 +61,7 @@ export abstract class Widget {
     }
 
     private insert_template_static_field(key: string, value: string, html: string): string {
-        html.replace(`{{ ${key} }}`, value);
+        html = html.replace(`{{ ${key} }}`, value);
         return html;
     }
 

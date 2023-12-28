@@ -1,6 +1,7 @@
 import { InstantiationList } from "./widgets/list/instantiationList.ts"
 import { RequestButton } from "./widgets/buttons/requestButton.ts"
 import { host } from "./config.ts"
+import { PeriodicExecutor } from "./shared/periodic.ts";
 
 
 class BaseDeviceSelectorList extends InstantiationList {
@@ -47,4 +48,38 @@ class DeviceSelectorButton extends RequestButton {
     }
 };
 
-class BaseDeviceSelector{};
+class BaseDeviceSelector extends PeriodicExecutor{
+    private submit_button: DeviceSelectorButton;
+    private device_list: BaseDeviceSelectorList;
+
+    constructor() {
+        super();
+
+        var list_container: HTMLElement = document.getElementById("list_container") ?? function() {throw new Error("List container not found")}();
+        var button_container: HTMLElement = document.getElementById("button_container") ?? function() {throw new Error("Button container not found")}();
+
+        this.device_list = new BaseDeviceSelectorList(
+            {
+                element_id: "selector_list",
+                list_name: "Devices Ready To Register",
+                table_header: "Device",
+            },
+            list_container,
+            "scan_list"
+
+        )
+        this.submit_button = new DeviceSelectorButton(
+            {
+                element_id: "sumbit_button", 
+                button_name: "Register Device"
+            }, 
+            button_container, 
+            "register_button",
+            this.device_list
+        );
+    }
+
+    async call_methods(): Promise<void> {
+        await this.device_list.update_instantiation_list();
+    }
+};

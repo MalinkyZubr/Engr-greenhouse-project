@@ -20,8 +20,8 @@ router.mount("/projects/static", StaticFiles(directory=STATIC), name="static")
     
 
 class DateQuerySchema(BaseModel): # add input validation here
-    start_date: str | int
-    end_date: str | int
+    start_date: str
+    end_date: str
         
     
 @router.get("/projects/{project_name}")
