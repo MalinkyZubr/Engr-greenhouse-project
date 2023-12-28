@@ -1,30 +1,6 @@
 import { asynchronous_updater, format_route } from "./shared/asynchronousUpdater.js";
 
 
-class Device {
-    constructor(parent_list, device_name, project_name, preset_name, creation_date, device_status) {
-        this.__device_name = device_name;
-        this.__project_name = project_name;
-        this.__preset_name = preset_name;
-        this.__creation_data = creation_date;
-        this.__device_status = device_status;
-
-        this.__parent_list = parent_list;
-    }
-
-    update(project_name, preset_name, creation_date, device_status) {
-        this.__project_name = project_name;
-        this.__preset_name = preset_name;
-        this.__creation_data = creation_date;
-        this.__device_status = device_status;
-    }
-
-    append_to_list() {
-
-    }
-}
-
-
 class DeviceSelector {
     constructor() {
         this.source_project = document.getElementById("source_project").content;

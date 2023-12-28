@@ -22,19 +22,11 @@
 
         <div class="table">
             <h2>Device List</h2>
-            <table class="table">
-                <tbody>
-                    <tr>
-                        <tr>
-                            <td><button>Project 2</button></td>
-                        </tr>
-                    </tr>
-                </tbody>
-            </table>
+            {{ device_list }}
         </div>
         <div class="very-wide-element">
             <div class="buttons">
-                <button class="button wide-element">Delete Preset</button>
+                {{ delete_preset_button }}
             </div>
             <br><br>
             <div class="buttons">

@@ -2,12 +2,6 @@
 <html>
   <head>
     <link rel="stylesheet" type="text/css" href="/static/style.css">
-    <template id="device-button">
-        <tr>
-            <td><button id="device-button-text">device_name</button></td>
-            <td><button id="device-status-button">STATUS</button></td>
-        </tr>
-    </template>
     <script type="module" src="/scripts/project.js"></script>
   </head>
 <body>
@@ -16,20 +10,7 @@
     </div>
 
     <div class="container">
-        <div class="table">
-            <h2>Registered Devices</h2>
-            <table class="registered-devices-table">
-                <thead>
-                    <tr>
-                        <th>Device Name</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="devices_table">
-                    <!-- Add more rows with buttons as needed -->
-                </tbody>
-            </table>
-        </div>
+        {{ registered_devices_table }}
         <div class="table wide-element">
             <h2>Project Data</h2>
             <img id="graph-image" src="">
@@ -37,44 +18,28 @@
     
         <div class="very-wide-element">
             <div class="buttons">
-                <button class="button" id="add-device">Add Device</button>
-                <button class="button" id="download-csv">Download CSV</button>
-                <button class="button" id="download-pdf">Download Doc PDF</button>
-                <button class="button" id="archive-project">Archive Project</button>
+                {{ add_device }}
+                {{ download_csv }}
+                {{ download_pdf }}
+                {{ archive_button }}
             </div>
             <div class="radio-horizontal-container wide-element" id="datatype-selector">
                 <h3>Data Type Selector</h3>
-                <input type="radio" id="temp" name="data-selected" value="Temperature">
-                <label for="temp">Temperature (c)</label><br>
-                <input type="radio" id="humi" name="data-selected" value="Humidity">
-                <label for="humi">Humidity (%)</label><br>
-                <input type="radio" id="moisture" name="data-selected" value="Moisture">
-                <label for="moisture">Moisture (%)</label><br>
-                <input type="radio" id="light" name="data-selected" value="Light">
-                <label for="light">Light (l)</label><br>
-                <input type="radio" id="ir" name="data-selected" value="IR">
-                <label for="ir">IR Exposure (l)</label><br>
+                {{ temp_radio }}
+                {{ humidity_radio }}
+                {{ moisture_radio }}
+                {{ light_radio }}
             </div>
             <div class="input-container" id="display-interval">
                 <h3>Select Data Display Interval (mm-dd-yy)</h3>
-                <div>
-                    <input type="text" placeholder="start date" id="start-interval">
-                    <br>
-                    <p id="start-interval-error" class="input-error"></p>
-                </div>
+                {{ start_date_input }}
                 <span>to </span>
-                <div>
-                    <input type="text" placeholder="end date" id="end-interval">
-                    <br>
-                    <p id="end-interval-error" class="input-error"></p>
-                </div>
-                <button class="button" id="image-refresh">Refresh</button>
+                {{ end_date_input }}
+                {{ image_refresh_button }}
             </div>
             <div class="input-container" id="data-view-type">
-                <input type="radio" id="live-update" name="update-type" value="hide">
-                <label for="live">Today's Data</label><br>
-                <input type="radio" id="previous-data" name="update-type" value="show">
-                <label for="prev">Data Examination</label><br>
+                {{ live_radio }}
+                {{ previous_radio }}
             </div>
             <br><br>
             <div class="buttons">

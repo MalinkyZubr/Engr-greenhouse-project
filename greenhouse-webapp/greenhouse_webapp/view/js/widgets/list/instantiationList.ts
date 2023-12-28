@@ -1,4 +1,4 @@
-import { ObjectTemplateParameters, ObjectTemplate, ElementList, request_server_data } from "./elementList.ts";
+import { ObjectTemplateParameters, List, ListElement, request_server_list_data } from "./elementList.ts";
 import { PeriodicExecutor } from "../../shared/periodic.ts";
 
 
@@ -10,58 +10,58 @@ catch {
 }
 
 
-class InstantiationListObjectTemplate<P extends ObjectTemplateParameters> extends ObjectTemplate<P> {
-    object_html_template: string = 
-        `<tr>
+export class InstantiationListElement extends ListElement {
+    widget_name: string = "InstatiationListElement";
+    widget_html: string = 
+        `<tr id="{{ element_id }}">
             <td>
                 <label class="radio-button" id="radio-label">
-                    <input type="radio" name="options" value=1>
+                    <input type="radio" name="options" value={{ element_id }}>
                     <span class="radiomark"></span>
-                    {{ item_id }}
+                    {{ element_id }}
                 </label>
             </td>
         </tr>`;
+
+    private selection_group: NodeListOf<HTMLInputElement>;
+    public static selection_group_value: string;
+
+    constructor(list_element_data: object, parent_list: HTMLElement) {
+        super(list_element_data, parent_list);
+
+        this.selection_group = parent_list.querySelectorAll(`[name="options]`);
+        this.get_widget_node().addEventListener("change", this.button_selection_callback)
+    }
+
+    private button_selection_callback() {
+        for(var x = 0; x < this.selection_group.length; x++) {
+            var radio_button: HTMLInputElement = this.selection_group[x];
+            if(radio_button.checked) {
+                InstantiationListElement.selection_group_value = radio_button.value;
+            }
+        }
+    }
 }
 
-
-export abstract class InstantiationList<P extends ObjectTemplateParameters> extends PeriodicExecutor {
-    private buttons_list: NodeListOf<HTMLElement>;
-    private assignment_button: HTMLElement;
-    private received_object_list: ElementList<P, InstantiationListObjectTemplate<P>>;
-
+export abstract class InstantiationList extends List {
     abstract host: string;
-    abstract route: string;
 
-    constructor(received_object_list: ElementList<P, InstantiationListObjectTemplate<P>>) { // assignment type is either preset_name or project_name
-        super(10000);
+    constructor(list_data: object, parent_element: HTMLElement, widget_key: string) { // assignment type is either preset_name or project_name
+        super(list_data, parent_element, widget_key);
+    }
 
-        this.received_object_list = received_object_list;
-
-        var selector_table: HTMLElement | null = document.getElementById("selector-table");
-        if(!selector_table) {
-            throw new Error("selector-table id node not found in HTML document!");
-        }
-
-        this.received_object_list.set_parent_list(selector_table);
-
-        this.buttons_list = document.getElementsByName("options");
-
-        var assignment_button: null | HTMLElement = document.getElementById("assign");
-        if(assignment_button) {
-            this.assignment_button = assignment_button;
-            this.assignment_button.addEventListener("click", this.instantiate_button_callback);
-        }
-        else {
-            throw new Error("Assignment button not found");
+    public async update_instantiation_list(): Promise<void> {
+        var server_data: Map<string, object> | null = await request_server_list_data(this.host, "/");
+        if(server_data) {
+            this.handle_response(server_data);
         }
     }
 
-    abstract instantiate_button_callback(): void;
+    public create_list_element(element_data: object, this_list_html: HTMLElement): InstantiationListElement {
+        return new InstantiationListElement(element_data, this_list_html);
+    }
 
-    async call_methods(): Promise<void> {
-        var object_list: Map<string | number, object> | null = await request_server_data(this.host, this.route);
-        if(object_list) {
-            this.received_object_list.handle_response(object_list);
-        }
+    public get_selected_value(): string {
+        return InstantiationListElement.selection_group_value;
     }
 }

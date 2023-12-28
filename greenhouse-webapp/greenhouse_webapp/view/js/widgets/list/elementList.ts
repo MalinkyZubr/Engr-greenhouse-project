@@ -4,16 +4,16 @@ export interface ObjectTemplateParameters {
     item_id: string | number;
 }
 
-export abstract class ListElement extends Widget{
+export abstract class ListElement extends Widget {
     abstract widget_html: string;
 
     constructor(list_element_data: object, parent_list: HTMLElement) {
         super(list_element_data, parent_list);
     }
     
-    public insert_widget_to_parent_page(widget_html: string, element_id: string): HTMLElement {
+    public insert_widget_to_parent_page(element_id: string): HTMLElement {
         var html_object_widget: HTMLDivElement = document.createElement("div");
-        html_object_widget.innerHTML = widget_html;
+        html_object_widget.innerHTML = this.get_widget_html();
 
         this.get_widget_parent().appendChild(html_object_widget);
         return this.get_element_by_id(element_id);
@@ -62,24 +62,20 @@ export abstract class List extends StandardWidget {
         return element;
     }
 
-    private get_node(id: string | number) : Element {
-        var list_element: Element | null | undefined = this.get_widget_parent().querySelector(`#${String(id)}`);
-        if(list_element === null || list_element === undefined) {
-            throw new Error("The node does not exist")
-        }
-        return list_element;
-    }
-
     public append(widget_data: object): void {
-        var list_element: ListElement = this.create_list_element(widget_data, this.get_widget_parent())
-        this.node_object_list.set(list_element.get_element_id(), list_element);
-
-        this.frontend_append(node_object);
+        var table: HTMLElement | null = this.get_widget_node().querySelector(`#table`);
+        if(table) {
+            var list_element: ListElement = this.create_list_element(widget_data, table)
+            this.node_object_list.set(list_element.get_element_id(), list_element);
+        }
     }
 
     private frontend_remove(node_id: string | number): void {
-        var list_element: Element = this.get_node(node_id);
-        this.parent_list.removeChild(list_element);
+        var list_element: ListElement | undefined = this.node_object_list["node_id"];
+        if(!list_element) {
+            throw new Error(`The element ${node_id} was not found`);
+        }
+        this.get_widget_parent().removeChild(list_element.get_widget_node());
     }
 
     public remove(id: string | number) : void {
@@ -87,47 +83,36 @@ export abstract class List extends StandardWidget {
         this.frontend_remove(id);
     }
 
-    public update(id: string | number, parameters: P) : void {
-        this.frontend_remove(id);
-        var node_object: T | null = this.node_object_list.get(id) ?? null;
-        if(!node_object) {
-            throw new Error("Node not found when updating");
+    public update_element(id: string, widget_data: object) : void {
+        var selected_element: ListElement | undefined = this.node_object_list.get(id);
+
+        if(selected_element) {
+            selected_element.update(widget_data);
         }
-        node_object?.update(parameters);
-        this.frontend_append(node_object);
     }
 
-    public handle_response(object_map: Map<string | number, object>) {
-        var parameters_list: Map<string | number, P> = this.convert_objects_to_parameters(object_map);
-        for(const item_id in this.node_object_list.keys()) {
-            if(!(item_id in parameters_list.keys())) {
+    public handle_response(object_map: Map<string, object>) {
+        for(const [item_id, item_object] of this.node_object_list.entries()) {
+            if(!(item_id in object_map.keys())) {
                 this.remove(item_id);
             }
         }
-        for(const [item_id, item_object] of parameters_list.entries()) {
-            var current_id: string = String(item_id);
-            if(!(current_id in this.node_object_list.keys())) {
+
+        for(const [item_id, item_object] of object_map.entries()) {
+            if(!(item_id in this.node_object_list.keys())) {
                 this.append(item_object);
             }
-            else if(!this.node_object_list.get(current_id)?.equals(item_object)) {
-                this.update(current_id, item_object);
+            else if(this.node_object_list.get(item_id)?.equals(item_object)) {
+                this.update_element(item_id, item_object);
             }
         }
     }
-
-    private convert_objects_to_parameters(objects: Map<string | number, object>): Map<string | number, P> {
-        var parameters_list: Map<string | number, P> = new Map<string | number, P>();
-        for(const [key, value] of objects.entries()) {
-            parameters_list[key] = this.object_to_parameters(value);
-        }
-        return parameters_list;
-    }  
 
     abstract create_list_element(element_data: object, this_list_html: HTMLElement): ListElement;
 }
 
-export async function request_server_data(host: string, route: string): Promise<Map<string | number, object> | null> {
-    var parameter_object_list: Map<string | number, object> | null = new Map<string | number, object>();
+export async function request_server_list_data(host: string, route: string): Promise<Map<string, object> | null> {
+    var parameter_object_list: Map<string, object> | null = new Map<string, object>();
 
     const response: Response = await fetch(`http://${host}${route}`)
     const json_data: JSON = await response.json();
