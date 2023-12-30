@@ -62,13 +62,13 @@ class BaseDeviceSelector extends PeriodicExecutor{
             {
                 element_id: "selector_list",
                 list_name: "Devices Ready To Register",
-                table_header: "Device",
+                table_header: "<th>Device</th>",
             },
             list_container,
             "scan_list"
 
         )
-        this.submit_button = new DeviceSelectorButton(
+        this.submit_button = new DeviceSelectorButton( // this hsould go into the main page class
             {
                 element_id: "sumbit_button", 
                 button_name: "Register Device"

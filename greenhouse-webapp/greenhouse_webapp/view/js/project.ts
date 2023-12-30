@@ -1,5 +1,6 @@
-import { InstantiationList } from "./widgets/list/instantiationList.ts"
+import { List, ListElement, request_server_list_data } from "./widgets/list/elementList.ts"
 import { RequestButton } from "./widgets/buttons/requestButton.ts"
+import { RadioButton } from "./widgets/buttons/radioButtons.ts"
 import { host } from "./config.ts"
 import { PeriodicExecutor } from "./shared/periodic.ts";
 import { StandardWidget } from "./widgets/widget.ts";
@@ -74,4 +75,47 @@ class ArchiveProjectButton extends ProjectManagerButton {
     }
 }
 
-class 
+class AddDeviceButton extends ProjectManagerButton {
+    public async submit_button_request(): Promise<void> {
+        // must fetch a new route that supplies scans and idles
+    }
+}
+
+class DataTypeRadio extends RadioButton {
+    public widget_name: string = "DataTypeRadio";
+
+    public set_static_value(value: string): void {
+        DataTypeRadio.radio_button_group_value = value;
+    }
+}
+
+class TimeframeRadio extends RadioButton {
+    public widget_name: string = "TimeframeRadio";
+
+    public set_static_value(value: string): void {
+        TimeframeRadio.radio_button_group_value = value;
+    }
+}
+
+class Device extends ListElement {
+    public widget_name: string = "Device";
+    public widget_html: string =
+    `<tr>
+    <td><button id="device-button-text">Device Name</button></td>
+    <td><button id="device-status-button">Device Status</button></td>
+    </tr>`;
+}
+
+class AssignedDevicesTable extends List {
+    public widget_name: string = "AssignedDevicesTable";
+    
+    public create_list_element(element_data: object, this_list_html: HTMLElement): ListElement {
+        return new Device(element_data, this_list_html);
+    }
+}
+
+class ProjectManager {
+    constructor() {
+
+    }
+}

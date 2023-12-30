@@ -1,7 +1,7 @@
 import { StandardWidget } from "../widget";
 
 
-abstract class RadioButton extends StandardWidget {
+export abstract class RadioButton extends StandardWidget {
     abstract widget_name: string;
     widget_html: string = 
     `<input type="radio" id={{ element_id }} name={{ radio_group_name }} value={{ button_value }}>
@@ -17,8 +17,6 @@ abstract class RadioButton extends StandardWidget {
         this.get_widget_node().addEventListener("change", this.radio_select_event);
     }
 
-    abstract radio_select_callback(): void;
-
     abstract set_static_value(value: string): void;
 
     private radio_select_event() {
@@ -26,7 +24,6 @@ abstract class RadioButton extends StandardWidget {
             var radio_button: HTMLInputElement = this.radio_button_group[x];
             if(radio_button.checked) {
                 this.set_static_value(radio_button.value);
-                this.radio_select_callback();
             }
         }
     }
