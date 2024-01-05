@@ -10,7 +10,7 @@ export abstract class RadioButton extends StandardWidget {
     private radio_button_group: NodeListOf<HTMLInputElement>;
     public static radio_button_group_value: string;
 
-    constructor(widget_data: object, parent_element: HTMLElement, widget_key?: string | undefined) {
+    constructor(widget_data: object, parent_element: HTMLElement, widget_key: string) {
         super(widget_data, parent_element, widget_key);
 
         this.radio_button_group = parent_element.querySelectorAll(`[name='${widget_data["radio_group_name"]}']`);

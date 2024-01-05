@@ -30,22 +30,9 @@ export abstract class ListElement extends Widget {
 }
 
 export abstract class List extends StandardWidget {
-    public widget_html: string = 
-        `<div id={{ element_id }}>
-            <div class="header">
-                <h2>{{ list_name }}</h2>
-            </div>
-            <div class="table">
-                <table class="table">
-                    <thead>
-                        <tr>{{ table_header }}</tr>
-                    </thead>
-                    <tbody id="table">
-                        <!-- rows of stuff will go here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>`
+    abstract widget_name: string;
+    abstract widget_html: string;
+    abstract table_element_id: string;
     private node_object_list: Map<string | number, ListElement>;
 
     public constructor(list_data: object, parent_element: HTMLElement, widget_key: string) {
@@ -63,7 +50,7 @@ export abstract class List extends StandardWidget {
     }
 
     public append(widget_data: object): void {
-        var table: HTMLElement | null = this.get_widget_node().querySelector(`#table`);
+        var table: HTMLElement | null = this.get_widget_node().querySelector(`#${this.table_element_id}`);
         if(table) {
             var list_element: ListElement = this.create_list_element(widget_data, table)
             this.node_object_list.set(list_element.get_element_id(), list_element);
@@ -107,6 +94,34 @@ export abstract class List extends StandardWidget {
             }
         }
     }
+
+    public get_node_object_list(): Map<string | number, ListElement> {
+        return this.node_object_list;
+    }
+
+    abstract create_list_element(element_data: object, this_list_html: HTMLElement): ListElement;
+}
+
+export abstract class ElementList extends List {
+    abstract widget_name: string;
+    public widget_html: string = 
+    `<div id={{ element_id }}>
+        <div class="header">
+            <h2>{{ list_name }}</h2>
+        </div>
+        <div class="table">
+            <table class="table">
+                <thead>
+                    <tr>{{ table_header }}</tr>
+                </thead>
+                <tbody id="table">
+                    <!-- rows of stuff will go here -->
+                </tbody>
+            </table>
+        </div>
+    </div>`;
+
+    public table_element_id: string = "table";
 
     abstract create_list_element(element_data: object, this_list_html: HTMLElement): ListElement;
 }

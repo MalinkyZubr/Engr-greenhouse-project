@@ -2,6 +2,21 @@ const find_template_params: string = "(?<=\\{{ )(.*?)(?=\\ }})";
 const find_template_id_fields: string = "(?<=id=)['\"]?([^'\"\\s]+)['\"]?"
 const extract_from_quotes: string = "(?<=')[^']+?(?=')"
 
+
+class DynamicPage {
+    private widget_map: Map<string, Widget>;
+
+    public add(widget: Widget): DynamicPage {
+        this.widget_map.set(widget.get_widget_name(), widget);
+        return this;
+    }
+
+    public get(widget_name: string): Widget {
+        return this.widget_map.get(widget_name) ?? function() { throw new Error(`${widget_name} not found on page`) }();
+    }
+}
+
+
 export abstract class Widget {
     abstract widget_html: string;
     abstract widget_name: string;
@@ -136,6 +151,10 @@ export abstract class Widget {
 export abstract class StandardWidget extends Widget {
     abstract widget_html: string;
     abstract widget_name: string;
+
+    constructor(widget_data: object, parent_element: HTMLElement, widget_key: string) {
+        super(widget_data, parent_element, widget_key);
+    }
 
     public insert_widget_to_parent_page(element_id: string, widget_key: string): HTMLElement {
         var parent_inner_html: string = this.get_widget_parent().innerHTML;

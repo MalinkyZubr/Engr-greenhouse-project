@@ -1,4 +1,4 @@
-import { List, ListElement, request_server_list_data } from "./widgets/list/elementList.ts"
+import { ElementList, ListElement, request_server_list_data } from "./widgets/list/elementList.ts"
 import { RequestButton } from "./widgets/buttons/requestButton.ts"
 import { RadioButton } from "./widgets/buttons/radioButtons.ts"
 import { host } from "./config.ts"
@@ -6,12 +6,18 @@ import { PeriodicExecutor } from "./shared/periodic.ts";
 import { StandardWidget } from "./widgets/widget.ts";
 
 
-class GraphManager {
-    private graph_node: HTMLImageElement;
+class GraphManager extends StandardWidget {
+    public widget_html: string = 
+    `<div class="table wide-element" id={{ element_id }}>
+        <h2>Project Data</h2>
+        <img id="graph-image" src="">
+    </div>`
+    public widget_name = "GraphManager"
+
     private project_name: string;
 
-    constructor(graph_node: HTMLImageElement, project_name: string) {
-        this.graph_node = graph_node;
+    constructor(widget_data: object, parent_element: HTMLElement, widget_key: string, project_name: string) {
+        super(widget_data, parent_element, widget_key);
         this.project_name = project_name;
     }
 
@@ -30,7 +36,8 @@ class GraphManager {
         .then(response => response.blob())
         .then(blob => {
             const image_url: string = URL.createObjectURL(blob);
-            this.graph_node.src = image_url;
+            var image_element: HTMLImageElement = this.get_widget_node().querySelector("#graph-image") ?? function() { throw new Error("graph image not found"); }();
+            image_element.src = image_url;
         });
     }
 }
@@ -101,20 +108,25 @@ class Device extends ListElement {
     public widget_name: string = "Device";
     public widget_html: string =
     `<tr>
-    <td><button id="device-button-text">Device Name</button></td>
-    <td><button id="device-status-button">Device Status</button></td>
+        <td><button id="device_name"></button></td>
+        <td><button id="device-status"></button></td>
     </tr>`;
 }
 
-class AssignedDevicesTable extends List {
+class AssignedDevicesTable extends ElementList {
     public widget_name: string = "AssignedDevicesTable";
-    
+
     public create_list_element(element_data: object, this_list_html: HTMLElement): ListElement {
         return new Device(element_data, this_list_html);
     }
 }
 
 class ProjectManager {
+    private assigned_devices: AssignedDevicesTable;
+    private timeframe_radios: TimeframeRadio;
+    private datatype_radio: DataTypeRadio;
+    private add_device_button: AddDeviceButton
+
     constructor() {
 
     }
