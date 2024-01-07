@@ -1,5 +1,6 @@
-import { ObjectTemplateParameters, List, ListElement, request_server_list_data } from "./elementList.ts";
+import { ObjectTemplateParameters, ElementList, ListElement, request_server_list_data } from "./elementList.ts";
 import { PeriodicExecutor } from "../../shared/periodic.ts";
+import { WidgetParentData } from "../widget.ts";
 
 
 try {
@@ -26,10 +27,10 @@ export class InstantiationListElement extends ListElement {
     private selection_group: NodeListOf<HTMLInputElement>;
     public static selection_group_value: string;
 
-    constructor(list_element_data: object, parent_list: HTMLElement) {
+    constructor(list_element_data: object, parent_list: WidgetParentData) {
         super(list_element_data, parent_list);
 
-        this.selection_group = parent_list.querySelectorAll(`[name="options]`);
+        this.selection_group = this.get_widget_parent().querySelectorAll(`[name="options]`);
         this.get_widget_node().addEventListener("change", this.button_selection_callback)
     }
 
@@ -43,11 +44,11 @@ export class InstantiationListElement extends ListElement {
     }
 }
 
-export abstract class InstantiationList extends List {
+export abstract class InstantiationList extends ElementList {
     abstract host: string;
 
-    constructor(list_data: object, parent_element: HTMLElement, widget_key: string) { // assignment type is either preset_name or project_name
-        super(list_data, parent_element, widget_key);
+    constructor(list_data: object, parent_element: WidgetParentData) { // assignment type is either preset_name or project_name
+        super(list_data, parent_element);
     }
 
     public async update_instantiation_list(): Promise<void> {
@@ -57,8 +58,8 @@ export abstract class InstantiationList extends List {
         }
     }
 
-    public create_list_element(element_data: object, this_list_html: HTMLElement): InstantiationListElement {
-        return new InstantiationListElement(element_data, this_list_html);
+    public create_list_element(element_data: object): InstantiationListElement {
+        return new InstantiationListElement(element_data, new WidgetParentData(this.get_widget_node()));
     }
 
     public get_selected_value(): string {

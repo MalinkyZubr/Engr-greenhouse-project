@@ -9,14 +9,14 @@
         <h1 id="project_name">Project: {{ project_name }}</h1>
     </div>
 
-    <div class="container">
+    <div class="container" id="parent_container">
         {{ assigned_devices_table }}
         <div class="table wide-element">
             {{ graph_image }}
         </div>
     
         <div class="very-wide-element">
-            <div class="buttons">
+            <div class="buttons" id="buttons">
                 {{ add_device }}
                 {{ download_csv }}
                 {{ download_pdf }}
@@ -24,10 +24,7 @@
             </div>
             <div class="radio-horizontal-container wide-element" id="datatype-selector">
                 <h3>Data Type Selector</h3>
-                {{ temp_radio }}
-                {{ humidity_radio }}
-                {{ moisture_radio }}
-                {{ light_radio }}
+                {{ datatype_radio }}
             </div>
             <div class="input-container" id="display-interval">
                 <h3>Select Data Display Interval (mm-dd-yy)</h3>
@@ -37,8 +34,7 @@
                 {{ image_refresh_button }}
             </div>
             <div class="input-container" id="data-view-type">
-                {{ live_radio }}
-                {{ previous_radio }}
+                {{ timeframe_radio }}
             </div>
             <br><br>
             <div class="buttons">

@@ -1,6 +1,7 @@
 import { InstantiationList } from "./widgets/list/instantiationList.ts"
 import { RequestButton } from "./widgets/buttons/requestButton.ts"
 import { host } from "./config.ts"
+import { WidgetParentData } from "./widgets/widget.ts";
 import { PeriodicExecutor } from "./shared/periodic.ts";
 
 
@@ -17,8 +18,8 @@ class BaseDeviceSelectorList extends InstantiationList {
 class DeviceSelectorButton extends RequestButton {
     device_list: BaseDeviceSelectorList;
 
-    constructor(widget_data: object, parent_element: HTMLElement, widget_key: string | undefined, device_list: BaseDeviceSelectorList) {
-        super(widget_data, parent_element, widget_key)
+    constructor(widget_data: object, parent_element: WidgetParentData) {
+        super(widget_data, parent_element)
         this.device_list = device_list;
     }
 
@@ -64,17 +65,14 @@ class BaseDeviceSelector extends PeriodicExecutor{
                 list_name: "Devices Ready To Register",
                 table_header: "<th>Device</th>",
             },
-            list_container,
-            "scan_list"
-
+            new WidgetParentData(list_container, "scan_list")
         )
         this.submit_button = new DeviceSelectorButton( // this hsould go into the main page class
             {
                 element_id: "sumbit_button", 
                 button_name: "Register Device"
             }, 
-            button_container, 
-            "register_button",
+            new WidgetParentData(button_container, "register_button")
             this.device_list
         );
     }

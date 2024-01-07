@@ -1,4 +1,4 @@
-import { StandardWidget, Widget } from "../widget.ts"
+import { StandardWidget, Widget, WidgetParentData } from "../widget.ts"
 
 export interface ObjectTemplateParameters {
     item_id: string | number;
@@ -7,7 +7,7 @@ export interface ObjectTemplateParameters {
 export abstract class ListElement extends Widget {
     abstract widget_html: string;
 
-    constructor(list_element_data: object, parent_list: HTMLElement) {
+    constructor(list_element_data: object, parent_list: WidgetParentData) {
         super(list_element_data, parent_list);
     }
     
@@ -35,8 +35,8 @@ export abstract class List extends StandardWidget {
     abstract table_element_id: string;
     private node_object_list: Map<string | number, ListElement>;
 
-    public constructor(list_data: object, parent_element: HTMLElement, widget_key: string) {
-        super(list_data, parent_element, widget_key)
+    public constructor(list_data: object, parent_element: WidgetParentData) {
+        super(list_data, parent_element)
         this.node_object_list = new Map<string | number, ListElement>();
     }
 
@@ -52,7 +52,7 @@ export abstract class List extends StandardWidget {
     public append(widget_data: object): void {
         var table: HTMLElement | null = this.get_widget_node().querySelector(`#${this.table_element_id}`);
         if(table) {
-            var list_element: ListElement = this.create_list_element(widget_data, table)
+            var list_element: ListElement = this.create_list_element(widget_data)
             this.node_object_list.set(list_element.get_element_id(), list_element);
         }
     }
@@ -99,7 +99,7 @@ export abstract class List extends StandardWidget {
         return this.node_object_list;
     }
 
-    abstract create_list_element(element_data: object, this_list_html: HTMLElement): ListElement;
+    abstract create_list_element(element_data: object): ListElement;
 }
 
 export abstract class ElementList extends List {
@@ -123,7 +123,7 @@ export abstract class ElementList extends List {
 
     public table_element_id: string = "table";
 
-    abstract create_list_element(element_data: object, this_list_html: HTMLElement): ListElement;
+    abstract create_list_element(element_data: object): ListElement;
 }
 
 export async function request_server_list_data(host: string, route: string): Promise<Map<string, object> | null> {

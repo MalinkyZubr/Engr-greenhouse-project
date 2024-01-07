@@ -1,4 +1,4 @@
-import { StandardWidget } from "../widget";
+import { StandardWidget, WidgetParentData } from "../widget";
 
 
 export abstract class ValidatedInput extends StandardWidget {
@@ -12,8 +12,8 @@ export abstract class ValidatedInput extends StandardWidget {
 
     abstract format_regex: RegExp;
 
-    constructor(widget_data: object, parent_element: HTMLElement, widget_key?: string | undefined) {
-        super(widget_data, parent_element, widget_key);
+    constructor(widget_data: object, parent_element: WidgetParentData) {
+        super(widget_data, parent_element);
 
         var input: Element | null = this.get_widget_node().querySelector("#input")
         if(!input) {
@@ -38,7 +38,7 @@ export abstract class ValidatedInput extends StandardWidget {
         if(input_value) {
             return this.format_regex.test(input_value)
         }
-        throw new Error(`Input value not found for ${this.widget_name}`);
+        return true;
     }
 
     private handle_compliance(): void {

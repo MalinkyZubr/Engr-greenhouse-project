@@ -1,4 +1,4 @@
-import { StandardWidget, Widget } from "../widget";
+import { StandardWidget, Widget, WidgetParentData } from "../widget";
 import { ListElement, List } from "./elementList";
 
 
@@ -28,14 +28,14 @@ export abstract class Dropdown extends List {
     private selected_value: string;
     private dropdown_element: HTMLSelectElement;
 
-    constructor(widget_data: object, parent_element: HTMLElement, widget_key: string) {
-        super(widget_data, parent_element, widget_key);
+    constructor(widget_data: object, parent_element: WidgetParentData) {
+        super(widget_data, parent_element);
         this.dropdown_element = this.get_widget_node().querySelector("#dropdown") ?? function() { throw new Error("dropdown not found"); }();
         this.dropdown_element.addEventListener("change", this.selection_callback);
     }
 
-    public create_list_element(element_data: object, this_list_html: HTMLElement): ListElement {
-        return new DropdownOption(element_data, this_list_html);
+    public create_list_element(element_data: object): ListElement {
+        return new DropdownOption(element_data, new WidgetParentData(this.get_widget_node()));
     }
 
     private async selection_callback(): Promise<void> {
