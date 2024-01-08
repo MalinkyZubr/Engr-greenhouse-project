@@ -3,42 +3,11 @@ const find_template_id_fields: string = "(?<=id=)['\"]?([^'\"\\s]+)['\"]?"
 const extract_from_quotes: string = "(?<=')[^']+?(?=')"
 
 
-export class DynamicPage {
-    private widget_map: Map<string, Widget>;
-
-    public add(widget: Widget): DynamicPage {
-        if(this.widget_map.has(widget.get_widget_name())) {
-            throw new Error(`the widget ${widget.get_widget_name()} already is present on the page`)
-        }
-        this.widget_map.set(widget.get_widget_name(), widget);
-        return this;
-    }
-
-    public get(widget_name: string): Widget {
-        return this.widget_map.get(widget_name) ?? function() { throw new Error(`${widget_name} not found on page`) }();
-    }
-}
-
 export class WidgetParentData {
     private parent_element: HTMLElement;
-    private widget_key: string
-    private dynamic_location: boolean;
 
-    constructor(parent_element: HTMLElement, widget_key?: string) {
-        this.parent_element = parent_element;
-
-        if(widget_key) {
-            this.widget_key = widget_key;
-            this,this.dynamic_location = false;
-        }
-    }
-
-    public has_key(): boolean {
-        return !this.dynamic_location;
-    }
-
-    public get_widget_key(): string {
-        return this.widget_key;
+    constructor(parent_id: string) {
+        this.parent_element = document.getElementById(parent_id) ?? function() { throw new Error(`${parent_id} id not found for parent`) }();
     }
 
     public get_parent_element(): HTMLElement {
@@ -46,13 +15,8 @@ export class WidgetParentData {
     }
 }
 
-export class WidgetParentDataStrict extends WidgetParentData {
-    constructor(parent_element: HTMLElement, widget_key: string) {
-        super(parent_element, widget_key);
-    }
-}
-
 export abstract class Widget {
+    public static widget_run_list: Array<Widget> = new Array<Widget>();
     abstract widget_html: string;
     abstract widget_name: string;
 
@@ -65,8 +29,6 @@ export abstract class Widget {
     private widget_parent_node: HTMLElement
 
     constructor(widget_data: object, parent_data: WidgetParentData) { // should only call on dom loaded event
-        var formatted_html: string;
-
         if(!this.get_widget_html().includes("id={{ element_id }}")) {
             throw new Error(`The html for the widget ${this.get_widget_name()} with id ${widget_data["element_id"]} does not have an element_id field`)
         }
@@ -75,19 +37,23 @@ export abstract class Widget {
         this.template_static_fields = this.locate_static_template_fields();
         this.template_dynamic_fields = this.locate_dynamic_template_fields();
 
-        formatted_html = this.return_formatted_html(widget_data, this.get_widget_html());
+        this.set_widget_html(this.return_formatted_html(widget_data, this.get_widget_html()));
 
-        if(parent_data.has_key()) {
-            this.widget_node = this.insert_widget_to_parent_page(this.get_element_id(), parent_data.get_widget_key());
-        }
-        else {
-            this.widget_node = this.insert_widget_to_parent_page(this.get_element_id());
-        }
+        this.widget_node = this.insert_widget_to_parent_page();
 
         this.update(widget_data);
+
+        Widget.widget_run_list.push(this);
     }
 
-    public get_element_id(): string {
+    public static async run_all(): Promise<void> {
+        for(const widget_index in Widget.widget_run_list) {
+            const widget: Widget = Widget.widget_run_list[widget_index];
+            await widget.run();
+        }
+    }
+
+    public get_id(): string {
         return this.get_widget_data()["element_id"];
     }
 
@@ -152,14 +118,18 @@ export abstract class Widget {
         }
     }
 
-    abstract insert_widget_to_parent_page(element_id: string, widget_key?: string): HTMLElement;
+    public insert_widget_to_parent_page(): HTMLElement {
+        var new_widget: HTMLElement = document.createElement("div");
+        var widget_content: Text = document.createTextNode(this.widget_html);
 
-    public get_element_by_id(element_id: string) {
-        var html_widget_node: HTMLElement | null = this.get_widget_parent().querySelector(`#${element_id}`);
-        if(!html_widget_node) {
-            throw new Error(`${element_id} was not found on the page despite being inserted`);
-        }
-        return html_widget_node;
+        new_widget.appendChild(widget_content);
+        
+        this.get_widget_parent().appendChild(new_widget);
+        return this.get_widget_parent().querySelector(`#${this.get_id()}`) ?? function() { throw new Error(`${this.get_id()} not found`) }();
+    }
+
+    private set_widget_html(html: string): void {
+        this.widget_html = html;
     }
 
     public get_widget_html(): string {
@@ -181,29 +151,6 @@ export abstract class Widget {
     public get_widget_node(): HTMLElement {
         return this.widget_node;
     }
-}
 
-export abstract class StandardWidget extends Widget {
-    abstract widget_html: string;
-    abstract widget_name: string;
-
-    constructor(widget_data: object, parent_element: WidgetParentDataStrict) {
-        super(widget_data, parent_element);
-    }
-
-    public insert_widget_to_parent_page(element_id: string, widget_key: string): HTMLElement {
-        var parent_inner_html: string = this.get_widget_parent().innerHTML;
-        var new_parent_inner_html: string = parent_inner_html.replace(`{{ ${widget_key} }}`, this.get_widget_html());
-
-        if(parent_inner_html === new_parent_inner_html && widget_key) {
-            throw new Error(`The specified key for the widget ${this.widget_name}: ${widget_key} does not exist in parent HTML`);
-        }
-        else if(parent_inner_html === new_parent_inner_html) {
-            throw new Error(`The specified `)
-        }
-
-        this.get_widget_parent().innerHTML = new_parent_inner_html;
-
-        return this.get_element_by_id(element_id);
-    }
+    public async run(): Promise<void> {}
 }

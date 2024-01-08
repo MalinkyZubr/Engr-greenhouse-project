@@ -1,4 +1,4 @@
-import { StandardWidget, Widget, WidgetParentData } from "../widget";
+import { Widget, WidgetParentData } from "../widget";
 import { ListElement, List } from "./elementList";
 
 
@@ -35,7 +35,7 @@ export abstract class Dropdown extends List {
     }
 
     public create_list_element(element_data: object): ListElement {
-        return new DropdownOption(element_data, new WidgetParentData(this.get_widget_node()));
+        return new DropdownOption(element_data, new WidgetParentData(this.get_id()));
     }
 
     private async selection_callback(): Promise<void> {

@@ -1,4 +1,4 @@
-import { StandardWidget, WidgetParentData, WidgetParentDataStrict, Widget } from "../widget";
+import { WidgetParentData, Widget } from "../widget";
 import { ListElement } from "../list/elementList";
 
 
@@ -21,7 +21,7 @@ export class RadioButton extends ListElement {
     }
 }
 
-export abstract class RadioGroup extends StandardWidget { // THIS NEEDS TO BE FIXED TO ACCEPT WIDGET KEY
+export abstract class RadioGroup extends Widget {
     abstract widget_name: string;
     widget_html: string = 
     `<div id={{ element_id }}>
@@ -30,9 +30,9 @@ export abstract class RadioGroup extends StandardWidget { // THIS NEEDS TO BE FI
 
     private radio_button_group: Array<RadioButton>;
     private radio_button_group_name: string;
-    public static radio_button_group_value: string;
+    private radio_button_group_value: string;
 
-    constructor(widget_data: object, parent_element: WidgetParentDataStrict) {
+    constructor(widget_data: object, parent_element: WidgetParentData) {
         super(widget_data, parent_element);
 
         this.radio_button_group = Array<RadioButton>();
@@ -41,13 +41,11 @@ export abstract class RadioGroup extends StandardWidget { // THIS NEEDS TO BE FI
         this.get_widget_node().addEventListener("change", this.radio_select_event);
     }
 
-    abstract set_static_value(value: string): void;
-
     private radio_select_event() {
         for(var x = 0; x < this.radio_button_group.length; x++) {
             var radio_button: RadioButton = this.radio_button_group[x];
             if(radio_button.is_checked()) {
-                this.set_static_value(radio_button.get_value());
+                this.radio_button_group_value = radio_button.get_value();
             }
         }
     }
@@ -56,15 +54,19 @@ export abstract class RadioGroup extends StandardWidget { // THIS NEEDS TO BE FI
         var new_button = new RadioButton(
             {
                 element_id: button_label,
-                radio_group_name: this.radio_button_group,
+                radio_group_name: this.radio_button_group_name,
                 button_value: button_label,
                 button_label: button_label
             },
-            new WidgetParentData(this.get_widget_node())
+            new WidgetParentData(this.get_id())
         )
 
         this.radio_button_group.push(new_button);
 
         return this;
+    }
+
+    public get_value(): string {
+        return this.radio_button_group_value;
     }
 }

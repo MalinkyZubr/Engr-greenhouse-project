@@ -1,7 +1,7 @@
-import { StandardWidget, WidgetParentData } from "../widget";
+import { Widget, WidgetParentData } from "../widget";
 
 
-export abstract class ValidatedInput extends StandardWidget {
+export abstract class ValidatedInput extends Widget {
     widget_name = "ValidatedInput";
     widget_html = 
     `<div id={{ element_id }}>

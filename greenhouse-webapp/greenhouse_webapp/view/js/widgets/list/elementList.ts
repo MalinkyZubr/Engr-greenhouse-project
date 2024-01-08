@@ -1,4 +1,4 @@
-import { StandardWidget, Widget, WidgetParentData } from "../widget.ts"
+import { Widget, WidgetParentData } from "../widget.ts"
 
 export interface ObjectTemplateParameters {
     item_id: string | number;
@@ -9,14 +9,6 @@ export abstract class ListElement extends Widget {
 
     constructor(list_element_data: object, parent_list: WidgetParentData) {
         super(list_element_data, parent_list);
-    }
-    
-    public insert_widget_to_parent_page(element_id: string): HTMLElement {
-        var html_object_widget: HTMLDivElement = document.createElement("div");
-        html_object_widget.innerHTML = this.get_widget_html();
-
-        this.get_widget_parent().appendChild(html_object_widget);
-        return this.get_element_by_id(element_id);
     }
 
     public equals(widget_data: object): boolean {
@@ -29,7 +21,7 @@ export abstract class ListElement extends Widget {
     }
 }
 
-export abstract class List extends StandardWidget {
+export abstract class List extends Widget {
     abstract widget_name: string;
     abstract widget_html: string;
     abstract table_element_id: string;
@@ -53,7 +45,7 @@ export abstract class List extends StandardWidget {
         var table: HTMLElement | null = this.get_widget_node().querySelector(`#${this.table_element_id}`);
         if(table) {
             var list_element: ListElement = this.create_list_element(widget_data)
-            this.node_object_list.set(list_element.get_element_id(), list_element);
+            this.node_object_list.set(list_element.get_id(), list_element);
         }
     }
 

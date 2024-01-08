@@ -59,7 +59,7 @@ export abstract class InstantiationList extends ElementList {
     }
 
     public create_list_element(element_data: object): InstantiationListElement {
-        return new InstantiationListElement(element_data, new WidgetParentData(this.get_widget_node()));
+        return new InstantiationListElement(element_data, new WidgetParentData(this.get_id()));
     }
 
     public get_selected_value(): string {

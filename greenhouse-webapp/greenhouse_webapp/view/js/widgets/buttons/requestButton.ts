@@ -1,12 +1,12 @@
-import { StandardWidget, WidgetParentData, WidgetParentDataStrict } from "../widget";
+import { Widget, WidgetParentData } from "../widget";
 
 
-export abstract class RequestButton extends StandardWidget {
+export abstract class RequestButton extends Widget {
     widget_name: string = "RequestButton";
     widget_html: string = 
     `<button class="button" id="{{ element_id }}">{{ button_name }}</button>`
 
-    constructor(widget_data: object, parent_element: WidgetParentDataStrict) {
+    constructor(widget_data: object, parent_element: WidgetParentData) {
         super(widget_data, parent_element);
 
         this.get_widget_node().addEventListener("click", this.submit_button_request)
