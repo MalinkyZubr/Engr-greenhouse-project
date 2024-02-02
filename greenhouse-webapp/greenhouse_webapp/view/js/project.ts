@@ -5,6 +5,13 @@ import { host } from "./config.ts"
 import { PeriodicExecutor } from "./shared/periodic.ts";
 import { WidgetParentData, Widget } from "./widgets/widget.ts";
 import { ValidatedInput } from "./widgets/validated_input/validatedInput.ts";
+import { DropdownOption, Dropdown } from "./widgets/list/dropdown.ts";
+
+
+const device_html: string = `<tr>
+<td><button id="device_name"></button></td>
+<td><button id="device-status"></button></td>
+</tr>`;
 
 
 class ProjectParentData extends WidgetParentData {
@@ -36,7 +43,7 @@ class GraphManager extends Widget {
         this.project_name = parent_element.get_project_name();
     }
 
-    public async get_graph_image(interval: [string, string] = ["", ""], data_type: string): Promise<void> {
+    public async get_graph_image(data_type: string, interval: [string, string] = ["", ""]): Promise<void> {
         await fetch(`/projects/projects/${this.project_name}/data_visualization/${data_type}`,
         {
             method: 'POST',
@@ -57,7 +64,15 @@ class GraphManager extends Widget {
     }
 
     public async run(): Promise<void> {
-        if(this.project_page.get)
+        var datatype: string = this.project_page.get_display_datatype();
+
+        if(this.project_page.get_timeframe_type() === "live") {
+            await this.get_graph_image(datatype);
+        }
+
+        else if (this.project_page.is_valid_date_input()) {
+            await this.get_graph_image(datatype, [this.project_page.get_start_date_input_value(), this.project_page.get_end_date_input_value()])
+        }
     }
 }
 
@@ -73,6 +88,10 @@ abstract class ProjectManagerButton extends RequestButton {
 
     public get_project_name(): string {
         return this.project_name;
+    }
+
+    public get_project_page(): ProjectPage {
+        return this.project_page;
     }
 }
 
@@ -103,7 +122,7 @@ class ArchiveProjectButton extends ProjectManagerButton {
     }
 }
 
-class AddDeviceButton extends ProjectManagerButton {
+class AddDeviceDropdown extends ProjectManagerButton {
     public async submit_button_request(): Promise<void> {
         // must fetch a new route that supplies scans and idles
     }
@@ -119,16 +138,11 @@ class TimeframeRadio extends RadioGroup {
 
 class Device extends ListElement { // update it so it stores a button widget
     public widget_name: string = "Device";
-    public widget_html: string =
-    `<tr>
-        <td><button id="device_name"></button></td>
-        <td><button id="device-status"></button></td>
-    </tr>`;
-    private project_name;
+    public widget_html: string = device_html
+}
 
-    constructor(list_element_data: object, parent_list: WidgetParentData, project_name: string) {
-        super(list_element_data, parent_list)
-    }
+class DropdownDevice extends DropdownOption {
+    public widget
 }
 
 class AssignedDevicesTable extends ElementList {
@@ -141,7 +155,11 @@ class AssignedDevicesTable extends ElementList {
     }
 
     public create_list_element(element_data: object): ListElement {
-        return new Device(element_data, new WidgetParentData(this.get_id()), this.project_name);
+        return new Device(element_data, new WidgetParentData(this.get_id()));
+    }
+
+    public async run(): Promise<void> {
+        this.handle_response(await request_server_list_data(host, `/projects/projects/${this.project_name}/devices`));
     }
 }
 
@@ -236,6 +254,26 @@ class ProjectPage{
 
     public get_project_name() {
         return this.project_name;
+    }
+
+    public get_end_date_input_value(): string {
+        return this.end_date_input.get_input_value();
+    }
+
+    public get_start_date_input_value(): string {
+        return this.start_date_input.get_input_value();
+    }
+
+    public get_display_datatype(): string {
+        return this.datatype_radio.get_value();
+    }
+
+    public get_timeframe_type(): string {
+        return this.timeframe_radio.get_value();
+    }
+
+    public is_valid_date_input(): boolean {
+        return this.start_date_input.check_input_compliance() && this.end_date_input.check_input_compliance() && (this.get_start_date_input_value() != "" && this.get_end_date_input_value() != "");
     }
 }
 

@@ -1,38 +1,42 @@
-import { Widget, WidgetParentData } from "../widget";
+import { AbstractBaseWidget } from "../widget/widget.ts";
+import { AbstractBaseWidgetHTMLController, BaseStartupFieldParameters } from "../widget/dynamic/widget_html.ts";
 
 
-export abstract class ValidatedInput extends Widget {
-    widget_name = "ValidatedInput";
-    widget_html = 
+export class ValidatedInputStartupParameters extends BaseStartupFieldParameters {
+    private placeholder: string;
+    private error_message: string;
+
+    constructor(element_id: string, placeholder: string, error_message: string) {
+        super(element_id);
+        this.placeholder = placeholder;
+        this.error_message = error_message;
+    }
+}
+
+export abstract class ValidatedInput extends AbstractBaseWidgetHTMLController<ValidatedInputStartupParameters> {
+    widget_html_template: string = 
     `<div id={{ element_id }}>
         <input type="text" placeholder="{{ placeholder }}" id="input">
         <br>
         <p id="error" class="input-error">{{ error_message }}</p>
     </div>`
+    private format_regex: RegExp;
 
-    abstract format_regex: RegExp;
-
-    constructor(widget_data: object, parent_element: WidgetParentData) {
-        super(widget_data, parent_element);
-
-        var input: Element | null = this.get_widget_node().querySelector("#input")
-        if(!input) {
-            throw new Error(`input not found for ${this.widget_name}`)
-        }
-
-        input.addEventListener("input", this.handle_compliance);
+    constructor(startup_field_data: ValidatedInputStartupParameters, validator: RegExp) {
+        super(startup_field_data);
+        this.format_regex = validator;
     }
 
-    public get_input_value(): string | null {
-        var input_field: HTMLInputElement | null = this.get_widget_node().querySelector("#input");
+    public get_input_value(): string {
+        var input_field: HTMLInputElement = this.get_node().querySelector("#input") ?? function() { throw new Error(`${this.get_startup_fields().get_element_id()} has no input`) }();
 
         if(input_field) {
             return input_field.value;
         }
-        return null;
+        return "";
     }
 
-    public check_input_compliance(): boolean {
+    private check_input_compliance(): boolean {
         var input_value: string | null = this.get_input_value();
 
         if(input_value) {
@@ -43,10 +47,10 @@ export abstract class ValidatedInput extends Widget {
 
     private handle_compliance(): void {
         var compliant: boolean = this.check_input_compliance();
-        var error: HTMLElement | null = this.get_widget_node().querySelector("#error") 
+        var error: HTMLElement | null = this.get_node().querySelector("#error") 
 
         if(!error) {
-            throw new Error(`Error field not found for ${this.widget_name}`);
+            throw new Error(`Error field not found for ${this.get_id()}`);
         }
 
         if(compliant) {

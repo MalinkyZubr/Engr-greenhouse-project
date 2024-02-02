@@ -6,6 +6,7 @@ export interface ObjectTemplateParameters {
 
 export abstract class ListElement extends Widget {
     abstract widget_html: string;
+    abstract widget_name: string;
 
     constructor(list_element_data: object, parent_list: WidgetParentData) {
         super(list_element_data, parent_list);
@@ -70,7 +71,10 @@ export abstract class List extends Widget {
         }
     }
 
-    public handle_response(object_map: Map<string, object>) {
+    public handle_response(object_map: Map<string, object> | null) {
+        if(!object_map) {
+            throw new Error("No elements found!");
+        }
         for(const [item_id, item_object] of this.node_object_list.entries()) {
             if(!(item_id in object_map.keys())) {
                 this.remove(item_id);
@@ -118,6 +122,7 @@ export abstract class ElementList extends List {
     abstract create_list_element(element_data: object): ListElement;
 }
 
+// this isnt sustainable, move this to the server eventually
 export async function request_server_list_data(host: string, route: string): Promise<Map<string, object> | null> {
     var parameter_object_list: Map<string, object> | null = new Map<string, object>();
 

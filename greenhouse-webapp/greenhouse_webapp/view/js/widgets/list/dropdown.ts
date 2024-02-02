@@ -2,9 +2,9 @@ import { Widget, WidgetParentData } from "../widget";
 import { ListElement, List } from "./elementList";
 
 
-export class DropdownOption extends ListElement {
-    widget_html: string = `<option id={{ element_id }} value={{ value }} title={{ tooltip }}></option>`
-    widget_name: string = "DropdownOption"
+export abstract class DropdownOption extends ListElement {
+    abstract widget_html: string;
+    abstract widget_name: string;
 
     public static generate_tooltip(tooltip_data: object) {
         var tooltip_string: String = "";
@@ -13,6 +13,11 @@ export class DropdownOption extends ListElement {
         }
         return tooltip_string;
     }
+}
+
+export class StandardDropdownOption extends DropdownOption {
+    widget_html: string = `<option id={{ element_id }} value={{ value }} title={{ tooltip }}></option>`
+    widget_name: string = "DropdownOption"
 }
 
 export abstract class Dropdown extends List {
@@ -34,9 +39,7 @@ export abstract class Dropdown extends List {
         this.dropdown_element.addEventListener("change", this.selection_callback);
     }
 
-    public create_list_element(element_data: object): ListElement {
-        return new DropdownOption(element_data, new WidgetParentData(this.get_id()));
-    }
+    abstract create_list_element(element_data: object): ListElement;
 
     private async selection_callback(): Promise<void> {
         this.selected_value = this.dropdown_element.value;
