@@ -1,8 +1,8 @@
-import { asynchronous_updater } from "./shared/asynchronousUpdater.js";
 import { Assigner } from "./shared/assignment.js";
+import { asynchronous_updater } from "../shared/asynchronousUpdater.js";
 
 
-let assigner = new Assigner("project_name");
+let assigner = new Assigner("archived");
 
 let functions = [
     assigner.retrieve_elements

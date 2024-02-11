@@ -1,4 +1,4 @@
-import { asynchronous_updater } from "./shared/asynchronousUpdater.js";
+import { asynchronous_updater } from "../shared/asynchronousUpdater.js";
 import { Assigner } from "./shared/assignment.js";
 
 

@@ -1,5 +1,5 @@
-import { AbstractBaseWidget } from "../widget/widget.ts";
-import { AbstractBaseWidgetHTMLController, BaseStartupFieldParameters } from "../widget/dynamic/widget_html.ts";
+import { AbstractBaseWidget } from "../widget/widget";
+import { AbstractBaseWidgetHTMLController, BaseStartupFieldParameters } from "../widget/dynamic/widget_html";
 
 
 export class ValidatedInputStartupParameters extends BaseStartupFieldParameters {
@@ -27,7 +27,7 @@ export abstract class ValidatedInput extends AbstractBaseWidgetHTMLController<Va
         this.format_regex = validator;
     }
 
-    public get_input_value(): string {
+    private get_input_value(): string {
         var input_field: HTMLInputElement = this.get_node().querySelector("#input") ?? function() { throw new Error(`${this.get_startup_fields().get_element_id()} has no input`) }();
 
         if(input_field) {
@@ -45,7 +45,7 @@ export abstract class ValidatedInput extends AbstractBaseWidgetHTMLController<Va
         return true;
     }
 
-    private handle_compliance(): void {
+    public check_field_compliant(): void {
         var compliant: boolean = this.check_input_compliance();
         var error: HTMLElement | null = this.get_node().querySelector("#error") 
 

@@ -1,4 +1,4 @@
-import { asynchronous_updater, format_route } from "./shared/asynchronousUpdater.js";
+import { asynchronous_updater, format_route } from "../shared/asynchronousUpdater.js";
 
 
 let device_name = document.getElementById("device_name").textContent;

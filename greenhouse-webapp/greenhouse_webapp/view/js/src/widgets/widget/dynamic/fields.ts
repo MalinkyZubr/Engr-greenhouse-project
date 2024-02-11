@@ -1,5 +1,5 @@
 export class DynamicField {
-    private value: string;
+    private value: string = "";
     private field: HTMLElement;
 
     public constructor(field: HTMLElement) {
@@ -12,7 +12,7 @@ export class DynamicField {
 
     public set_value(value: string): void {
         this.value = value;
-        this.field.innerText = value;
+        this.field.innerHTML = value;
     }
 }
 
@@ -22,9 +22,10 @@ export class StaticField extends DynamicField {
     public set_value(value: string): void {
         if(!this.is_set) {
             super.set_value(value);
+            this.is_set = true;
         }
         else {
-            throw new Error(`static, can only be set once!`);
+            throw new TypeError(`static field, can only be set once!`);
         }
     }
 }

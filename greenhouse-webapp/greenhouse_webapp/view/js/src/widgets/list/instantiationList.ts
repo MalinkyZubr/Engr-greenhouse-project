@@ -1,5 +1,5 @@
 import { ObjectTemplateParameters, ElementList, ListElement, request_server_list_data } from "./elementList.ts";
-import { PeriodicExecutor } from "../../shared/periodic.ts";
+import { PeriodicExecutor } from "../../src/shared/periodic.js";
 import { WidgetParentData } from "../widget.ts";
 
 

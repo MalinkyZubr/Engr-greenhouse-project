@@ -1,4 +1,4 @@
-import { asynchronous_updater, get_project_associated_devices, format_route } from './shared/asynchronousUpdater.js'
+import { asynchronous_updater, get_project_associated_devices, format_route } from '../shared/asynchronousUpdater.js'
 
 let re = new RegExp('(?<=Project: ).*');
 
