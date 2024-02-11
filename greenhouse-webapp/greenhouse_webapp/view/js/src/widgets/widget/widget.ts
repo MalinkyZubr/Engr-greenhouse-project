@@ -42,6 +42,7 @@ export class BaseWidgetMetadata {
 
 interface Module {
     run(...args: any[]): Promise<void>;
+    attach_widget_controller(widget_html_controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>): void;
 }
 
 export abstract class WidgetModule implements Module {
@@ -51,7 +52,7 @@ export abstract class WidgetModule implements Module {
         return this.widget_html_controller ?? function() { throw new Error("widget_html_controller not attached!") }();
     }
 
-    public attach_widget_controller(widget_html_controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>) {
+    public attach_widget_controller(widget_html_controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>): void {
         this.widget_html_controller = widget_html_controller;
     }
 
@@ -83,7 +84,7 @@ export abstract class WidgetRequestModule extends WidgetModule {
 
     abstract generate_request_body(): object;
 
-    abstract process_response(response: object): void;
+    abstract process_response(response: FieldParameters): void;
 
     public async submit_request(): Promise<void> {
         const request_path = `https://${WidgetRequestModule.host}:${WidgetRequestModule.port}${this.request_route}`
@@ -155,7 +156,7 @@ export abstract class WidgetRequestModule extends WidgetModule {
 //     }
 // }
 
-export class BasicUpdater extends WidgetRequestModule {
+export class BasicUpdaterRequestModule extends WidgetRequestModule {
     public generate_request_body(): object {
         return {
             method: "GET"
@@ -222,6 +223,10 @@ export class RepetitiveModuleWrapper implements Module {
         }
     }
 
+    public attach_widget_controller(widget_html_controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>): void {
+        this.module.attach_widget_controller(widget_html_controller);
+    }
+
     public async run(): Promise<void> {
         this.run_flag = true;
         await this.loop()
@@ -233,14 +238,15 @@ export class RepetitiveModuleWrapper implements Module {
 }
 
 export class BaseWidget {
-    private widget_html: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>;
+    private widget_html_controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>;
     private widget_metadata: BaseWidgetMetadata; 
     private widget_module: Module = new EmptyModule();
     private repetetive_module: Module = new EmptyModule();
 
     constructor(widget_html_object: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>, widget_metadata: BaseWidgetMetadata) {
-        this.widget_html = widget_html_object;
+        this.widget_html_controller = widget_html_object;
         this.widget_metadata = widget_metadata;
+        this.widget_module.attach_widget_controller(this.widget_html_controller)
 
         this.create_node(widget_metadata);
     }
@@ -249,7 +255,7 @@ export class BaseWidget {
         var widget_node: HTMLElement = document.createElement('div');
 
         widget_metadata.get_widget_parent_node().appendChild(widget_node);
-        this.widget_html.assign_widget_node(widget_node);
+        this.widget_html_controller.assign_widget_node(widget_node);
     }
 
     public get_name(): string {
@@ -257,15 +263,15 @@ export class BaseWidget {
     }
 
     public get_id(): string {
-        return this.widget_html.get_id();
+        return this.widget_html_controller.get_id();
     }
 
     public get_value(): FieldParameters {
-        return this.widget_html.get_value();
+        return this.widget_html_controller.get_value();
     }
 
     public add_module(new_module: WidgetModule) {
-        new_module.attach_widget_controller(this.widget_html);
+        new_module.attach_widget_controller(this.widget_html_controller);
         this.widget_module = new_module;
     }
 
@@ -275,6 +281,7 @@ export class BaseWidget {
 
     public add_module_repetitive(new_module: WidgetModule, interval: number) {
         this.repetetive_module = new RepetitiveModuleWrapper(new_module, interval);
+        this.repetetive_module.attach_widget_controller(this.widget_html_controller);
         this.repetetive_module.run();
     }
 }

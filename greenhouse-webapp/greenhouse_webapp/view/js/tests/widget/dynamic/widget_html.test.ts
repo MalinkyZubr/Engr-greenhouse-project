@@ -18,7 +18,6 @@ describe("Testing the functionality of BaseStartupFieldParameters and WidgetHTML
     test("Testing to see if the startup_fields integrated with the widget_html", () => {
         expect(startup_field_values.get_element_id()).toBe("test_id");
         expect(document.body.innerHTML.includes('id="test_id"'))
-        console.log(document.body.innerHTML)
     });
 
     test("Testing to see if the HTML controller child getter works properly", () => {

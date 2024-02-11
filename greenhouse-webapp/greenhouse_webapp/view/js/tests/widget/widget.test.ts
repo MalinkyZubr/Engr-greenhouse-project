@@ -4,8 +4,8 @@
 
 import { BaseStartupFieldParameters, AbstractBaseWidgetHTMLController } from "../../src/widgets/widget/dynamic/widget_html";
 import { FieldParameters } from "../../src/widgets/widget/dynamic/field_container";
-import { BaseWidget, RepetitiveModuleWrapper, WidgetModule, BaseWidgetMetadata, WidgetParent, WidgetRequestModule } from "../../src/widgets/widget/widget";
-import { TestWidgetHTMLController } from "./test_classes";
+import { BaseWidget, RepetitiveModuleWrapper, WidgetModule, BaseWidgetMetadata, WidgetParent, WidgetRequestModule, BasicUpdaterRequestModule } from "../../src/widgets/widget/widget";
+import { TestWidgetHTMLController, TestBasicUpdaterRequest } from "./test_classes";
 
 
 document.body.innerHTML = `<div id="parent"></div>`
@@ -26,11 +26,21 @@ describe("Testing for the BaseWidget class", () => {
         expect(test_widget.get_id()).toBe("silly_test");
     })
 
-    test("Testing the empty module", () => {
-        expect(test_widget.run()).toThrow(EvalError);
+    test("Testing the empty module", async () => {
+        await expect(test_widget.run()).rejects.toThrow(EvalError);
     })
 
-    test("Testing the request module", () => {
-        
+    var test_basic_updater_request: TestBasicUpdaterRequest = new TestBasicUpdaterRequest("/silly/zubr", 10);
+
+    test("Testing the basic request module", () => {
+        expect(test_basic_updater_request.generate_request_body()).toStrictEqual({method:"GET"});
+    })
+
+    test("Testing integration of basic request module with widget", async () => {
+        test_widget.add_module(test_basic_updater_request);
+        await test_widget.run();
+
+        expect(test_widget.get_value()).toStrictEqual({"test_field1":"silly1", "test_field2":"silly2"});
+        expect(document.getElementById("test_field2")?.innerHTML).toBe("silly2");
     })
 })

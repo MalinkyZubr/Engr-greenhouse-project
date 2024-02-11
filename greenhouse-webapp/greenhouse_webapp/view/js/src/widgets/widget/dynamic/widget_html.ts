@@ -15,7 +15,6 @@ export class BaseStartupFieldParameters {
 
     private set_startup_fields(html_template: string): string {
         for (const key of Object.getOwnPropertyNames(this)) {
-            console.log(key);
             var object_key: string = key;
             var object_value: string | null = Object.getOwnPropertyDescriptor(this, object_key)?.value;
 

@@ -1,5 +1,6 @@
 import { BaseStartupFieldParameters, AbstractBaseWidgetHTMLController } from "../../src/widgets/widget/dynamic/widget_html";
 import { FieldParameters } from "../../src/widgets/widget/dynamic/field_container";
+import { WidgetRequestModule, BasicUpdaterRequestModule } from "../../src/widgets/widget/widget";
 
 
 export class TestWidgetHTMLController extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> {
@@ -13,3 +14,13 @@ export class TestWidgetHTMLController extends AbstractBaseWidgetHTMLController<B
         </div>\n`;
     }
 }
+
+
+export class TestBasicUpdaterRequest extends BasicUpdaterRequestModule {
+    public async submit_request(): Promise<void> {
+        var res: FieldParameters = {"test_field1":"silly1", "test_field2":"silly2"};
+        this.process_response(res);
+    }
+}
+
+
