@@ -18,10 +18,10 @@ export class BaseStartupFieldParameters {
             var object_key: string = key;
             var object_value: string | null = Object.getOwnPropertyDescriptor(this, object_key)?.value;
 
-            if (!object_value && object_key != "0") {
-                console.warn(`Field ${object_key} does not exist for ${this.get_element_id()}`)
-            }
-            else if(object_value && object_key != "0") {
+            // if (!object_value && object_key != "0") {
+            //     console.warn(`Field ${object_key} does not exist for ${this.get_element_id()}`)
+            // }
+            if(object_value && object_key != "0") {
                 html_template = this.set_startup_field(key, object_value, html_template)
             }
         }
@@ -88,7 +88,7 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
         this.dynamic_fields?.set_field_values(field_data);
     }
 
-    protected get_startup_fields(): StartupFieldsDataType {
+    private get_startup_fields(): StartupFieldsDataType {
         return this.startup_fields;
     }
 

@@ -7,6 +7,21 @@ import { FieldParameters } from "../../../src/widgets/widget/dynamic/field_conta
 import { TestWidgetHTMLController } from "../test_classes"
 
 
+class ErroneousStartupFieldParameters extends BaseStartupFieldParameters {
+    private silly: string;
+
+    constructor(element_id: string, silly: string) {
+        super(element_id);
+        this.silly = silly;
+    }
+}
+
+class ErroneousTestHTML extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> {
+    public html_template_generator(): string {
+        return `<div id="dinkle"></div>`
+    }
+}
+
 document.body.innerHTML = `<div id="parent"></div>`
 var startup_field_values = new BaseStartupFieldParameters("test_id");
 var test_html_controller = new TestWidgetHTMLController(startup_field_values);
@@ -36,5 +51,13 @@ describe("Testing the functionality of BaseStartupFieldParameters and WidgetHTML
 
         expect(test_html_controller.get_value()["test_field2"]).toBe("Stalwart");
         expect(test_html_controller.extract_child("test_field2").innerHTML).toBe("Stalwart");
+    })
+
+    test("Testing to see if startup fields recognize erroneous startup keys", () => {
+        expect(function() {new TestWidgetHTMLController(new ErroneousStartupFieldParameters("test1", "sillyerror"))}).toThrow(Error);
+    })
+
+    test("Testing to see if the widget HTML detects improper HTML formatting", () => {
+        expect(function() {new ErroneousTestHTML(startup_field_values)}).toThrow(Error);
     })
 })
