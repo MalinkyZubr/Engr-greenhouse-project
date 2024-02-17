@@ -3,7 +3,7 @@ import { AbstractBaseWidgetHTMLController, BaseStartupFieldParameters } from "..
 import { FieldParameters } from "../widget/dynamic/field_container";
 
 
-class DropdownOptionStartupFieldParameters extends BaseStartupFieldParameters {
+export class DropdownOptionStartupFieldParameters extends BaseStartupFieldParameters {
     private dropdown_value: string;
     private tooltip: FieldParameters;
 

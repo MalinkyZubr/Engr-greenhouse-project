@@ -211,13 +211,14 @@ export class RepetitiveModuleWrapper<HTMLControllerType extends AbstractBaseWidg
 export class BaseWidget {
     private widget_html_controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>;
     private widget_metadata: BaseWidgetMetadata; 
-    private widget_module: Module = new EmptyModule();
-    private repetetive_module: Module = new EmptyModule();
+    private widget_core_module: Module = new EmptyModule();
+    private listener_modules: Array<WidgetListenerModule> = new Array<WidgetListenerModule>
+    private repetetive_modules: Array<RepetitiveModuleWrapper> = new Array<RepetitiveModuleWrapper>();
 
     constructor(widget_html_object: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>, widget_metadata: BaseWidgetMetadata) {
         this.widget_html_controller = widget_html_object;
         this.widget_metadata = widget_metadata;
-        this.widget_module.attach_widget_controller(this.widget_html_controller)
+        this.widget_core_module.attach_widget_controller(this.widget_html_controller)
 
         this.create_node(widget_metadata);
     }
@@ -245,28 +246,39 @@ export class BaseWidget {
         this.widget_html_controller.update_dynamic_fields(parameters);
     }
 
-    public add_module(new_module: WidgetModule): BaseWidget {
+    public async run(): Promise<void> {
+        await this.widget_core_module.run();
+    }
+
+    public add_core_module(new_module: WidgetModule): BaseWidget {
         new_module.attach_widget_controller(this.widget_html_controller);
-        this.widget_module = new_module;
+        this.widget_core_module = new_module;
         
         return this
     }
 
-    public async run(): Promise<void> {
-        await this.widget_module.run();
+    public add_listener_module(new_module: WidgetListenerModule): BaseWidget {
+        new_module.attach_widget_controller(this.widget_html_controller);
+        this.listener_modules.push(new_module);
+        
+        return this
     }
 
     public add_module_repetitive(new_module: WidgetModule, interval: number): BaseWidget {
-        this.repetetive_module = new RepetitiveModuleWrapper(new_module, interval);
-        this.repetetive_module.attach_widget_controller(this.widget_html_controller);
-        this.repetetive_module.run();
+        var repetetive_module: RepetitiveModuleWrapper = new RepetitiveModuleWrapper(new_module, interval);
+        repetetive_module.attach_widget_controller(this.widget_html_controller);
+        repetetive_module.run();
+
+        this.repetetive_modules.push(repetetive_module);
 
         return this;
     }
 
     public kill_module_repetitive() {
-        if(this.repetetive_module instanceof RepetitiveModuleWrapper) {
-            this.repetetive_module.kill();
+        if(this.repetetive_modules.length > 0) {
+            for(var repetitive_module of this.repetetive_modules) {
+                repetitive_module.kill();
+            }
         }
         else {
             throw new Error(`Cannot kill task for ${this.constructor.name}, no task is active`)
