@@ -18,9 +18,6 @@ export class BaseStartupFieldParameters {
             var object_key: string = key;
             var object_value: string | null = Object.getOwnPropertyDescriptor(this, object_key)?.value;
 
-            // if (!object_value && object_key != "0") {
-            //     console.warn(`Field ${object_key} does not exist for ${this.get_element_id()}`)
-            // }
             if(object_value && object_key != "0") {
                 html_template = this.set_startup_field(key, object_value, html_template)
             }
@@ -80,15 +77,25 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
         return this;
     }
 
-    protected get_node(): HTMLElement {
+    public get_node(): HTMLElement {
         return this.widget_node ?? function () { throw new Error("Node is not yet defined, be sure to run assign_widget_node!") }();
     }
 
-    public update_dynamic_fields(field_data: FieldParameters) {
-        this.dynamic_fields?.set_field_values(field_data);
+    public equals(parameters: FieldParameters): boolean {
+        if(!this.dynamic_fields) {
+            throw new Error(`The widget ${this.get_id()} does not have any dynamic fields`);
+        }
+        return this.dynamic_fields.equals(parameters);
     }
 
-    private get_startup_fields(): StartupFieldsDataType {
+    public update_dynamic_fields(field_data: FieldParameters) {
+        if(!this.dynamic_fields) {
+            throw new Error(`Dynamic fields are not set for ${this.constructor.name}`);
+        }
+        this.dynamic_fields.set_field_values(field_data);
+    }
+
+    public get_startup_fields(): StartupFieldsDataType {
         return this.startup_fields;
     }
 

@@ -1,5 +1,5 @@
-import { Widget, WidgetParentData } from "../widget";
-import { ListElement, List } from "./elementList";
+import { AbstractBaseWidgetHTMLController } from "../widget/dynamic/widget_html";
+import { BaseStartupFieldParameters } from "../widget/dynamic/widget_html";
 
 
 export abstract class DropdownOption extends ListElement {

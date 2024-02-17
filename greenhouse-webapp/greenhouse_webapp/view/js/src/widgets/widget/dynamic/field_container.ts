@@ -13,6 +13,20 @@ export abstract class AbstractFieldContainer<FieldType extends DynamicField> {
         this.fields = this.locate_fields(data_attribute_name);
     }
 
+    public equals(parameters: FieldParameters): boolean {
+        for(const [field_name, field] of Object.entries(parameters)) {
+            var container_entry: FieldType | undefined = this.fields.get(field_name);
+
+            if(!container_entry) {
+                throw new Error(`Container does not contain ${field_name}`);
+            }
+            else if(field != container_entry.get_value()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private locate_fields(data_attribute_name: string): Map<string, FieldType> {
         var html_fields: NodeListOf<HTMLElement> = this.widget_node.querySelectorAll(`[data-field="${data_attribute_name}"]`);
 

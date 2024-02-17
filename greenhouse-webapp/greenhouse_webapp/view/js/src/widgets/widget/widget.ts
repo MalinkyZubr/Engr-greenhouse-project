@@ -3,6 +3,10 @@ import { BaseStartupFieldParameters } from "./dynamic/widget_html";
 import type { FieldParameters } from "./dynamic/field_container";
 
 
+export type ListParameters = {
+    [key: string]: FieldParameters
+}
+
 export class WidgetParent {
     private widget_parent_node: HTMLElement
     
@@ -45,19 +49,21 @@ interface Module {
     attach_widget_controller(widget_html_controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>): void;
 }
 
-export abstract class WidgetModule implements Module {
-    private widget_html_controller: null | AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> = null;
 
-    protected get_widget_html_controller(): AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> {
-        return this.widget_html_controller ?? function() { throw new Error("widget_html_controller not attached!") }();
+export abstract class WidgetModule<HTMLControllerType extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> = AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>> implements Module {
+    private widget_html_controller: null | HTMLControllerType = null;
+
+    protected get_widget_html_controller(): HTMLControllerType {
+        return this.widget_html_controller ?? function(module: Module) { throw new Error(`widget_html_controller not attached for ${module.constructor.name}`) }(this);
     }
 
-    public attach_widget_controller(widget_html_controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>): void {
+    public attach_widget_controller(widget_html_controller: HTMLControllerType): void {
         this.widget_html_controller = widget_html_controller;
     }
 
     abstract run(...args: any[]): Promise<void>;
 }
+
 
 export class EmptyModule extends WidgetModule {
     public async run(): Promise<void> {
@@ -65,11 +71,13 @@ export class EmptyModule extends WidgetModule {
     }
 }
 
-export abstract class WidgetRequestModule extends WidgetModule {
+
+export abstract class WidgetRequestModule<HTMLControllerType extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> = AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>> extends WidgetModule<HTMLControllerType> {
     protected request_interval: number;
     private request_route: string;
     public static port: number;
     public static host: string;
+
 
     public constructor(request_route: string, request_interval: number) {
         super()
@@ -84,7 +92,7 @@ export abstract class WidgetRequestModule extends WidgetModule {
 
     abstract generate_request_body(): object;
 
-    abstract process_response(response: FieldParameters): void;
+    abstract process_response(response: FieldParameters | ListParameters): void;
 
     public async submit_request(): Promise<void> {
         const request_path = `https://${WidgetRequestModule.host}:${WidgetRequestModule.port}${this.request_route}`
@@ -101,61 +109,6 @@ export abstract class WidgetRequestModule extends WidgetModule {
     }
 }
 
-// export abstract class WidgetRequestModule extends WidgetModule {
-//     protected request_interval: number;
-//     private request_route: string;
-//     public static port: number;
-//     public static host: string;
-
-//     public constructor(request_route: string, request_interval: number, 
-//                 request_generator: null | ((widget_request_module: WidgetRequestModule) => FieldParameters),
-//                 process_response: null | ((widget_request_module: WidgetRequestModule, response: FieldParameters) => void)) 
-//             {
-//         super()
-        
-//         if(request_generator) {
-//             this.generate_request_body = request_generator;
-//         }
-//         if(process_response) {
-//             this.process_response = process_response;
-//         }
-
-//         this.request_route = request_route;
-//         this.request_interval = request_interval;
-//     }
-
-//     private generate_request_body: (widget_request_module: WidgetRequestModule) => FieldParameters = 
-//         (widget_request_module: WidgetRequestModule) => {
-//             return {
-//                 method: "GET"
-//             };
-//         };
-
-//     private process_response: (widget_request_module: WidgetRequestModule, response: FieldParameters) => void = 
-//         (widget_request_module: WidgetRequestModule, response: FieldParameters) => { 
-//             widget_request_module.get_widget_html_controller().update_dynamic_fields(response) 
-//         };
-
-//     public static set_connection_information(host: string, port: number) {
-//         WidgetRequestModule.host = host;
-//         WidgetRequestModule.port = port;
-//     }
-
-//     public async submit_request(): Promise<void> {
-//         const request_path = `https://${WidgetRequestModule.host}:${WidgetRequestModule.port}${this.request_route}`
-
-//         await fetch(request_path, this.generate_request_body(this))
-//         .then(res => res.json())
-//         .then(res => {
-//             this.process_response(this, res);
-//         })
-//     }
-
-//     public async run(): Promise<void> {
-//         await this.submit_request();
-//     }
-// }
-
 export class BasicUpdaterRequestModule extends WidgetRequestModule {
     public generate_request_body(): object {
         return {
@@ -168,41 +121,59 @@ export class BasicUpdaterRequestModule extends WidgetRequestModule {
     }
 }
 
-export abstract class WidgetListenerModule extends WidgetModule {
-    private html_element: HTMLElement;
+export class WidgetListenerModule<HTMLControllerType extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> = AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>> extends WidgetModule<HTMLControllerType> {
+    private html_element: HTMLElement | null = null;
     private dependency: BaseWidget | null = null;
-    private operation: null | ((controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>) => void) = null;
+    private listening_element_id: string | undefined;
+    private listening_event: string;
 
-    constructor(listen_event: string, listening_element_id: string) {
+    private operation: null | ((controller: HTMLControllerType) => Promise<void>) = null;
+
+    constructor(listen_event: string, listening_element_id?: string) {
         super();
-        this.html_element = this.get_widget_html_controller().extract_child(listening_element_id);
-        this.add_callback(listen_event);
-    }
-
-    private add_callback(listen_event: string) {
-        this.html_element.addEventListener(listen_event, this.callback);
-    }
-
-    private callback() {
-        if(this.dependency) {
-            this.dependency.run()
+        if(this.get_widget_html_controller().get_node().childElementCount > 1 && !listening_element_id) {
+            throw new Error(`The HTMLController ${this.get_widget_html_controller().constructor.name} has more than one field, 
+            must select listening_element_id to specify what child to listen for event on`)
         }
+        this.listening_element_id = listening_element_id
+        this.listening_event = listen_event;
+
+        this.run = this.run.bind(this);
+    }
+
+    public attach_widget_controller(widget_html_controller: HTMLControllerType): void {
+        super.attach_widget_controller(widget_html_controller);
+        if(this.listening_element_id) {
+            this.html_element = this.get_widget_html_controller().extract_child(this.listening_element_id);
+        }
+        else {
+            this.html_element = this.get_widget_html_controller().get_node();
+        }
+        this.html_element.addEventListener(this.listening_event, this.run);
+    }
+
+    public async run(...args: any[]): Promise<void> {
+        //console.log(this.get_operation());
         if(this.operation) {
-            this.operation(this.get_widget_html_controller());
+            await this.operation(this.get_widget_html_controller());
+        }
+        if(this.dependency) {
+            await this.dependency.run()
         }
     }
 
-    public inject_dependency(dependency: BaseWidget): WidgetListenerModule {
+    public inject_dependency(dependency: BaseWidget): WidgetListenerModule<HTMLControllerType> {
         this.dependency = dependency;
         return this;
     }
 
-    public inject_operation(operation: (controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>) => void) {
+    public inject_operation(operation: (controller: HTMLControllerType) => Promise<void>): WidgetListenerModule<HTMLControllerType> {
         this.operation = operation;
+        return this;
     }
 }
 
-export class RepetitiveModuleWrapper implements Module {
+export class RepetitiveModuleWrapper<HTMLControllerType extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> = AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>> implements Module {
     private module: WidgetModule;
     private interval: number;
     private run_flag: boolean = true;
@@ -223,7 +194,7 @@ export class RepetitiveModuleWrapper implements Module {
         }
     }
 
-    public attach_widget_controller(widget_html_controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>): void {
+    public attach_widget_controller(widget_html_controller: HTMLControllerType): void {
         this.module.attach_widget_controller(widget_html_controller);
     }
 
@@ -270,18 +241,46 @@ export class BaseWidget {
         return this.widget_html_controller.get_value();
     }
 
-    public add_module(new_module: WidgetModule) {
+    public set_value(parameters: FieldParameters) {
+        this.widget_html_controller.update_dynamic_fields(parameters);
+    }
+
+    public add_module(new_module: WidgetModule): BaseWidget {
         new_module.attach_widget_controller(this.widget_html_controller);
         this.widget_module = new_module;
+        
+        return this
     }
 
     public async run(): Promise<void> {
         await this.widget_module.run();
     }
 
-    public add_module_repetitive(new_module: WidgetModule, interval: number) {
+    public add_module_repetitive(new_module: WidgetModule, interval: number): BaseWidget {
         this.repetetive_module = new RepetitiveModuleWrapper(new_module, interval);
         this.repetetive_module.attach_widget_controller(this.widget_html_controller);
         this.repetetive_module.run();
+
+        return this;
+    }
+
+    public kill_module_repetitive() {
+        if(this.repetetive_module instanceof RepetitiveModuleWrapper) {
+            this.repetetive_module.kill();
+        }
+        else {
+            throw new Error(`Cannot kill task for ${this.constructor.name}, no task is active`)
+        }
+    }
+
+    public equals(parameters: FieldParameters): boolean {
+        return this.widget_html_controller.equals(parameters);
+    }
+
+    public delete_from_dom() {
+        this.widget_metadata.get_widget_parent_node()
+        .removeChild(
+            this.widget_html_controller.get_node()
+        );
     }
 }
