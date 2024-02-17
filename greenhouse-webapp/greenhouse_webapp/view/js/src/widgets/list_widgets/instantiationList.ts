@@ -2,7 +2,7 @@ import { ObjectTemplateParameters, ElementList, ListElement, request_server_list
 import { PeriodicExecutor } from "../../src/shared/periodic.js";
 import { WidgetParentData } from "../widget.ts";
 
-
+// what the hell is even this stuff
 try {
     let device_name = document.getElementById("device_name");
 }

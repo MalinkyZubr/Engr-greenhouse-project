@@ -12,8 +12,43 @@ enum FieldAction {
 
 export abstract class WidgetListHTMLController<StartupFieldsDataType extends BaseStartupFieldParameters> extends AbstractBaseWidgetHTMLController<StartupFieldsDataType> {
     private children: Map<string, BaseWidget> = new Map<string, BaseWidget>();
+    private append_node: HTMLElement | null = null;
+    private append_id: string;
+
+    constructor(startup_field_data: StartupFieldsDataType, append_id?: string) {
+        super(startup_field_data);
+
+        if(!append_id) {
+            append_id = this.get_id();
+        }
+        else if(!this.html_template_generator().includes(`id=${append_id}`)) {
+            throw new Error(`The supplied child append node ${append_id} does not exist on list ${this.get_id()}`)
+        }
+
+        this.append_id = append_id
+    }
 
     abstract html_template_generator(): string;
+
+    public assign_widget_node(widget_node: HTMLElement): AbstractBaseWidgetHTMLController<StartupFieldsDataType> {
+        super.assign_widget_node(widget_node);
+
+        var child_append_node: HTMLElement | null = this.get_node().querySelector(`#${this.append_id}`);
+        
+        if(!child_append_node) {
+            throw new Error("There was a major issue along the way, the previous check didnt catch this!?!?!")
+        }
+        this.append_node = child_append_node;
+
+        return this;
+    }
+
+    public get_append_node(): HTMLElement {
+        if(!this.append_node) {
+            throw new Error("Cannot get append node before it has been set");
+        }
+        return this.append_node
+    }
 
     public add_child(child_widget: BaseWidget): void {
         this.children.set(child_widget.get_id(), child_widget);
@@ -60,7 +95,7 @@ export abstract class WidgetListHTMLController<StartupFieldsDataType extends Bas
 
 
 export abstract class ListAppendModule<ChildType extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>> extends WidgetRequestModule<WidgetListHTMLController<BaseStartupFieldParameters>> {
-    abstract generate_html(element_id: string): ChildType;
+    abstract generate_html(element_id: string, element_fields: FieldParameters): ChildType;
 
     abstract generate_request_body(): object;
 
@@ -72,13 +107,13 @@ export abstract class ListAppendModule<ChildType extends AbstractBaseWidgetHTMLC
             switch(field_action) {
                 case FieldAction.Create:
                     var new_child: BaseWidget = new BaseWidget(
-                        this.generate_html(field_name),
+                        this.generate_html(field_name, field),
                         new BaseWidgetMetadata(
                             field_name, 
-                            new WidgetParent(widget_html_controller.get_node())
+                            new WidgetParent(widget_html_controller.get_append_node())
                         )
                     );
-                    widget_html_controller.add_child(new_child);
+                    widget_html_controller.add_child(new_child); // this is problem because the html is wrapped inside div object for the node. Must be a way of selecting ID inside the html
                     break;
                 case FieldAction.Update:
                     widget_html_controller.update_child(field_name, field);

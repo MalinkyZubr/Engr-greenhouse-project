@@ -13,13 +13,24 @@ export class BaseStartupFieldParameters {
         return this.element_id;
     }
 
+    private generate_tooltip(tooltip_data: FieldParameters): string {
+        var tooltip_string: string = "";
+        for(const [key, value] of Object.entries(tooltip_data)) {
+            tooltip_string = tooltip_string.concat(`${key}: ${value}\n`);
+        }
+        return tooltip_string;
+    }
+
     private set_startup_fields(html_template: string): string {
         for (const key of Object.getOwnPropertyNames(this)) {
             var object_key: string = key;
-            var object_value: string | null = Object.getOwnPropertyDescriptor(this, object_key)?.value;
+            var object_value: string | FieldParameters | null = Object.getOwnPropertyDescriptor(this, object_key)?.value;
 
-            if(object_value && object_key != "0") {
-                html_template = this.set_startup_field(key, object_value, html_template)
+            if(object_value && object_value != "0") {
+                if(typeof(object_value) != "string") {
+                    object_value = this.generate_tooltip(object_value);
+                }
+                html_template = this.set_startup_field(key, object_value, html_template);
             }
         }
         return html_template;
