@@ -4,6 +4,10 @@ export type FieldParameters = {
     [key: string]: string
 }
 
+export type ListParameters = {
+    [key: string]: FieldParameters
+}
+
 export abstract class AbstractFieldContainer<FieldType extends DynamicField> {
     private fields: Map<string, FieldType>;
     private widget_node: HTMLElement; 
@@ -28,15 +32,24 @@ export abstract class AbstractFieldContainer<FieldType extends DynamicField> {
     }
 
     private locate_fields(data_attribute_name: string): Map<string, FieldType> {
-        var html_fields: NodeListOf<HTMLElement> = this.widget_node.querySelectorAll(`[data-field="${data_attribute_name}"]`);
-
         var logical_fields: Map<string, FieldType> = new Map<string, FieldType>();
 
-        for(var index = 0; index < html_fields.length; index++) {
-            const field: HTMLElement = html_fields[index];
-            var field_id: string = field.id;
-            var field_object: FieldType = this.create_field(field);
-            logical_fields.set(field_id, field_object);
+        var html_fields: NodeListOf<HTMLElement> = this.widget_node.querySelectorAll(`[data-field="${data_attribute_name}"]`);
+        var tag_data_field: string | null = this.widget_node.getAttribute("data-field");
+
+        if(tag_data_field && html_fields.length > 0) {
+            throw new Error("The selected widget has both a field in its root tag and among its children. You may not have both!")
+        }
+        else if(tag_data_field) {
+            logical_fields.set(this.widget_node.id, this.create_field(this.widget_node))
+        }
+        else {
+            for(var index = 0; index < html_fields.length; index++) {
+                const field: HTMLElement = html_fields[index];
+                var field_id: string = field.id;
+                var field_object: FieldType = this.create_field(field);
+                logical_fields.set(field_id, field_object);
+            }
         }
 
         return logical_fields;
@@ -45,6 +58,9 @@ export abstract class AbstractFieldContainer<FieldType extends DynamicField> {
     public set_field_values(field_data: FieldParameters): void {
         for(const [key, field] of this.fields.entries()) {
             if(field_data.hasOwnProperty(key)) {
+                if(key === "test_button") {
+                    console.log("setting test button")
+                }
                 var value_to_set: string = field_data[key];
                 field.set_value(value_to_set);
             }

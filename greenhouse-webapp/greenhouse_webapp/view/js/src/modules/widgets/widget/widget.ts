@@ -1,11 +1,7 @@
 import { AbstractBaseWidgetHTMLController } from "./dynamic/widget_html";
 import { BaseStartupFieldParameters } from "./dynamic/widget_html";
-import type { FieldParameters } from "./dynamic/field_container";
+import type { FieldParameters, ListParameters } from "./dynamic/field_container";
 
-
-export type ListParameters = {
-    [key: string]: FieldParameters
-}
 
 export class WidgetParent {
     private widget_parent_node: HTMLElement
@@ -72,17 +68,20 @@ export class EmptyModule extends WidgetModule {
 }
 
 
-export abstract class WidgetRequestModule<HTMLControllerType extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> = AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>> extends WidgetModule<HTMLControllerType> {
-    protected request_interval: number;
+export abstract class WidgetRequestModule<
+        HTMLControllerType extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> = 
+            AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>, 
+        Schema extends FieldParameters | ListParameters = FieldParameters> 
+
+    extends WidgetModule<HTMLControllerType> {
     private request_route: string;
     public static port: number;
     public static host: string;
 
 
-    public constructor(request_route: string, request_interval: number) {
+    public constructor(request_route: string) {
         super()
         this.request_route = request_route;
-        this.request_interval = request_interval;
     }
 
     public static set_connection_information(host: string, port: number) {
@@ -92,7 +91,7 @@ export abstract class WidgetRequestModule<HTMLControllerType extends AbstractBas
 
     abstract generate_request_body(): object;
 
-    abstract process_response(response: FieldParameters | ListParameters): void;
+    abstract process_response(response: Schema): void;
 
     public async submit_request(): Promise<void> {
         const request_path = `https://${WidgetRequestModule.host}:${WidgetRequestModule.port}${this.request_route}`
@@ -100,7 +99,8 @@ export abstract class WidgetRequestModule<HTMLControllerType extends AbstractBas
         await fetch(request_path, this.generate_request_body())
         .then(res => res.json())
         .then(res => {
-            this.process_response(res);
+            var res_checked: Schema = res;
+            this.process_response(res_checked);
         })
     }
 
@@ -131,10 +131,6 @@ export class WidgetListenerModule<HTMLControllerType extends AbstractBaseWidgetH
 
     constructor(listen_event: string, listening_element_id?: string) {
         super();
-        if(this.get_widget_html_controller().get_node().childElementCount > 1 && !listening_element_id) {
-            throw new Error(`The HTMLController ${this.get_widget_html_controller().constructor.name} has more than one field, 
-            must select listening_element_id to specify what child to listen for event on`)
-        }
         this.listening_element_id = listening_element_id
         this.listening_event = listen_event;
 
@@ -143,6 +139,12 @@ export class WidgetListenerModule<HTMLControllerType extends AbstractBaseWidgetH
 
     public attach_widget_controller(widget_html_controller: HTMLControllerType): void {
         super.attach_widget_controller(widget_html_controller);
+
+        if(this.get_widget_html_controller().get_node().childElementCount > 1 && !this.listening_element_id) {
+            throw new Error(`The HTMLController ${this.get_widget_html_controller().constructor.name} has more than one field, 
+            must select listening_element_id to specify what child to listen for event on`)
+        }
+
         if(this.listening_element_id) {
             this.html_element = this.get_widget_html_controller().extract_child(this.listening_element_id);
         }
@@ -153,7 +155,9 @@ export class WidgetListenerModule<HTMLControllerType extends AbstractBaseWidgetH
     }
 
     public async run(...args: any[]): Promise<void> {
-        //console.log(this.get_operation());
+        if(!this.operation && !this.dependency) {
+            throw new Error(`Neither a dependency, nor an operation have been specified for the listener module ${this.constructor.name}`)
+        }
         if(this.operation) {
             await this.operation(this.get_widget_html_controller());
         }
@@ -212,7 +216,7 @@ export class BaseWidget {
     private widget_html_controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>;
     private widget_metadata: BaseWidgetMetadata; 
     private widget_core_module: Module = new EmptyModule();
-    private listener_modules: Array<WidgetListenerModule> = new Array<WidgetListenerModule>
+    private listener_modules: Array<WidgetListenerModule> = new Array<WidgetListenerModule>();
     private repetetive_modules: Array<RepetitiveModuleWrapper> = new Array<RepetitiveModuleWrapper>();
 
     constructor(widget_html_object: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>, widget_metadata: BaseWidgetMetadata) {
@@ -226,8 +230,9 @@ export class BaseWidget {
     private create_node(widget_metadata: BaseWidgetMetadata) {
         var widget_node: HTMLElement = document.createElement('div');
 
-        widget_metadata.get_widget_parent_node().appendChild(widget_node);
         this.widget_html_controller.assign_widget_node(widget_node);
+
+        widget_metadata.get_widget_parent_node().appendChild(this.widget_html_controller.get_node());
     }
 
     public get_name(): string {
@@ -238,7 +243,7 @@ export class BaseWidget {
         return this.widget_html_controller.get_id();
     }
 
-    public get_value(): FieldParameters {
+    public get_value(): FieldParameters | ListParameters {
         return this.widget_html_controller.get_value();
     }
 

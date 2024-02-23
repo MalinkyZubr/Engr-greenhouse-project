@@ -1,5 +1,5 @@
 import { DynamicFields, StaticFields } from "./field_container";
-import type { FieldParameters } from "./field_container"
+import type { FieldParameters, ListParameters } from "./field_container"
 
 
 export class BaseStartupFieldParameters {
@@ -49,7 +49,18 @@ export class BaseStartupFieldParameters {
     }
 }
 
-export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType extends BaseStartupFieldParameters> {
+
+export interface HTMLController{
+    get_id(): string;
+    get_node(): HTMLElement;
+    extract_child(id: string): HTMLElement
+    equals(parameters: FieldParameters): boolean;
+    update_dynamic_fields(field_data: FieldParameters): void;
+    get_value(): FieldParameters | ListParameters;
+}
+
+
+export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType extends BaseStartupFieldParameters> implements HTMLController {
     private widget_html_template: string = "";
     private widget_node: HTMLElement | null = null;
     private static_fields: StaticFields | null = null;
@@ -73,14 +84,17 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
         }
     }
 
-    public get_id() {
+    public get_id(): string {
         return this.startup_fields.get_element_id();
     }
 
     public assign_widget_node(widget_node: HTMLElement): AbstractBaseWidgetHTMLController<StartupFieldsDataType> {
-        this.widget_node = widget_node;
+        widget_node.innerHTML = this.widget_html_template;
+        var actual_node: HTMLElement = widget_node.querySelector(`#${this.get_id()}`) ?? function() { throw new Error(`Critical error assigning widget node to html controller`)}();
+        this.widget_node = actual_node;
 
-        this.widget_node.innerHTML = this.widget_html_template;
+        console.log(`Setting fields for ${this.constructor.name}`)
+        console.log(this.widget_node.outerHTML)
 
         this.dynamic_fields = new DynamicFields(this.widget_node);
         this.static_fields = new StaticFields(this.widget_node);
@@ -99,7 +113,7 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
         return this.dynamic_fields.equals(parameters);
     }
 
-    public update_dynamic_fields(field_data: FieldParameters) {
+    public update_dynamic_fields(field_data: FieldParameters): void {
         if(!this.dynamic_fields) {
             throw new Error(`Dynamic fields are not set for ${this.constructor.name}`);
         }
@@ -122,7 +136,7 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
         return this.dynamic_fields;
     }
 
-    public get_value(): FieldParameters {
+    public get_value(): FieldParameters | ListParameters {
         return (this.get_dynamic_fields() ?? function() { throw new Error("Field parameters do not exist") }()).get_field_values();
     }
 

@@ -1,4 +1,3 @@
-import { WidgetListenerModule } from "../widget/widget";
 import { AbstractBaseWidgetHTMLController, BaseStartupFieldParameters } from "../widget/dynamic/widget_html";
 import { FieldParameters } from "../widget/dynamic/field_container";
 

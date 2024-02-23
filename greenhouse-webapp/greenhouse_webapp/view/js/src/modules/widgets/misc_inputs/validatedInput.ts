@@ -26,10 +26,16 @@ export class ValidatedInputHTMLController extends AbstractBaseWidgetHTMLControll
 
     private value: string = "";
     private compliant: boolean = false;
-    private input_field: HTMLInputElement;
+    private input_field: HTMLInputElement | null = null;
+    private validation_regex: RegExp
 
-    constructor(startup_field_data: ValidatedInputStartupParameters) {
-        super(startup_field_data);
+    constructor(startup_field_parameters: ValidatedInputStartupParameters, validation_regex: string) {
+        super(startup_field_parameters);
+        this.validation_regex = new RegExp(validation_regex);
+    }
+
+    public assign_widget_node(widget_node: HTMLElement): AbstractBaseWidgetHTMLController<ValidatedInputStartupParameters> {
+        super.assign_widget_node(widget_node);
 
         var input_field: HTMLInputElement | null = this.get_node().querySelector("#input");
 
@@ -39,11 +45,13 @@ export class ValidatedInputHTMLController extends AbstractBaseWidgetHTMLControll
         else {
             this.input_field = input_field;
         }
+
+        return this;
     }
 
     public get_value(): FieldParameters {
         if(!this.compliant) {
-            throw new Error(`${this.get_id()} input failed validation`);
+            throw new Error(`${this.get_id()} input failed validation. ${this.value} does not follow regex pattern assigned`);
         }
 
         var output: FieldParameters = {}
@@ -53,16 +61,19 @@ export class ValidatedInputHTMLController extends AbstractBaseWidgetHTMLControll
     }
 
     private extract_value_from_html(): string {
+        if(!this.input_field) {
+            throw new Error(`${this.constructor.name} was not attached to any BaseWidget object, and does not have a DOM node`);
+        }
         return this.input_field.value;
     }
 
-    private toggle_error(error: boolean) {
+    private toggle_error(compliant: boolean) {
         var error_field: HTMLElement | null = this.get_node().querySelector("#error") 
         if(!error_field) {
             throw new Error(`Error field does not exist for ${this.constructor.name}`);
         }
 
-        if(error) {
+        if(!compliant) {
             error_field.style.display = "none";
         }
         else {
@@ -70,9 +81,9 @@ export class ValidatedInputHTMLController extends AbstractBaseWidgetHTMLControll
         }
     }
 
-    public validate_input(validation_regex: RegExp) {
+    public validate_input() {
         var input_value: string = this.extract_value_from_html();
-        var is_compliant: boolean = validation_regex.test(input_value);
+        var is_compliant: boolean = this.validation_regex.test(input_value);
 
         this.compliant = is_compliant;
 
@@ -81,19 +92,5 @@ export class ValidatedInputHTMLController extends AbstractBaseWidgetHTMLControll
         }
 
         this.toggle_error(is_compliant);
-    }
-}
-
-
-export class ValidatedInputModule extends WidgetListenerModule<ValidatedInputHTMLController> {
-    private validation_regex: RegExp;
-
-    constructor(listen_event: string, validation_regex: string, listening_element_id: string) {
-        super(listen_event, listening_element_id);
-        this.validation_regex = new RegExp(validation_regex);
-    }
-
-    public validate_input() {
-        this.get_widget_html_controller().validate_input(this.validation_regex);
     }
 }

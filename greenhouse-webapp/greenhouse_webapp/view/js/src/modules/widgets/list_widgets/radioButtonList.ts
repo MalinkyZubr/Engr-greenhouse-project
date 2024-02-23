@@ -25,8 +25,8 @@ export class RadioButtonListHTMLController extends WidgetListHTMLController<Radi
 export abstract class RadioButtonListAppendModule extends ListAppendModule<RadioButton> {
     private radio_button_group: string;
 
-    constructor(request_route: string, request_interval: number, radio_button_group: string) {
-        super(request_route, request_interval);
+    constructor(request_route: string, radio_button_group: string) {
+        super(request_route);
         this.radio_button_group = radio_button_group;
     }
 
