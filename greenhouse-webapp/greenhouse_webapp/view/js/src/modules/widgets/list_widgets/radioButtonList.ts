@@ -3,6 +3,7 @@ import { RadioButton, RadioButtonStartupFields } from "../buttons/radioButton";
 import { WidgetListHTMLController, ListAppendModule } from "../widget/list_widget";
 import { BaseStartupFieldParameters } from "../widget/dynamic/widget_html";
 import { FieldParameters } from "../widget/dynamic/field_container";
+import { HTMLControllerError } from "../../exceptions/module_errors";
 
 
 export class RadioButtonListHTMLController extends WidgetListHTMLController<RadioButtonStartupFields> {
@@ -14,7 +15,8 @@ export class RadioButtonListHTMLController extends WidgetListHTMLController<Radi
         var selected_field: HTMLInputElement | null = this.get_node().querySelector('input[name="options"]:checked');
 
         if(!selected_field) {
-            throw new Error(`${this.constructor.name} does not have selected field`);
+            throw new HTMLControllerError("FIELDS_ERROR", 
+                `No radio button has been selected!`, this);
         }
 
         return {"value":selected_field.value};

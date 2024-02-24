@@ -1,4 +1,5 @@
 import { DynamicField, StaticField } from "./fields";
+import { HTMLControllerError } from "../../../exceptions/module_errors";
 
 export type FieldParameters = {
     [key: string]: string
@@ -22,7 +23,8 @@ export abstract class AbstractFieldContainer<FieldType extends DynamicField> {
             var container_entry: FieldType | undefined = this.fields.get(field_name);
 
             if(!container_entry) {
-                throw new Error(`Container does not contain ${field_name}`);
+                throw new HTMLControllerError("FIELDS_ERROR", 
+                    `Container does not contain field ${field_name}`, this);
             }
             else if(field != container_entry.get_value()) {
                 return false;
@@ -38,7 +40,8 @@ export abstract class AbstractFieldContainer<FieldType extends DynamicField> {
         var tag_data_field: string | null = this.widget_node.getAttribute("data-field");
 
         if(tag_data_field && html_fields.length > 0) {
-            throw new Error("The selected widget has both a field in its root tag and among its children. You may not have both!")
+            throw new HTMLControllerError("HTML_TEMPLATE_ERROR", 
+                "The widget has runtime fields (dynamic/static) in both in the root tag and as children. Widgets may not have both", this)
         }
         else if(tag_data_field) {
             logical_fields.set(this.widget_node.id, this.create_field(this.widget_node))

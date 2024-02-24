@@ -1,5 +1,9 @@
+import { HTMLControllerError, WidgetError } from "../../../exceptions/module_errors";
 import { DynamicFields, StaticFields } from "./field_container";
 import type { FieldParameters, ListParameters } from "./field_container"
+
+
+export type WrapperTypes = "div" | "tr" | "td" 
 
 
 export class BaseStartupFieldParameters {
@@ -39,7 +43,8 @@ export class BaseStartupFieldParameters {
     private set_startup_field(key: string, value: string, html_template: string): string { // these should go in a separate class
         var reformatted_html: string = html_template.replace(`{{ ${key} }}`, value);
         if (reformatted_html === html_template) {
-            throw new Error(`Startup field ${key} not found in ${this.get_element_id()}`);
+            throw new HTMLControllerError("FIELDS_ERROR", 
+                `Startup field ${key} not found`, this);
         }
         return reformatted_html;
     }
@@ -62,7 +67,7 @@ export interface HTMLController{
 
 export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType extends BaseStartupFieldParameters> implements HTMLController {
     private widget_html_template: string = "";
-    private widget_node: HTMLElement | null = null;
+    protected widget_node: HTMLElement | null = null;
     private static_fields: StaticFields | null = null;
     private dynamic_fields: DynamicFields | null = null;
     private startup_fields: StartupFieldsDataType;
@@ -80,7 +85,8 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
 
     private check_for_id_field(startup_field_data: StartupFieldsDataType): void {
         if (!this.html_template_generator().includes(`id={{ element_id }}`)) {
-            throw new Error(`The html for the widget id=${startup_field_data.get_element_id()} does not have an element_id field`)
+            throw new HTMLControllerError("HTML_TEMPLATE_ERROR", 
+            "The html template for the widget does not have an {{ element_id }} field", this)
         }
     }
 
@@ -90,7 +96,13 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
 
     public assign_widget_node(widget_node: HTMLElement): AbstractBaseWidgetHTMLController<StartupFieldsDataType> {
         widget_node.innerHTML = this.widget_html_template;
-        var actual_node: HTMLElement = widget_node.querySelector(`#${this.get_id()}`) ?? function() { throw new Error(`Critical error assigning widget node to html controller`)}();
+        var actual_node: HTMLElement | null = widget_node.querySelector(`#${this.get_id()}`);
+
+        if(!actual_node) {
+            throw new WidgetError("IMPROPER_CONFIGURATION_ERROR", 
+                "Critical error assigning widget node to html controller, id not found in node", this)
+        }
+
         this.widget_node = actual_node;
 
         console.log(`Setting fields for ${this.constructor.name}`)
@@ -103,19 +115,28 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
     }
 
     public get_node(): HTMLElement {
-        return this.widget_node ?? function () { throw new Error("Node is not yet defined, be sure to run assign_widget_node!") }();
+        var selected_node: HTMLElement | null = this.widget_node;
+        
+        if(!selected_node) {
+            throw new WidgetError("NONEXISTANT_CONFIGURATION_ERROR", 
+                "Node is not yet defined, be sure to run assign_widget_node!", this)
+        }
+
+        return selected_node;
     }
 
     public equals(parameters: FieldParameters): boolean {
         if(!this.dynamic_fields) {
-            throw new Error(`The widget ${this.get_id()} does not have any dynamic fields`);
+            throw new HTMLControllerError("FIELDS_ERROR", 
+                "No dynamic fields on HTML controller", this)
         }
         return this.dynamic_fields.equals(parameters);
     }
 
     public update_dynamic_fields(field_data: FieldParameters): void {
         if(!this.dynamic_fields) {
-            throw new Error(`Dynamic fields are not set for ${this.constructor.name}`);
+            throw new HTMLControllerError("FIELDS_ERROR", 
+                "No dynamic fields on HTML controller", this)
         }
         this.dynamic_fields.set_field_values(field_data);
     }
@@ -125,7 +146,14 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
     }
 
     public extract_child(id: string): HTMLElement {
-        return this.widget_node?.querySelector(`#${id}`) ?? function () { throw new Error(`Child of ID ${id} does not exist on HTMLElement`) }();
+        var extracted_child_node: HTMLElement | null | undefined = this.widget_node?.querySelector(`#${id}`);
+
+        if(!extracted_child_node) {
+            throw new WidgetError("CHILD_ERROR", 
+                `Child node with id ${id} does not exist in HTML controller`, this)
+        }
+
+        return extracted_child_node
     }
 
     protected get_static_fields(): StaticFields | null {
@@ -138,6 +166,14 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
 
     public get_value(): FieldParameters | ListParameters {
         return (this.get_dynamic_fields() ?? function() { throw new Error("Field parameters do not exist") }()).get_field_values();
+    }
+
+    public wrap_node(wrapper_type: WrapperTypes): AbstractBaseWidgetHTMLController<StartupFieldsDataType> {
+        var wrapper_node: HTMLTableRowElement | HTMLDivElement | HTMLTableCellElement = document.createElement(wrapper_type);
+        wrapper_node.appendChild(this.get_node());
+        this.widget_node = wrapper_node;
+
+        return this;
     }
 
     /**

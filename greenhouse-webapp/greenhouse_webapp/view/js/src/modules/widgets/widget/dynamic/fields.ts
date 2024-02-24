@@ -1,3 +1,5 @@
+import { HTMLControllerError } from "../../../exceptions/module_errors";
+
 export class DynamicField {
     private value: string = "";
     private field: HTMLElement;
@@ -25,7 +27,8 @@ export class StaticField extends DynamicField {
             this.is_set = true;
         }
         else {
-            throw new TypeError(`static field, can only be set once!`);
+            throw new HTMLControllerError("FIELDS_ERROR", 
+                "Static fields may only be set once", this);
         }
     }
 }

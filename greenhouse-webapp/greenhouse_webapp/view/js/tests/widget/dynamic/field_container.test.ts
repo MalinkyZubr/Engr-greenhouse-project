@@ -2,8 +2,8 @@
  * @jest-environment jsdom
  */
 
-import { DynamicFields, StaticFields } from "../../../src/widgets/widget/dynamic/field_container"
-import type { FieldParameters } from "../../../src/widgets/widget/dynamic/field_container";
+import { DynamicFields, StaticFields } from "../../../src/modules/widgets/widget/dynamic/field_container"
+import type { FieldParameters } from "../../../src/modules/widgets/widget/dynamic/field_container";
 
 
 let test_html: string;

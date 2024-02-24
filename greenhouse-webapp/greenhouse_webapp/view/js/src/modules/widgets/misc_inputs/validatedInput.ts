@@ -1,6 +1,7 @@
 import { WidgetListenerModule } from "../widget/widget";
 import { AbstractBaseWidgetHTMLController, BaseStartupFieldParameters } from "../widget/dynamic/widget_html";
 import { FieldParameters } from "../widget/dynamic/field_container";
+import { HTMLControllerError, WidgetError } from "../../exceptions/module_errors";
 
 
 export class ValidatedInputStartupParameters extends BaseStartupFieldParameters {
@@ -40,7 +41,7 @@ export class ValidatedInputHTMLController extends AbstractBaseWidgetHTMLControll
         var input_field: HTMLInputElement | null = this.get_node().querySelector("#input");
 
         if(!input_field) {
-            throw new Error(`${this.get_startup_fields().get_element_id()} has no input`);
+            throw new HTMLControllerError("HTML_TEMPLATE_ERROR", `input tag field with id "input" not found on validated input widget html template`, this);
         }
         else {
             this.input_field = input_field;
@@ -51,7 +52,7 @@ export class ValidatedInputHTMLController extends AbstractBaseWidgetHTMLControll
 
     public get_value(): FieldParameters {
         if(!this.compliant) {
-            throw new Error(`${this.get_id()} input failed validation. ${this.value} does not follow regex pattern assigned`);
+            throw new HTMLControllerError("FIELDS_ERROR", `${this.value} does not follow regex pattern assigned on validated input`, this);
         }
 
         var output: FieldParameters = {}
@@ -62,7 +63,7 @@ export class ValidatedInputHTMLController extends AbstractBaseWidgetHTMLControll
 
     private extract_value_from_html(): string {
         if(!this.input_field) {
-            throw new Error(`${this.constructor.name} was not attached to any BaseWidget object, and does not have a DOM node`);
+            throw new WidgetError("NONEXISTANT_CONFIGURATION_ERROR", `DOM node does not exist on validated input, BaseWidget not attached!`, this);
         }
         return this.input_field.value;
     }
@@ -70,7 +71,7 @@ export class ValidatedInputHTMLController extends AbstractBaseWidgetHTMLControll
     private toggle_error(compliant: boolean) {
         var error_field: HTMLElement | null = this.get_node().querySelector("#error") 
         if(!error_field) {
-            throw new Error(`Error field does not exist for ${this.constructor.name}`);
+            throw new HTMLControllerError("HTML_TEMPLATE_ERROR", `Error field does not exist on validated input widget`, this);
         }
 
         if(!compliant) {

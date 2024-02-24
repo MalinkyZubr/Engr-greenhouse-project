@@ -2,8 +2,8 @@
  * @jest-environment jsdom
  */
 
-import { BaseStartupFieldParameters, AbstractBaseWidgetHTMLController } from "../../../src/widgets/widget/dynamic/widget_html";
-import { FieldParameters } from "../../../src/widgets/widget/dynamic/field_container";
+import { BaseStartupFieldParameters, AbstractBaseWidgetHTMLController } from "../../../src/modules/widgets/widget/dynamic/widget_html";
+import { FieldParameters } from "../../../src/modules/widgets/widget/dynamic/field_container";
 import { TestWidgetHTMLController } from "../test_classes"
 
 

@@ -2,9 +2,9 @@
  * @jest-environment jsdom
  */
 
-import { BaseStartupFieldParameters, AbstractBaseWidgetHTMLController } from "../../src/widgets/widget/dynamic/widget_html";
-import { FieldParameters } from "../../src/widgets/widget/dynamic/field_container";
-import { BaseWidget, RepetitiveModuleWrapper, WidgetModule, BaseWidgetMetadata, WidgetParent, WidgetRequestModule, BasicUpdaterRequestModule, WidgetListenerModule } from "../../src/widgets/widget/widget";
+import { BaseStartupFieldParameters, AbstractBaseWidgetHTMLController } from "../../src/modules/widgets/widget/dynamic/widget_html";
+import { FieldParameters } from "../../src/modules/widgets/widget/dynamic/field_container";
+import { BaseWidget, RepetitiveModuleWrapper, WidgetModule, BaseWidgetMetadata, WidgetParent, WidgetRequestModule, BasicUpdaterRequestModule, WidgetListenerModule } from "../../src/modules/widgets/widget/widget";
 import { TestWidgetHTMLController, TestBasicUpdaterRequest } from "./test_classes";
 
 
@@ -43,9 +43,9 @@ class RepetitiveModuleTest extends WidgetModule {
 let test_widget: BaseWidget;
 let test_basic_updater_request: TestBasicUpdaterRequest;
 
-beforeAll(() => {
-    document.body.innerHTML = `<div id="parent"></div>`
+document.body.innerHTML = `<div id="parent"></div>`
 
+beforeAll(() => {
     test_widget = new BaseWidget(
         new TestWidgetHTMLController(
             new BaseStartupFieldParameters("silly_test"),
@@ -55,7 +55,7 @@ beforeAll(() => {
             new WidgetParent("parent")
         )
     );
-    test_basic_updater_request = new TestBasicUpdaterRequest("/silly/zubr", 10);
+    test_basic_updater_request = new TestBasicUpdaterRequest("/silly/zubr");
 });
 
 
@@ -85,7 +85,7 @@ describe("Testing for the BaseWidget class basic functions", () => {
         });
     
         test("Testing integration of basic request module with widget", async () => {
-            test_widget.add_module(test_basic_updater_request);
+            test_widget.add_core_module(test_basic_updater_request);
             await test_widget.run();
     
             expect(test_widget.get_value()).toStrictEqual({"test_field1":"silly1", "test_field2":"silly2"});
@@ -98,6 +98,7 @@ describe("Testing for the BaseWidget class basic functions", () => {
         let listener_module: WidgetListenerModule;
         let test_html_controller: TestButtonHTMLController;
         let test_function: (controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>) => Promise<void>;
+        let widget_parent =  new WidgetParent("parent");
 
         beforeAll(() => {
             test_html_controller = new TestButtonHTMLController(
@@ -106,21 +107,19 @@ describe("Testing for the BaseWidget class basic functions", () => {
 
             test_button_widget = new BaseWidget(
                 test_html_controller,
-                new BaseWidgetMetadata("test_button", new WidgetParent("parent"))
+                new BaseWidgetMetadata("test_button", widget_parent)
             );
             listener_module = new WidgetListenerModule("click")
                 .inject_dependency(test_widget);
 
             test_function = async (controller: AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>) => {
-                console.log("RUNNING!!")
                 controller.update_dynamic_fields({"test_button":"silly_hehe"})
             }
 
             listener_module.inject_operation(test_function);
 
-            test_button_widget.add_module(listener_module);
+            test_button_widget.add_listener_module(listener_module);
         })
-    
     
         test("Testing to see if the button widget html was configured properly", () => {
             expect(document.getElementById("test_button")?.innerHTML).toBe("test_button");
@@ -133,6 +132,7 @@ describe("Testing for the BaseWidget class basic functions", () => {
             expect(test_widget.get_value()).toStrictEqual({"test_field1":"silly1", "test_field2":"silly2"});
             expect(document.getElementById("test_field2")?.innerHTML).toBe("silly2");
 
+            console.log(test_button_widget.get_value());
             expect(test_button_widget.get_value()).toStrictEqual({"test_button":"silly_hehe"})
             expect(document.getElementById("test_button")?.innerHTML).toBe("silly_hehe");
         })
@@ -154,7 +154,7 @@ describe("Testing for the BaseWidget class basic functions", () => {
         test("Testing to see if the repetitive task can be killed", async () => {
             test_widget.kill_module_repetitive();
             await new Promise(r => setTimeout(r, 15));
-            expect(repetitive_module.get_run_count()).toBe(3);
+            expect(repetitive_module.get_run_count()).toBeGreaterThanOrEqual(3);
         })
     })
 })

@@ -3,6 +3,7 @@ import { BaseStartupFieldParameters } from "../widget/dynamic/widget_html";
 import { DropdownOptionController, DropdownOptionStartupFieldParameters } from "../misc_inputs/dropdownOption";
 import { ListAppendModule, WidgetListHTMLController } from "../widget/list_widget";
 import { FieldParameters } from "../widget/dynamic/field_container";
+import { HTMLControllerError } from "../../exceptions/module_errors";
 
 
 export class DropdownListHTMLController extends WidgetListHTMLController<BaseStartupFieldParameters> {
@@ -18,7 +19,8 @@ export class DropdownListHTMLController extends WidgetListHTMLController<BaseSta
         var selection_node: HTMLSelectElement | null = this.get_node()?.querySelector(`#${this.get_id()}`);
         
         if(!selection_node) {
-            throw new Error(`The DropdownList controller ${this.constructor.name} has no selection structure ${this.get_id()}`);
+            throw new HTMLControllerError("HTML_TEMPLATE_ERROR", 
+                `The DropdownList controller has no selection structure`, this);
         }
         this.selection_node = selection_node;
 
@@ -29,7 +31,8 @@ export class DropdownListHTMLController extends WidgetListHTMLController<BaseSta
         var value: string | undefined = this.selection_node?.value
 
         if(!value) {
-            throw new Error(`dropdown ${this.constructor.name} does not have a value`);
+            throw new HTMLControllerError("FIELDS_ERROR", 
+                `dropdown does not have a value!`, this);
         }
 
         return {"value":value};
@@ -42,7 +45,6 @@ export abstract class DropdownListAppendModule extends ListAppendModule<Dropdown
         var dropdown_option_html: DropdownOptionController = new DropdownOptionController(
             new DropdownOptionStartupFieldParameters(element_id, element_id, element_fields),
         )
-
         return dropdown_option_html;
     }
 }

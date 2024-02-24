@@ -1,6 +1,7 @@
 import { AbstractBaseWidgetHTMLController } from "./dynamic/widget_html";
 import { BaseStartupFieldParameters } from "./dynamic/widget_html";
 import type { FieldParameters, ListParameters } from "./dynamic/field_container";
+import { WidgetError } from "../../exceptions/module_errors";
 
 
 export class WidgetParent {
@@ -286,7 +287,8 @@ export class BaseWidget {
             }
         }
         else {
-            throw new Error(`Cannot kill task for ${this.constructor.name}, no task is active`)
+            throw new WidgetError("IMPROPER_CONFIGURATION_ERROR",
+                "Cannot kill repetitive modules, no repetitive modules started!", this);
         }
     }
 

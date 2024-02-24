@@ -1,4 +1,4 @@
-import { DynamicFields } from "./src/widgets/widget/dynamic/field_container";
+import { DynamicFields } from "./src/modules/widgets/widget/dynamic/field_container";
 console.log("hehe");
 var testing_fields: DynamicFields = new DynamicFields(document.getElementById("container") ?? function(){throw new Error("THE SELECTED ID WAS NOT FOUND")}());
 

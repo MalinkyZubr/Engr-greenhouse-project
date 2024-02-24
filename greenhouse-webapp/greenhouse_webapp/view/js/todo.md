@@ -1,2 +1,3 @@
 ## todo
-* add a method of validating incoming http schemas from the server using interfaces
+* add a table widget list for storing data in tables
+* add tests to new wrapper method

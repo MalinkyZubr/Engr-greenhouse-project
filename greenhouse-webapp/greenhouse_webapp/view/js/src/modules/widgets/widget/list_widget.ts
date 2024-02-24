@@ -1,7 +1,8 @@
 import { BaseWidget, WidgetModule, WidgetRequestModule, BaseWidgetMetadata, WidgetParent } from "./widget";
-import { AbstractBaseWidgetHTMLController, HTMLController } from "./dynamic/widget_html";
+import { AbstractBaseWidgetHTMLController, HTMLController, WrapperTypes } from "./dynamic/widget_html";
 import { BaseStartupFieldParameters } from "./dynamic/widget_html"
 import { FieldParameters, ListParameters } from "./dynamic/field_container";
+import { HTMLControllerError, WidgetError } from "../../exceptions/module_errors";
 
 
 export enum FieldAction {
@@ -23,7 +24,7 @@ export abstract class WidgetListHTMLController<StartupFieldsDataType extends Bas
             append_id = this.get_id();
         }
         else if(!this.html_template_generator().includes(`id=${append_id}`)) {
-            throw new Error(`The supplied child append node ${append_id} does not exist on list ${this.get_id()}`)
+            throw new HTMLControllerError("HTML_TEMPLATE_ERROR",`The supplied child append node ${append_id} does not exist on list`, this)
         }
 
         this.append_id = append_id
@@ -41,7 +42,7 @@ export abstract class WidgetListHTMLController<StartupFieldsDataType extends Bas
             var child_append_node: HTMLElement | null = this.get_node().querySelector(`#${this.append_id}`);
             
             if(!child_append_node) {
-                throw new Error("There was a major issue along the way, the previous check didnt catch this!?!?!")
+                throw new HTMLControllerError("HTML_TEMPLATE_ERROR", "There was a major issue along the way, the previous check didnt catch this", this)
             }
             this.append_node = child_append_node;
         }
@@ -51,7 +52,8 @@ export abstract class WidgetListHTMLController<StartupFieldsDataType extends Bas
 
     public get_append_node(): HTMLElement {
         if(!this.append_node) {
-            throw new Error("Cannot get append node before it has been set");
+            throw new WidgetError("IMPROPER_CONFIGURATION_ERROR", 
+                "Cannot get append node before it has been set", this);
         }
         return this.append_node
     }
@@ -63,7 +65,8 @@ export abstract class WidgetListHTMLController<StartupFieldsDataType extends Bas
     public get_child(id: string): BaseWidget {
         var child: BaseWidget | undefined = this.children.get(id);
         if(!child) {
-            throw new Error(`${id} not in the children list`);
+            throw new WidgetError("CHILD_ERROR", 
+                `${id} not in the children list`, this);
         }
         return child
     }
@@ -108,44 +111,13 @@ export abstract class WidgetListHTMLController<StartupFieldsDataType extends Bas
 }
 
 
-type WrapperTypes = "div" | "tr" | "td"
-
-
-export class ListMemberHTMLControllerWrapper<ControllerType extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>> implements HTMLController {
-    private wrapped_controller: ControllerType;
-
-    constructor(html_controller: ControllerType, wrapper_type: WrapperTypes) {
-        this.wrapped_controller = html_controller;
-        var wrapper_node: HTMLTableRowElement | HTMLDivElement | HTMLTableCellElement = document.createElement(wrapper_type);
-    }
-
-    public get_id(): string {
-        return this.wrapped_controller.get_id();
-    }
-
-    public get_node(): HTMLElement {
-        return this.wrapped_controller.get_node();
-    }
-
-    public extract_child(id: string): HTMLElement {
-        return this.wrapped_controller.extract_child(id);
-    }
-
-    public equals(parameters: FieldParameters): boolean {
-        return this.wrapped_controller.equals(parameters);
-    }
-
-    public update_dynamic_fields(field_data: FieldParameters): void {
-        this.wrapped_controller.update_dynamic_fields(field_data);
-    }
-
-    public get_value(): FieldParameters | ListParameters {
-        return this.wrapped_controller.get_value();
-    }
-}
-
-
 export abstract class ListAppendModule<ChildType extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>, Schema extends ListParameters = ListParameters> extends WidgetRequestModule<WidgetListHTMLController<BaseStartupFieldParameters>, Schema> {
+    private wrapping_type: WrapperTypes | null;
+
+    constructor(request_route: string, wrapping_type: WrapperTypes | null = null) {
+        super(request_route);
+        this.wrapping_type = wrapping_type;
+    }
     abstract generate_html(element_id: string, element_fields: FieldParameters): ChildType;
 
     abstract generate_request_body(): object;
@@ -157,15 +129,19 @@ export abstract class ListAppendModule<ChildType extends AbstractBaseWidgetHTMLC
             const field_action: FieldAction = widget_html_controller.determine_creationary_action(field_name, field);
             switch(field_action) {
                 case FieldAction.Create:
+                    var new_html_controller = this.generate_html(field_name, field)
+                    if(this.wrapping_type) {
+                        new_html_controller.wrap_node(this.wrapping_type);
+                    }
                     var new_child: BaseWidget = new BaseWidget(
-                        this.generate_html(field_name, field),
+                        new_html_controller,
                         new BaseWidgetMetadata(
                             field_name, 
                             new WidgetParent(widget_html_controller.get_append_node())
                         )
                     );
                     new_child.set_value(field);
-                    widget_html_controller.add_child(new_child); // this is problem because the html is wrapped inside div object for the node. Must be a way of selecting ID inside the html
+                    widget_html_controller.add_child(new_child); 
                     break;
                 case FieldAction.Update:
                     widget_html_controller.update_child(field_name, field);

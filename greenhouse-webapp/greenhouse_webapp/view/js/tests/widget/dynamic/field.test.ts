@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { DynamicField, StaticField } from "../../../src/widgets/widget/dynamic/fields"
+import { DynamicField, StaticField } from "../../../src/modules/widgets/widget/dynamic/fields"
 
 
 describe("Testing fields", () => {
