@@ -132,7 +132,6 @@ describe("Testing for the BaseWidget class basic functions", () => {
             expect(test_widget.get_value()).toStrictEqual({"test_field1":"silly1", "test_field2":"silly2"});
             expect(document.getElementById("test_field2")?.innerHTML).toBe("silly2");
 
-            console.log(test_button_widget.get_value());
             expect(test_button_widget.get_value()).toStrictEqual({"test_button":"silly_hehe"})
             expect(document.getElementById("test_button")?.innerHTML).toBe("silly_hehe");
         })

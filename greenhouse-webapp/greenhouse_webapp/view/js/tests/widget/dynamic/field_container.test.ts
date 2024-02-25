@@ -2,6 +2,7 @@
  * @jest-environment jsdom
  */
 
+import { HTMLControllerError } from "../../../src/modules/exceptions/module_errors";
 import { DynamicFields, StaticFields } from "../../../src/modules/widgets/widget/dynamic/field_container"
 import type { FieldParameters } from "../../../src/modules/widgets/widget/dynamic/field_container";
 
@@ -46,7 +47,7 @@ describe("Testing field containers", () => {
         })
     
         test("Testing whether static fields are only settable once", () => {
-            expect(() => {testing_fields.set_field_values({"z":"test4"})}).toThrow(TypeError);
+            expect(() => {testing_fields.set_field_values({"z":"test4"})}).toThrow(HTMLControllerError);
         })
     })
 })

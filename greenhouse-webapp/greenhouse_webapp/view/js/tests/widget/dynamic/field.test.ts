@@ -2,6 +2,7 @@
  * @jest-environment jsdom
  */
 
+import { HTMLControllerError } from "../../../src/modules/exceptions/module_errors";
 import { DynamicField, StaticField } from "../../../src/modules/widgets/widget/dynamic/fields"
 
 
@@ -25,7 +26,7 @@ describe("Testing fields", () => {
             var static_field: StaticField = new StaticField(document.getElementById("test") ?? function() { throw new Error("") }());
             static_field.set_value("test1");
     
-            expect(() => {static_field.set_value("test2")}).toThrow(TypeError);
+            expect(() => {static_field.set_value("test2")}).toThrow(HTMLControllerError);
             expect(static_field.get_value()).toBe("test1");
             expect(document.getElementById("test")?.innerHTML).toBe("test1");
         })

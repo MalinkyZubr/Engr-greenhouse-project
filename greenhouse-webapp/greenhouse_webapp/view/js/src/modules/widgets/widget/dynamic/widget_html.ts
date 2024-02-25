@@ -71,6 +71,8 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
     private static_fields: StaticFields | null = null;
     private dynamic_fields: DynamicFields | null = null;
     private startup_fields: StartupFieldsDataType;
+    private to_execute_with_dynamic_update: null | ((controller: AbstractBaseWidgetHTMLController<StartupFieldsDataType>, dynamic_fields: FieldParameters) => void) = null;
+
     // private parent_page: BasePage; replace with dependency injection
 
     constructor(startup_field_data: StartupFieldsDataType) {
@@ -105,9 +107,6 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
 
         this.widget_node = actual_node;
 
-        console.log(`Setting fields for ${this.constructor.name}`)
-        console.log(this.widget_node.outerHTML)
-
         this.dynamic_fields = new DynamicFields(this.widget_node);
         this.static_fields = new StaticFields(this.widget_node);
 
@@ -133,12 +132,20 @@ export abstract class AbstractBaseWidgetHTMLController<StartupFieldsDataType ext
         return this.dynamic_fields.equals(parameters);
     }
 
+    public execute_with_dynamic_update(to_execute: (controller: AbstractBaseWidgetHTMLController<StartupFieldsDataType>, parameters: FieldParameters) => void): AbstractBaseWidgetHTMLController<StartupFieldsDataType> {
+        this.to_execute_with_dynamic_update = to_execute;
+        return this;
+    }
+
     public update_dynamic_fields(field_data: FieldParameters): void {
         if(!this.dynamic_fields) {
             throw new HTMLControllerError("FIELDS_ERROR", 
                 "No dynamic fields on HTML controller", this)
         }
         this.dynamic_fields.set_field_values(field_data);
+        if(this.to_execute_with_dynamic_update) {
+            this.to_execute_with_dynamic_update(this, field_data);
+        }
     }
 
     public get_startup_fields(): StartupFieldsDataType {

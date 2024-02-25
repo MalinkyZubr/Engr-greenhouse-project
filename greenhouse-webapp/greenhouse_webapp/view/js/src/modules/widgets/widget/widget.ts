@@ -2,6 +2,7 @@ import { AbstractBaseWidgetHTMLController } from "./dynamic/widget_html";
 import { BaseStartupFieldParameters } from "./dynamic/widget_html";
 import type { FieldParameters, ListParameters } from "./dynamic/field_container";
 import { WidgetError } from "../../exceptions/module_errors";
+import { Page } from "../../page/page";
 
 
 export class WidgetParent {
@@ -69,16 +70,11 @@ export class EmptyModule extends WidgetModule {
 }
 
 
-export abstract class WidgetRequestModule<
-        HTMLControllerType extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> = 
-            AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>, 
-        Schema extends FieldParameters | ListParameters = FieldParameters> 
-
-    extends WidgetModule<HTMLControllerType> {
-    private request_route: string;
+export abstract class Requester<HTMLControllerType extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> = AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>> extends WidgetModule<HTMLControllerType> {
     public static port: number;
     public static host: string;
 
+    protected request_route: string;
 
     public constructor(request_route: string) {
         super()
@@ -86,21 +82,40 @@ export abstract class WidgetRequestModule<
     }
 
     public static set_connection_information(host: string, port: number) {
-        WidgetRequestModule.host = host;
-        WidgetRequestModule.port = port;
+        Requester.host = host;
+        Requester.port = port;
     }
+
+    protected generate_request_path(): string {
+        return `https://${Requester.host}:${Requester.port}${this.request_route}`
+    }
+
+    abstract generate_request_body(): object;
+
+    abstract process_response(response: any): void;
+
+    abstract submit_request(): Promise<void>;
+
+    abstract run(): Promise<void>;
+}
+
+
+export abstract class WidgetRequestModule<
+        HTMLControllerType extends AbstractBaseWidgetHTMLController<BaseStartupFieldParameters> = 
+            AbstractBaseWidgetHTMLController<BaseStartupFieldParameters>, 
+        Schema extends FieldParameters | ListParameters = FieldParameters> extends Requester<HTMLControllerType> {
 
     abstract generate_request_body(): object;
 
     abstract process_response(response: Schema): void;
 
     public async submit_request(): Promise<void> {
-        const request_path = `https://${WidgetRequestModule.host}:${WidgetRequestModule.port}${this.request_route}`
+        const request_path = this.generate_request_path();
 
         await fetch(request_path, this.generate_request_body())
         .then(res => res.json())
         .then(res => {
-            var res_checked: Schema = res;
+            var res_checked: Schema = res
             this.process_response(res_checked);
         })
     }
@@ -109,6 +124,7 @@ export abstract class WidgetRequestModule<
         await this.submit_request();
     }
 }
+
 
 export class BasicUpdaterRequestModule extends WidgetRequestModule {
     public generate_request_body(): object {

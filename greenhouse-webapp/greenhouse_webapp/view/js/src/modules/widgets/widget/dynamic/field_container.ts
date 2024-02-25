@@ -61,9 +61,6 @@ export abstract class AbstractFieldContainer<FieldType extends DynamicField> {
     public set_field_values(field_data: FieldParameters): void {
         for(const [key, field] of this.fields.entries()) {
             if(field_data.hasOwnProperty(key)) {
-                if(key === "test_button") {
-                    console.log("setting test button")
-                }
                 var value_to_set: string = field_data[key];
                 field.set_value(value_to_set);
             }

@@ -60,4 +60,9 @@ describe("Testing the functionality of BaseStartupFieldParameters and WidgetHTML
     test("Testing to see if the widget HTML detects improper HTML formatting", () => {
         expect(function() {new ErroneousTestHTML(startup_field_values)}).toThrow(Error);
     })
+
+    test("Testing to see if the wrapper method works", () => {
+        test_html_controller.wrap_node("td");
+        expect(test_html_controller.get_node().tagName).toBe("TD");
+    })
 })
