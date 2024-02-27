@@ -1,5 +1,5 @@
 import { Page } from "../modules/page/page";
-import { WidgetParent, BaseWidget, BaseWidgetMetadata, WidgetRequestModule } from "../modules/widgets/widget/widget";
+import { WidgetParent, BaseWidget, BaseWidgetMetadata, WidgetRequestModule, Requester } from "../modules/widgets/widget/widget";
 import { TableHTMLController } from "../modules/widgets/list_widgets/elementTable";
 import { PushButton } from "../modules/widgets/buttons/pushButton";
 import { AbstractBaseWidgetHTMLController, BaseStartupFieldParameters } from "../modules/widgets/widget/dynamic/widget_html";
@@ -11,8 +11,7 @@ import { FieldParameters } from "../modules/widgets/widget/dynamic/field_contain
 let dashboard_page = new Page();
 
 
-WidgetRequestModule.host = host;
-WidgetRequestModule.port = port;
+Requester.set_connection_information(host, port);
 
 
 class DevicesChildWidgetController extends PushButton {

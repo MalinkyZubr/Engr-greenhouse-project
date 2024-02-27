@@ -83,12 +83,20 @@ class DatabaseQuery(ABC):
             for character in self.sql_injection_single_characters:
                 if character == element:
                     raise Exception(f"Invalid character {character} detected")
+                
+    def convert_to_dict(self, cursor: MySQLCursorPrepared, query_result: list[tuple]) -> dict:
+        result = []
+        columns: tuple = tuple(d[0].decode('utf8') for d in cursor.description)
+        for row in cursor:
+            result.append(dict(zip(columns, row)))
+        return result
 
     def __call__(self, cursor, *query_parameters: list, **keyword_parameters):
         self.check_query(query_parameters)
         try:
             self.query(cursor, *query_parameters, **keyword_parameters)
             result = cursor.fetchall()
+            result = self.convert_to_dict(cursor, result)
             
             if self.return_type == ReturnTypes.FULL_RESULT:
                 return result

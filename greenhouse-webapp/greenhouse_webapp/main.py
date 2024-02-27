@@ -21,7 +21,9 @@ from model.data_interface import DatabaseInterface
 from model.device_initialization import DeviceManager, Device
 from model.data_retrieving import DataRetriever
 
+
 SERVER_CONFIG = os.path.join(CONFIG, "controller.json")
+
 
 database_connector = DatabaseInterface()
 device_manager = DeviceManager("huehue", database_connector)

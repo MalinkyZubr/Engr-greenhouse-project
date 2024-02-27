@@ -2,6 +2,22 @@
 <html>
   <head>
     <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <template id="project-button">
+        <tr>
+            <td><button id="project-button-text">project_name</button></td>
+        </tr>
+    </template>
+    <template id="device-button">
+        <tr>
+            <td><button id="device-button-text">device_name</button></td>
+            <td><button id="device-status-button">STATUS</button></td>
+        </tr>
+    </template>
+    <template id="preset-button">
+        <tr>
+            <td><button id="preset-text">preset_name</button></td>
+        </tr>
+    </template>
     <script type="module" src="/scripts/dashboard.js"></script>
   </head>
 <body>
@@ -10,7 +26,7 @@
     </div>
 
     <div class="container">
-        <div class="table" id="projects_table" data-isfield="true">
+        <div class="table">
             <h2>Active Projects</h2>
             <table>
                 <thead>
@@ -18,28 +34,38 @@
                         <th>Project Name</th>
                     </tr>
                 </thead>
+                <tbody id="projects_table">                    
+                    <!-- Add more rows with buttons as needed -->
+                </tbody>
             </table>
         </div>
 
         <div class="table">
             <h2>Registered Devices</h2>
-            <table class="registered-devices-table" id="devices_table" data-isfield="true">
+            <table class="registered-devices-table">
                 <thead>
                     <tr>
                         <th>Device Name</th>
                         <th>Status</th>
                     </tr>
                 </thead>
+                <tbody id="devices_table">
+                    <!-- Add more rows with buttons as needed -->
+                </tbody>
             </table>
         </div>
+
         <div class="table">
             <h2>Presets</h2>
-            <table id="presets_table" data-isfield="true">
+            <table>
                 <thead>
                     <tr>
                         <th>Preset Name</th>
                     </tr>
                 </thead>
+                <tbody id="presets_table">
+                    <!-- Add more rows with buttons as needed -->
+                </tbody>
             </table>
         </div>
         <div class="very-wide-element">
