@@ -6,19 +6,18 @@ from pydantic import BaseModel, Field
 from typing import Optional, Literal
 from datetime import datetime
 
-from controller.DBIntRouter import APIDRouter
+from greenhouse_webapp.controller.APIDRouter import APIDRouter
 from controller.schemas.server_device_schemas import BaseSchema
 from controller.device_management import device_unregister
 
 from model.device_initialization import Device
 
-router = APIDRouter(
+router = APIRouter(
     prefix="/interface"
 )
 """
 this file interacts directly with the devices on the network
 """
-
 
 class DataSchema(BaseModel):
     """schema for holding all data collected by the device to be put into the database

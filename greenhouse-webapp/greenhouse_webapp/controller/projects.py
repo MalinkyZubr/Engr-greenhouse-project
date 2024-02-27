@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from jinja2 import Template
 from requests import Response
 
-from controller.DBIntRouter import APIDRouter
+from greenhouse_webapp.controller.APIDRouter import APIDRouter
 from controller.frontend_paths import PROJECT, CREATE_PROJECT, STATIC, CSS, ARCHIVE, CONFIG
 from controller.device_management import change_identifier, DeviceConfigurationSchema
 from model.timing import MAX_TIME, MIN_TIME, get_today_tomorrow, convert_time_formats

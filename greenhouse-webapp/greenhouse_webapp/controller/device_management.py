@@ -14,7 +14,7 @@ from requests import Response
 from requests.exceptions import Timeout
 
 from controller.frontend_paths import SCAN, ASSIGN_PRES, ASSIGN_PROJ
-from controller.DBIntRouter import APIDRouter
+from greenhouse_webapp.controller.APIDRouter import APIDRouter
 from controller.schemas.server_device_schemas import BaseSchema
 from model.device_initialization import Device
 from jinja2 import Template

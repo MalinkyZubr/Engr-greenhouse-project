@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from jinja2 import Template
 from requests import Response
 
-from controller.DBIntRouter import APIDRouter
+from greenhouse_webapp.controller.APIDRouter import APIDRouter
 from controller.frontend_paths import PRESET, CREATE_PRESET
 from controller.device_management import change_preset, DeviceRegistrationPreset
 

@@ -1,0 +1,18 @@
+{
+    "api": {
+        "port":8000,
+        "host":"127.0.0.1"
+    },
+    "database": {
+        "user":"testing",
+        "host":"127.0.0.1",
+        "database":"silly",
+        "pool_name":"db_pool",
+        "password":"test",
+        "pool_size":5,
+        "port":8888
+    },
+    "device_manager": {
+        "host":"127.0.0.1"
+    }
+}

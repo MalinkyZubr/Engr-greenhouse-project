@@ -29,6 +29,9 @@ database_connector = DatabaseInterface()
 device_manager = DeviceManager("huehue", database_connector)
 data_visualizer = DataRetriever()
 
+
+async def database_dependency()
+    
 routers = {'device_interface':device_interface_router,
            'device_manager':device_management_router,
            'presets':preset_router,

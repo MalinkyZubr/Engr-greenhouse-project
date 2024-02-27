@@ -19,3 +19,5 @@ ARCHIVE = os.path.join(LOCAL_DIR, "../view/archive_list.html")
 ICON = os.path.join(LOCAL_DIR, "../images")
 ASSIGN_PROJ = os.path.join(LOCAL_DIR, "../view/assign_project.html")
 ASSIGN_PRES = os.path.join(LOCAL_DIR, "../view/assign_preset.html")
+
+# is all this crap still needed?
