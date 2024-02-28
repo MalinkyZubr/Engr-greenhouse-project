@@ -11,14 +11,14 @@ int IPAddressExtended::char_array_to_int(char* int_as_char) {
   }
 }
 
-int IPAddressExtended::get_octet(char* ip_address, int octet) {
+int IPAddressExtended::get_octet(char* ip_address, int octet_num) {
   int current_octet = 1;
   char* octet_char;
   int octet;
 
   for(int x = 0; x < strlen(ip_address); x++) {
     if(ip_address[x] == '.') {
-      if(current_octet == octet) {
+      if(current_octet == octet_num) {
         break;
        }
        current_octet++;

@@ -14,14 +14,14 @@ Response storage_route_error_handler(StorageException exception, int okay_code);
 class NetworkReset : public Route {
   public:
   NetworkReset(const char* route, const Method method);
-  Response execute(Request &request) override;
+  Response execute(const Request &request) override;
 };
 
 
 class DeviceReset : public Route {
   public:
   DeviceReset(const char* route, const Method method);
-  Response execute(Request &request) override;
+  Response execute(const Request &request) override;
 };
 
 
@@ -31,7 +31,7 @@ class SetTime : public Route {
 
   public:
   SetTime(const char* route, const Method method, StorageManager *global_storage);
-  Response execute(Request &request) override;
+  Response execute(const Request &request) override;
 };
 
 
@@ -41,7 +41,7 @@ class ConfigureDeviceIds : public Route {
   
   public:
   ConfigureDeviceIds(const char* route, const Method method, StorageManager *global_storage);
-  Response execute(Request &request) override;
+  Response execute(const Request &request) override;
 };
 
 
@@ -51,7 +51,7 @@ class ConfigureDevicePreset : public Route {
 
   public:
   ConfigureDevicePreset(const char* route, const Method method, StorageManager *global_storage);
-  Response execute(Request &request) override;
+  Response execute(const Request &request) override;
 };
 
 class PauseDevice : public Route {
@@ -60,7 +60,7 @@ class PauseDevice : public Route {
 
   public:
   PauseDevice(const char* route, const Method method, StorageManager *global_storage);
-  Response execute(Request &request) override;
+  Response execute(const Request &request) override;
 };
 
 #endif

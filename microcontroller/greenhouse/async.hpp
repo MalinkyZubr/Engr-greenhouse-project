@@ -16,6 +16,7 @@
 
 #include <SimpleTimer.h>  
 #include <ArduinoJson.h>
+#include "storage.hpp"
 
 #define MAX_TASKS 10
 #define MESSAGE_QUEUE_SIZE 20
@@ -28,7 +29,7 @@ enum Actions {ENABLE, DISABLE, EXECUTE};
 
 class Callable {
   public:
-  virtual void callback(){}
+  virtual void callback() {};
 };
 
 class TimedTask {
@@ -46,7 +47,7 @@ class TimedTask {
   }
   TimedTask(Callable *callback, int interval, int id, bool disconnected_slowdown);
 
-  void execute(MachineConnectionState mode);
+  void execute(NetworkState mode);
   void enable();
   void disable();
 };
@@ -55,13 +56,13 @@ class TimedTask {
 class TaskManager {
   private:
   TimedTask task_list[MAX_TASKS];
-  MachineState *machine_state;
+  StorageManager *global_storage;
 
   public:
-  TaskManager(MachineState *machine_state);
+  TaskManager(StorageManager *global_storage);
   bool add_task(Callable *callback, int interval, int id, bool disconnected_slowdown);
   bool remove_task(int id);
-  void execute_actions(Actions action);
+  void execute(Actions action);
 };
 
 

@@ -10,14 +10,14 @@
 
 
 class Route {
-    public:
-    const String route;
-    const Method method;
+  public:
+  const char* route;
+  const Method method;
 
-    Route(const String route, const Method method);
-    bool requested(Request &request);
+  Route(const char* route, const Method method);
+  bool requested(const Request &request);
 
-    virtual Response execute(Request &request) {};
+  virtual Response execute(const Request &request) {};
 };
 
 
@@ -29,7 +29,7 @@ class Router {
   public:
   Router& add_route(Route *route);
 
-  NetworkException execute_route(Request &request);
+  Response execute_route(Request &request);
   ~Router();
 };
 

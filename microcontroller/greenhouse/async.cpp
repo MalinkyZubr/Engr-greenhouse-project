@@ -31,7 +31,7 @@ void TimedTask::enable() {
 
 /// @brief function that calls the callback of the Callable object composing the TimedTask object
 /// @param mode enum, MACHINE_DISCONNETED or MACHINE_CONNECTED, which determines if the interval is increased by a factor of 20
-void TimedTask::execute(MachineConnectionState mode) {
+void TimedTask::execute(NetworkState mode) {
   if(millis() >= target_time && this->enabled) {
     this->callback->callback();
   }
@@ -61,7 +61,7 @@ void TimedTask::disable() {
 
 /// @brief constructor for the TaskManager object, which stores an array of TimedTasks to be periodically executed pseudo-asynchronously
 /// @param machine_state reference to the machine state so the object can read global machine state
-TaskManager::TaskManager(MachineState *machine_state) : machine_state(machine_state) {}
+TaskManager::TaskManager(StorageManager *global_storage) : global_storage(global_storage) {}
 
 
 /// @brief add a task to the TimedTask array for regular execution
@@ -96,7 +96,7 @@ bool TaskManager::remove_task(int id) {
   return false;
 }
 
-void TaskManager::execute_actions(Actions action) {
+void TaskManager::execute(Actions action) {
   for(int i = 0; i < MAX_TASKS; i++) {
     if(this->task_list[i].id != -1)
     {
@@ -108,7 +108,12 @@ void TaskManager::execute_actions(Actions action) {
           task_list[i].disable();
           break;
         case EXECUTE:
-          task_list[i].execute(this->machine_state->connection_state);
+          if(this->global_storage->get_machine_state().get_state() == MACHINE_PAUSED) {
+            task_list[i].disable();
+          }
+          else {
+            task_list[i].execute(this->global_storage->get_network_state());
+          }
           break;
       }
     }

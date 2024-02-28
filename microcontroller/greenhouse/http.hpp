@@ -63,11 +63,11 @@ class HTTPMessage {
   HTTPMessage();
   HTTPMessage(DynamicJsonDocument body);
 
-  BodyType get_body_type();
-  DynamicJsonDocument& get_body();
+  BodyType get_body_type() const;
+  const DynamicJsonDocument& get_body() const;
 
   void set_exception(NetworkException exception);
-  NetworkException get_exception();
+  NetworkException get_exception() const;
 
   void set_body(DynamicJsonDocument body);
   void set_body_type(BodyType type);
@@ -90,8 +90,8 @@ class Request : public HTTPMessage {
   Request(String &unparsed);
   Request(Request* base_pointer);
 
-  String get_route();
-  Method get_method();
+  String get_route() const;
+  Method get_method() const;
 
   String serialize();
 };
@@ -111,7 +111,7 @@ class Response : public HTTPMessage {
   Response(Response* base_pointer);
 
   void set_directive(DeviceDirective directive);
-  DeviceDirective get_directive();
+  DeviceDirective get_directive() const;
 
   String serialize();
 };

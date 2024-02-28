@@ -4,18 +4,25 @@ import asyncio
 import json
 import time
 import os
+import sys
 import netifaces
+import abc
 
 from typing import Union, Optional
+from pydantic_core import ValidationError
 
-from model.udp_schemas import RegistrationSchema
-from model.data_interface import DatabaseInterface
+from greenhouse_webapp.model.device_manager.scanner.udp_schemas import RegistrationSchema, ConnectRequestSchema
+from greenhouse_webapp.model.database.data_interface import DatabaseInterface
+
+sys.path.append("/home/malinkyzubr/Desktop/purdue-stuff/Fall-2023/ENGR-101/Engineering-Design-Project/greenhouse-webapp/greenhouse_webapp")
+from model.task_manager.task_manager import Task
 
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 manager_conf = os.path.join(script_dir, "conf/managerconf.json")
 
 
+class CheckForDeadTask()
 class Device:
     def __init__(self, ip: str, name: Optional[str]=None, id: Optional[int]=None, expidited: bool=False):
         """Low level class for storing information about active connections to the server. Used to provide registration with server as well
@@ -48,14 +55,13 @@ class Device:
         """
         self.time_received = time.time()
         
-    def check_time(self) -> None:
+    def is_dead(self) -> bool:
         """check if the timeout threshold was exceeded, if no messages have been received in a while
 
         Raises:
             TimeoutError: raised if timeout threshold exceeded
         """
-        if time.time() - self.time_received > 30:
-            raise TimeoutError("The connection receive no pings for 30 seconds")
+        return time.time() - self.time_received > 30
         
     def json(self) -> dict[str, Union[str, int, bool]]:
         return {"ip":self.ip, "name":self.name, "id":self.id, "expidited":self.expidited}
@@ -64,7 +70,7 @@ class Device:
 class DeviceManager:
     multicast_address: str = '224.0.2.4'
     port = 1337
-    def __init__(self, loop: asyncio.BaseEventLoop, database_interface: DatabaseInterface):
+    def __init__(self, database_interface: DatabaseInterface):
         """class for managing low level socket operations, association, and connection statuses
 
         Args:
@@ -75,7 +81,6 @@ class DeviceManager:
         
         with open(manager_conf, 'r') as f:
             self.ip_address = json.loads(f.read())['host']
-        self.loop: asyncio.BaseEventLoop = loop
         
         self.scans: dict[str, Device] = dict() # devices who's UDP pings were detected
         
@@ -94,17 +99,16 @@ class DeviceManager:
         self.active: bool = True
         
     async def check_for_dead(self) -> None:
-        """check for dead connections, so they can be removed. Dead connections are those that fail the "check_time" function of device class
+        """check for dead connections, so they can be removed. Dead connections are those that fail the "is_dead" function of device class
         """
         while self.active:
             print("checking for dead")
             await asyncio.sleep(30)
             for ip, scan_object in self.scans.items():
-                try: scan_object.check_time()
-                except: self.scans.pop(ip)
+                if scan_object.is_dead():
+                    self.scans.pop(ip)
             for ip, scan_object in self.active_device_list.items():
-                try: scan_object.check_time()
-                except: 
+                if scan_object.is_dead():
                     self.active_device_list.pop(ip)
                     self.database_interface.execute("configureDevice", scan_object.id, status="DISCONNECTED")
         
@@ -116,11 +120,17 @@ class DeviceManager:
             data: bytes = await self.loop.sock_recv(self.sock, 1024)
             data: dict[str, Union[str, int]] = json.loads(data.decode())
             
-            try:
+            requesting_ip: str = data["ip"]
+            
+            if(requesting_ip in self.scans):
                 self.scans[data['ip']].update_time()
-            except:
-                scan_result = Device(data['ip'], name=data['name'], id=data["id"], expidited=data["expidited"])
-                self.scans[data['ip']] = scan_result
+            else:
+                try:
+                    scan_result_validated = ConnectRequestSchema(**data)
+                    scan_result = Device(**data)
+                    self.scans[data['ip']] = scan_result
+                except ValidationError:
+                    print("received registration schema failed validation")
                 
     async def send_registration(self, device_ip: str) -> None:
         """when the client requests to add a device to the server, this will send the registration request to the device so it can proceed with authentication and setup

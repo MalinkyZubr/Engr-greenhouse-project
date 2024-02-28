@@ -15,6 +15,7 @@
 #include "full_connect_routes.hpp"
 #include "network_utils.hpp"
 #include "udp_messages.hpp"
+#include "ip_extended.hpp"
 
 
 #define RECEPTION_PID 6
@@ -30,8 +31,8 @@
 /// @param mac: string representing target mac address
 /// @param exception: exception for when returning connection info from methods
 typedef struct {
-    String ip;
-    int port;
+    String ip = "";
+    int port = -1;
 } ConnectionInformation;
 
 
@@ -114,11 +115,11 @@ typedef struct {
 } AssociationReturnStruct;
 
 class StageReturnBase {
+  private:
   NetworkException exception;
 
   public:
   StageReturnBase() {};
-  StageReturnBase(NetworkException exception);
 
   virtual NetworkException get_exception() = 0;
   virtual void set_exception(NetworkException exception) = 0;
@@ -131,7 +132,6 @@ class StageReturn : public StageReturnBase {
 
   public:
   StageReturn() {};
-  StageReturn(NetworkException exception, R return_value);
 
   R get_return_value();
   void set_return_value(R return_value);
@@ -172,7 +172,6 @@ class StageWifiBaseClass : public ConnectionStage<WiFiServer, TCPListenerClient,
   bool home_connect(WifiInfo &info);
 
   public:
-  StageWifiBaseClass() {};
   StageWifiBaseClass(int listener_port) : ConnectionStage(listener_port) {};
   NetworkException connect_wifi(WifiInfo &info);
 };
@@ -245,6 +244,7 @@ class StageFullConnection : public ConnectionStage<WiFiServer, TCPListenerClient
 class ConnectionManager {
   private:
   ConnectionStageBase* stage;
+
   ConnectionInformation local_connection_information;
   ConnectionInformation server_information;
   ConnectionInformation multicast_information;
@@ -261,9 +261,11 @@ class ConnectionManager {
   ConnectionManager(ConnectionInformation local_connection_information, ConnectionInformation multicast_information, StorageManager *global_storage);
 
   void set_stage_identifier(ConnectionStageIdentifier stage);
-  ConnectionStageIdentifier get_stage_identifier();
+  ConnectionStageIdentifier get_stage_identifier() const;
 
-  Response send_request(Request &request);
+  Response send_request(Request &request) const;
+
+  const ConnectionInformation& get_server_information() const;
 
   void run();
 };

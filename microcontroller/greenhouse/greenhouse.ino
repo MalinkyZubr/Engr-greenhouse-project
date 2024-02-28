@@ -45,13 +45,10 @@
 
 ISR_Timer ISR_timer; // hardware timer instantiation
 
-MachineState state; // the machine should start in a paused state so that the environmental controls remain off
-
-ConfigManager config_manager(&state, DEVICE_RESET_PIN);
-CommonData common_data; // struct to hold data feed from environmental systems
-TaskManager task_manager(&state); // pseudo asynchronous, for executing periodic actions
-Callable envmgr = EnvironmentManager(&state, &config_manager.config, &common_data, (int) PUMP_PIN, HEAT_PIN, FAN_PIN, LED_PIN, 1.0, 2.0, 3.0, 6); // control devices (heaters and such)
-Callable sensors = Sensors(&state, &common_data, DHT_PIN, (int) MOISTURE_PIN); // sensor systems to feed into data struct
+StorageManager storage_manager(0, BLOCK_SIZE, DEVICE_RESET_PIN);
+TaskManager task_manager(&storage_manager); // pseudo asynchronous, for executing periodic actions
+Callable envmgr = EnvironmentManager(&storage_manager, (int) PUMP_PIN, HEAT_PIN, FAN_PIN, LED_PIN, 16); // control devices (heaters and such)
+Callable sensors = Sensors(&storage_manager, DHT_PIN, (int) MOISTURE_PIN); // sensor systems to feed into data struct
 Router router; // router for executing tasks based on received requests
 
 void setup() {
@@ -67,7 +64,7 @@ void setup() {
   ITimer1.init();
   while(!ITimer1.attachInterruptInterval(TIMER_INTERVAL_S * 1000, TimedTasks)){}
 
-  task_manager.execute_actions(ENABLE);
+  task_manager.execute(ENABLE);
 }
 
 void loop() {
@@ -77,5 +74,5 @@ void loop() {
 void TimedTasks() // executes every 5 seconds
 {
   ISR_timer.run();
-  task_manager.execute_actions(EXECUTE);
+  task_manager.execute(EXECUTE);
 }

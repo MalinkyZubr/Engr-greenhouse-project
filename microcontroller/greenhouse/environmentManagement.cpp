@@ -10,34 +10,6 @@ long long hours_ms(int hours) {
   return milliseconds;
 }
 
-
-Interval::Interval(float desired_value) {
-  this->set_interval(desired_value);
-}
-
-
-void Interval::set_interval(float desired_value) {
-  this->upper = desired_value + 1;
-  this->lower = desired_value - 1;
-}
-
-
-/// @brief function to check whether a value is within the data interval or not
-/// @param value the value to check compliance for
-/// @return Interval::relation: enum to say if the value is higher, lower, than the desired range, or within the range
-Interval::relation Interval::check_current_value(float value) {
-  if(value < this->lower) {
-    return LOWER;
-  }
-  else if(value > this->upper) {
-    return HIGHER;
-  }
-  else {
-    return OKAY;
-  }
-}
-
-
 /// @brief base object for environment management devices
 /// @param pin pin to set for the device
 Device::Device(int pin) : pin(pin), status(false) {}
@@ -111,19 +83,10 @@ void LedStrip::set_strip_low() {
 
 /// @brief constructor for the LED ring controller object
 /// @param pin the control pin for the led ring
-LedStrip::LedStrip(int pin) {
+LedStrip::LedStrip(int pin, int num_led) : led_count(num_led) {
   this->led_strip = Adafruit_NeoPixel(this->led_count, this->pin, NEO_GRB + NEO_KHZ800);
   this->led_strip.clear();
   this->startup();
-}
-
-
-/// @brief grabs the preset info from storage manager's Configuraiton object and loads them to this object
-void EnvironmentManager::update_interfaces() {
-  this->temperature.set_interval(this->config->preset.temperature);
-  this->humidity.set_interval(this->config->preset.humidity);
-  this->moisture.set_interval(this->config->preset.moisture);
-  this->hours_sunlight_ms = hours_ms(this->config->preset.hours_daylight);
 }
 
 
@@ -139,61 +102,66 @@ void EnvironmentManager::update_interfaces() {
 /// @param desired_humidity desired humidity percentage to maintain
 /// @param desired_moisture desired moisture to maintain
 /// @param hours_sunlight hours sunlight to achieve per 24 hour period
-EnvironmentManager::EnvironmentManager(MachineState *machine_state, StorageManager *global_storage) : machine_state(machine_state), global_storage(global_storage) {}
+EnvironmentManager::EnvironmentManager(StorageManager *global_storage, int pump_pin, int heater_pin, int fan_pin, int led_pin, int num_led) : global_storage(global_storage), pump(pump_pin), heater(heater_pin), fan(fan_pin), led(led_pin, num_led) {}
 
+void EnvironmentManager::set_devices_low(Device devices[]) {
+  for(int x = 0; x < sizeof(devices) / sizeof(Device); x++) {
+    devices[x].set_low();
+  }
+}
+
+void EnvironmentManager::set_devices_high(Device devices[]) {
+  for(int x = 0; x < sizeof(devices) / sizeof(Device); x++) {
+    devices[x].set_high();
+  }
+}
+
+void EnvironmentManager::set_device_statuses(MeasurementCompliance current_measurement_classification, Device set_high_when_higher[], Device set_low_when_higher[]) {
+  switch(current_measurement_classification) {
+    case HIGHER:
+      this->set_devices_high(set_high_when_higher);
+      this->set_devices_low(set_low_when_higher);
+      break;
+    case LOWER:
+      this->set_devices_high(set_low_when_higher);
+      this->set_devices_low(set_high_when_higher);
+      break;
+    case COMPLIANT:
+      this->set_devices_low(set_low_when_higher);
+      this->set_devices_low(set_high_when_higher);
+      break;
+  }
+}
 
 /// @brief main function for environment manager, reads all sensor data and activates or deactivates control systems accordingly
 void EnvironmentManager::device_activation() {
-  this->global_storage->get_data_manager().
+  Preset& preset = this->global_storage->get_preset();
+  CommonDataBuffer& common_data = this->global_storage->get_common_data();
+
+  long long desired_ms_daylight = hours_ms(this->global_storage->get_preset().get_hours_daylight());
+
   // check conditions for light
-  if(this->common_data->nighttime && this->hours_sunlight_ms > (this->common_data->light_increment * CONTROL_INTERVAL * 1000) && !this->led.status) {
+  if(common_data.is_night_time() && desired_ms_daylight > common_data.get_ms_light() && !this->led.status) {
     this->led.set_strip_high();
   }
   else if(this->led.status){
-    this->common_data->light_increment++;
+    common_data.increment_light(true);
   }
-  else if((this->hours_sunlight_ms <= (this->common_data->light_increment * CONTROL_INTERVAL * 1000)) || !this->common_data->nighttime) {
+  else if(desired_ms_daylight <= common_data.get_ms_light() || !common_data.is_night_time()) {
     this->led.set_strip_low();
   }
 
   // check conditions for temperature
-  switch(this->temperature.check_current_value(this->common_data->temperature)) {
-    case Interval::HIGHER:
-      this->heater.set_low();
-      this->fan.set_high();
-      break;
-    case Interval::LOWER:
-      this->heater.set_high();
-      this->fan.set_low();
-      break;
-    case Interval::OKAY:
-      this->heater.set_low();
-      this->fan.set_low();
-      break;
-  }
-
-  // check humidity conditions
-  switch(this->humidity.check_current_value(this->common_data->humidity)) {
-    case Interval::HIGHER:
-      this->pump.set_high();
-      this->fan.set_low();
-      break;
-    case Interval::LOWER:
-      this->pump.set_low();
-      this->fan.set_high();
-      break;
-    case Interval::OKAY:
-      this->pump.set_low();
-      this->fan.set_low();
-      break;
-  }
+  set_device_statuses(this->global_storage->get_preset().check_temperature_compliance(common_data.get_temperature()), {&this->fan}, {&this->heater});
+  set_device_statuses(this->global_storage->get_preset().check_humidity_compliance(common_data.get_humidity()), {&this->fan}, {&this->pump});
+  set_device_statuses(this->global_storage->get_preset().check_moisture_compliance(common_data.get_moisture()), {}, {&this->pump});
 }
 
 
 /// @brief pseudo asynchronous callback for the environment manager
 void EnvironmentManager::callback() {
-  this->update_interfaces();
-  if(this->machine_state->operational_state != MACHINE_PAUSED) {
+  this->device_activation();
+  if(this->global_storage->get_machine_state().get_state() != MACHINE_PAUSED) {
     this->device_activation();
   }
 }
@@ -274,21 +242,13 @@ HumidityTemperature::EnvReading HumidityTemperature::sense() {
 /// @param common_data global common data struct for outputting sensor readings to
 /// @param humtemp_pin physical pin for DHT sensor
 /// @param moisture_pin physical pin for moisture sensor
-Sensors::Sensors(MachineState *machine_state, CommonData *common_data, int humtemp_pin, int moisture_pin) : machine_state(machine_state), common_data(common_data), humtemp(humtemp_pin), moisture(moisture_pin) {}
-
+Sensors::Sensors(StorageManager *global_storage, int humtemp_pin, int moisture_pin) : global_storage(global_storage), humtemp(humtemp_pin), moisture(moisture_pin) {}
 
 /// @brief write sensor readings to the global common_data struct
 void Sensors::submit_readings() {
-  if(this->machine_state->operational_state != MACHINE_PAUSED) {
-    HumidityTemperature::EnvReading environment_reading = this->humtemp.sense();
+  CommonDataBuffer& common_data = this->global_storage->get_common_data();
 
-    this->common_data->moisture = this->moisture.sense();
-    this->common_data->temperature = environment_reading.temperature_c;
-    this->common_data->humidity = environment_reading.humidity_percent;
-    this->common_data->light_level = this->light.sense();
+  HumidityTemperature::EnvReading environment_reading = this->humtemp.sense();
 
-    if((this->common_data->light_level) >= LUX_THRESHOLD) {
-      this->common_data->light_increment++;
-    }
-  }
+  common_data.set_common_data(environment_reading.temperature_c, environment_reading.humidity_percent, this->moisture.sense(), this->light.sense());
 }

@@ -7,15 +7,12 @@
 #include <SPIMemory.h>
 #include "exceptions.hpp"
 
-#define IDENTIFIER_ADDRESS 9000
-#define PRESET_ADDRESS 5000
-#define WIFI_ADDRESS 1000
-#define DATA_STORAGE_START 13000
-#define DATA_STORAGE_LIMIT 180000
-
 #define BLOCK_SIZE 4000
+#define DATA_STORAGE_LIMIT 200000
 
 #define CONFIG_JSON_SIZE 128
+
+#define LUX_THRESHOLD 800
 
 // DO BELOW
 // there must be a memory sector for machine state, so that if the device disconnects while paused, it will stay paused after reconnecting
@@ -28,8 +25,8 @@ enum NetworkState {
 
 /// @brief global machine operational state for tracking if the machine should be paused or not
 enum MachineOperationalState {
-    MACHINE_PAUSED = 'p', // in this case all devices should stop taking measurements
-    MACHINE_ACTIVE = 'a' // in this case devices should send data to the server
+  MACHINE_PAUSED = 'p', // in this case all devices should stop taking measurements
+  MACHINE_ACTIVE = 'a' // in this case devices should send data to the server
 };
 
 /// @brief enum of possible wifi connection authentication types supported by the network management software
@@ -39,12 +36,33 @@ enum WifiNetworkTypes {
   WIFI_OPEN = 'o'
 };
 
-typedef struct {
+class CommonDataBuffer {
+  private:
   float temperature;
   float humidity;
   float moisture;
   float light_exposure;
-} CommonDataBuffer;
+
+  long long ms_sunlight;
+  bool night_time;
+
+  long long last_measurement;
+
+  public:
+  void increment_light(bool increment);
+  void set_common_data(float temperature, float humidity, float moisture, float light_exposure);
+
+  const float get_temperature() const;
+  const float get_humidity() const;
+  const float get_moisture() const;
+  const float get_light_exposure() const;
+  const long long get_ms_light() const;
+  const bool is_night_time() const;
+
+  void set_night_time(bool is_night_time);
+
+  const DynamicJsonDocument to_json() const;
+};
 
 class ConfigStruct {
   private:
@@ -56,14 +74,14 @@ class ConfigStruct {
   ConfigStruct() {};
   ConfigStruct(SPIFlash *flash, int flash_address);
 
-  virtual DynamicJsonDocument to_json() = 0;
-  virtual StorageException from_json(DynamicJsonDocument &data) = 0;
+  virtual const DynamicJsonDocument to_json() const = 0;
+  virtual StorageException from_json(const DynamicJsonDocument &data) = 0;
 
   void set_configured();
   void set_unconfigured();
   bool check_is_configured() const;
 
-  StorageException write(DynamicJsonDocument &data);
+  StorageException write(const DynamicJsonDocument &data);
   bool read();
   bool erase();
 };
@@ -79,9 +97,11 @@ class MachineState : public ConfigStruct {
   MachineOperationalState get_state() const;
   void set_state(MachineOperationalState state);
 
-  StorageException from_json(DynamicJsonDocument &data);
-  DynamicJsonDocument to_json();
+  StorageException from_json(const DynamicJsonDocument &data);
+  const DynamicJsonDocument to_json() const override ;
 };
+
+enum MeasurementCompliance{LOWER, HIGHER, COMPLIANT};
 
 class Preset : public ConfigStruct {
   private:
@@ -90,6 +110,8 @@ class Preset : public ConfigStruct {
   float moisture;
   float hours_daylight;
   int preset_id = -1;
+
+  MeasurementCompliance check_measurement_compliance(float desired, float real) const;
 
   public:
   Preset() {};
@@ -101,8 +123,12 @@ class Preset : public ConfigStruct {
   float get_hours_daylight() const;
   float get_preset_id() const;
 
-  StorageException from_json(DynamicJsonDocument &data) override;
-  DynamicJsonDocument to_json() override;
+  MeasurementCompliance check_temperature_compliance(float measured) const;
+  MeasurementCompliance check_humidity_compliance(float measured) const;
+  MeasurementCompliance check_moisture_compliance(float measured) const;
+
+  StorageException from_json(const DynamicJsonDocument &data) override;
+  const DynamicJsonDocument to_json() const override;
 };
 
 class Identifiers : public ConfigStruct {
@@ -119,8 +145,8 @@ class Identifiers : public ConfigStruct {
   int get_project_id() const;
   String get_device_name() const;
 
-  StorageException from_json(DynamicJsonDocument &data) override;
-  DynamicJsonDocument to_json() override;
+  StorageException from_json(const DynamicJsonDocument &data) override;
+  const DynamicJsonDocument to_json() const override;
 };
 
 class WifiInfo : public ConfigStruct {
@@ -146,8 +172,8 @@ class WifiInfo : public ConfigStruct {
 
   bool copy(WifiInfo to_copy);
 
-  StorageException from_json(DynamicJsonDocument &data) override;
-  DynamicJsonDocument to_json() override;
+  StorageException from_json(const DynamicJsonDocument &data) override;
+  const DynamicJsonDocument to_json() const override;
 };
 
 class DataManager {
@@ -197,7 +223,6 @@ enum ConfigType {
 
 class StorageManager {
   private:
-  MachineState machine_state;
   DeviceResetter resetter;
 
   DataManager data_manager;
@@ -223,14 +248,14 @@ class StorageManager {
   MachineState& get_machine_state();
 
   void load_flash_configuration();
-  bool write_flash_configuration(ConfigType configuration, DynamicJsonDocument &to_write);
+  bool write_flash_configuration(ConfigType configuration, const DynamicJsonDocument &to_write);
   bool write_flash_configuration(WifiInfo wifi_info);
 
   void set_network_state(NetworkState state);
   NetworkState get_network_state() const;
 
   void set_common_data(CommonDataBuffer &common);
-  CommonDataBuffer get_common_data() const;
+  CommonDataBuffer& get_common_data();
 
   void hard_reset();
 };

@@ -117,11 +117,11 @@ void HTTPMessage::set_body(DynamicJsonDocument body) {
   this->body_type = JSON;
 }
 
-BodyType HTTPMessage::get_body_type() {
+BodyType HTTPMessage::get_body_type() const {
   return this->body_type;
 }
 
-DynamicJsonDocument& HTTPMessage::get_body() {
+const DynamicJsonDocument& HTTPMessage::get_body() const {
   return this->body;
 }
 
@@ -129,7 +129,7 @@ void HTTPMessage::set_exception(NetworkException exception) {
   this->exception = exception;
 }
 
-NetworkException HTTPMessage::get_exception() {
+NetworkException HTTPMessage::get_exception() const {
   return this->exception;
 }
 
@@ -145,11 +145,11 @@ Request::Request(Method method, const char* route, String host, int device_id, M
 
 Request::Request(Method method, const char* route, String host, int device_id, MachineOperationalState machine_state, DynamicJsonDocument body) : method(method), device_id(device_id), machine_state(machine_state), route(route), host(host), HTTPMessage(body) {}
 
-String Request::get_route() {
+String Request::get_route() const {
   return this->route;
 }
 
-Method Request::get_method() {
+Method Request::get_method() const {
   return this->method;
 }
 
@@ -247,7 +247,7 @@ void Response::set_directive(DeviceDirective directive) {
   this->directive = directive;
 }
 
-DeviceDirective Response::get_directive() {
+DeviceDirective Response::get_directive() const {
   return this->directive;
 }
 

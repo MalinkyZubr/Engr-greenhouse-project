@@ -10,7 +10,7 @@ from greenhouse_webapp.controller.APIDRouter import APIDRouter
 from controller.schemas.server_device_schemas import BaseSchema
 from controller.device_management import device_unregister
 
-from model.device_initialization import Device
+from greenhouse_webapp.model.device_manager.device_initialization import Device
 
 router = APIRouter(
     prefix="/interface"

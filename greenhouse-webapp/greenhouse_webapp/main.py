@@ -17,9 +17,9 @@ from controller.device_management import router as device_management_router
 from controller.presets import router as preset_router
 from controller.projects import router as project_router
 from controller.frontend_paths import DASHBOARD, CSS, STATIC, JS, CONFIG, ICON, LOCAL_DIR
-from model.data_interface import DatabaseInterface
-from model.device_initialization import DeviceManager, Device
-from model.data_retrieving import DataRetriever
+from greenhouse_webapp.model.database.data_interface import DatabaseInterface
+from greenhouse_webapp.model.device_manager.device_initialization import DeviceManager, Device
+from greenhouse_webapp.model.data_retrieval.data_retrieving import DataRetriever
 
 
 SERVER_CONFIG = os.path.join(CONFIG, "controller.json")

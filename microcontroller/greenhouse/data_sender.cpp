@@ -18,14 +18,14 @@ void DataSender::flush_data_storage_to_server() {
 
   while(!done) {
     done = this->global_storage->get_data_manager().read_data(data);
-    request = Request(POST, String("/interface/olddata/"), // create server route for olddata that processes time
-                                        this->connection_manager->server_information.ip, 
-                                        this->storage->config.identifying_information.device_id, this->machine_state->operational_state, data);
-    this->connection_manager->(request);
+    request = Request(POST, "/interface/olddata/", // create server route for olddata that processes time
+                                        this->connection_manager->get_server_information().ip, 
+                                        this->global_storage->get_identifiers().get_device_id(), this->global_storage->get_machine_state().get_state(), data);
+    this->connection_manager->send_request(request);
     data.clear();
   }
   
-  this->storage->writer->erase_all_data();
+  this->global_storage->get_data_manager().erase_data();
 }
 
 
@@ -35,28 +35,25 @@ void DataSender::callback() {
     return;
   }
 
-  String request;
+  Request request;
   DynamicJsonDocument data(CONFIG_JSON_SIZE);
+  data = this->global_storage->get_common_data().to_json();
 
   data["project_id"] = this->global_storage->get_identifiers().get_project_id();
   data["device_id"] = this->global_storage->get_identifiers().get_device_id();
-  data["temperature"] = this->global_storage->get_common_data().temperature;
-  data["humidity"] = this->global_storage->get_common_data().humidity;
-  data["moisture"] = this->global_storage->get_common_data().moisture;
-  data["light_exposure"] = this->global_storage->get_common_data().light_exposure;
 
   switch(this->global_storage->get_network_state()) {
     case MACHINE_CONNECTED:
       if(this->global_storage->get_data_manager().check_is_storing()) {
         this->flush_data_storage_to_server();
       }
-      request = Requests::request(POST, String("/interface/data/"), 
-                                        this->connection_manager->server_information.ip, 
-                                        this->storage->config.identifying_information.device_id, this->machine_state->operational_state, data);
-      this->connection_manager->connected_send(request);
+      request = Request(POST, "/interface/data/", 
+                                        this->connection_manager->get_server_information().ip, 
+                                        this->global_storage->get_identifiers().get_device_id(), this->global_storage->get_machine_state().get_state(), data);
+      this->connection_manager->send_request(request);
       break;
     case MACHINE_DISCONNECTED:
-      this->storage->writer->write_data(data);
+      this->global_storage->get_data_manager().write_data(data);
       break;
   }
 }

@@ -135,10 +135,10 @@ Response TCPRequestClient::request(Request *message) {
 
   switch(this->get_encryption()) {
     case ENCRYPTION_SSL:
-      this->client.connectSSL(this->server_information.ip, this->server_information.port);
+      this->client.connectSSL(IPAddressExtended((char*)this->server_information.ip.c_str()), this->server_information.port);
       break;
     case ENCRYPTION_NONE:
-      this->client.connect(this->server_information.ip, this->server_information.port);
+      this->client.connect(IPAddressExtended((char*)this->server_information.ip.c_str()), this->server_information.port);
       break;
   }
 
@@ -203,7 +203,7 @@ UDPClient::UDPClient(WiFiUDP &udp_server, ConnectionInformation &local_informati
 NetworkException UDPClient::send_udp(UDPRequest &request) {
   String request_string = request.to_string();
 
-  this->udp_server.beginPacket(this->multicast_information.ip, this->multicast_information.port);
+  this->udp_server.beginPacket(IPAddressExtended((char*)this->multicast_information.ip.c_str()), this->multicast_information.port);
   this->udp_server.write(request_string.c_str());
   this->udp_server.endPacket();
 
@@ -260,17 +260,8 @@ ConnectionStage<L, H, R>::~ConnectionStage() {
 }
 
 ///////////////////////////////////////////////////
-///////// StageReturnBase /////////////////////////
-///////////////////////////////////////////////////
-
-StageReturnBase::StageReturnBase(NetworkException exception) : exception(exception) {}
-
-///////////////////////////////////////////////////
 ///////// StageReturn /////////////////////////////
 ///////////////////////////////////////////////////
-
-template<typename R>
-StageReturn<R>::StageReturn(NetworkException exception, R return_value) : StageReturnBase(exception), return_value(return_value) {};
 
 template<typename R>
 R StageReturn<R>::get_return_value() {
@@ -453,7 +444,7 @@ StageReturn<WifiInfo>* StageWifiInitialization::run() {
 ///////// StageWifiStartup ////////////////////////
 ///////////////////////////////////////////////////
 
-StageWifiStartup::StageWifiStartup(WifiInfo &wifi_info) : wifi_info(wifi_info) {}
+StageWifiStartup::StageWifiStartup(WifiInfo &wifi_info) : wifi_info(wifi_info), StageWifiBaseClass(9999) {} // stage shouldnt have active server, fix that
 
 StageReturn<WifiInfo>* StageWifiStartup::run() {
   NetworkException exception;
@@ -471,7 +462,7 @@ StageReturn<WifiInfo>* StageWifiStartup::run() {
 ///////// Broadcasting ////////////////////////////
 ///////////////////////////////////////////////////
 
-StageBroadcasting::StageBroadcasting(ConnectionInformation local_information, ConnectionInformation multicast_information, const Identifiers &device_identifiers) : local_information(local_information), multicast_information(multicast_information), device_identifiers(device_identifiers) {
+StageBroadcasting::StageBroadcasting(ConnectionInformation local_information, ConnectionInformation multicast_information, const Identifiers &device_identifiers) : local_information(local_information), multicast_information(multicast_information), device_identifiers(device_identifiers), ConnectionStage(multicast_information.port) {
   this->set_handler(new UDPClient(this->get_listener(), local_information, multicast_information));
 }
 
@@ -519,7 +510,7 @@ StageAssociation::StageAssociation(ConnectionInformation server_information, Ide
 /// @return if the function fails to connect after 5 attempts, return false
 NetworkException StageAssociation::test_server_connection() {
   for(int x = 0; x < 3; x++) {
-    if(this->get_listener().connectSSL(this->server_information.ip, this->server_information.port)) {
+    if(this->get_listener().connectSSL(IPAddressExtended((char*)this->server_information.ip.c_str()), this->server_information.port)) {
       delay(1000);
       this->get_listener().stop();
       return NETWORK_OKAY;
@@ -576,7 +567,7 @@ StageReturn<AssociationReturnStruct>* StageAssociation::run() {
 ///////// FullConnection //////////////////////////
 ///////////////////////////////////////////////////
 
-StageFullConnection::StageFullConnection(ConnectionInformation &server_information, StorageManager *global_storage) : request_client(this->wifi_ssl_object, ENCRYPTION_SSL, server_information), server_information(server_information) {
+StageFullConnection::StageFullConnection(ConnectionInformation &server_information, StorageManager *global_storage) : request_client(this->wifi_ssl_object, ENCRYPTION_SSL, server_information), server_information(server_information), ConnectionStage(server_information.port) {
   Router router;
   router
     .add_route(new NetworkReset("/reset/network", POST))
@@ -636,8 +627,11 @@ StageReturn<bool>* StageFullConnection::run() {
 ///////////////////////////////////////////////////
 
 ConnectionManager::ConnectionManager(ConnectionInformation local_connection_information, ConnectionInformation multicast_information, StorageManager *global_storage) : local_connection_information(local_connection_information), multicast_information(multicast_information), global_storage(global_storage) {
-  if(true) { // modify this later
+  if(this->global_storage->get_wifi().get_channel() == -1) {
     this->set_stage_object(STAGE_INITIALIZING);
+  }
+  else {
+    this->set_stage_object(STAGE_STARTUP);
   }
 }
 
@@ -699,15 +693,18 @@ void ConnectionManager::handle_returns(StageReturnBase *return_value) {
       break;
     case STAGE_ASSOCIATING:
       this->set_stage_object(STAGE_CONNECTED);
+      this->global_storage->set_network_state(MACHINE_CONNECTED);
       break;
     case STAGE_CONNECTED:
+      this->set_stage_object(STAGE_ASSOCIATING);
+      this->global_storage->set_network_state(MACHINE_DISCONNECTED);
       break;
   }
 
   delete return_value;
 }
 
-Response ConnectionManager::send_request(Request &request) {
+Response ConnectionManager::send_request(Request &request) const {
   Response response;
 
   if(this->stage_identifier == STAGE_CONNECTED) {
@@ -719,6 +716,10 @@ Response ConnectionManager::send_request(Request &request) {
   }
 
   return response;
+}
+
+const ConnectionInformation& ConnectionManager::get_server_information() const {
+  return this->server_information;
 }
 
 void ConnectionManager::run() {
@@ -733,6 +734,6 @@ void ConnectionManager::set_stage_identifier(ConnectionStageIdentifier stage) {
   this->stage_identifier = stage;
 }
 
-ConnectionStageIdentifier ConnectionManager::get_stage_identifier() {
+ConnectionStageIdentifier ConnectionManager::get_stage_identifier() const {
   return this->stage_identifier;
 }

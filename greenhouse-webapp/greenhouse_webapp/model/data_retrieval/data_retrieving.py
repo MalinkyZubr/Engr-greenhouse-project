@@ -7,8 +7,8 @@ import time
 import csv
 from typing import Literal
 
-from model.timing import matplot_times
-from model.data_interface import DatabaseInterface
+from greenhouse_webapp.utilities.timing import matplot_times
+from greenhouse_webapp.model.database.data_interface import DatabaseInterface
 
 
 LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))

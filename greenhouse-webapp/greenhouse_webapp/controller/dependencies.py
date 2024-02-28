@@ -4,9 +4,12 @@ from fastapi import Depends, FastAPI
 import sys
 sys.path.append("/home/malinkyzubr/Desktop/purdue-stuff/Fall-2023/ENGR-101/Engineering-Design-Project/greenhouse-webapp/greenhouse_webapp")
 
-from model.data_interface import DatabaseInterface
-from model.device_initialization import DeviceManager, Device
-from model.data_retrieving import DataRetriever
+from greenhouse_webapp.model.database.data_interface import DatabaseInterface
+from greenhouse_webapp.model.device_manager.device_initialization import DeviceManager, Device
+from greenhouse_webapp.model.data_retrieval.data_retrieving import DataRetriever
+
+from utilities.config_reader import get_config
+
 
 
 database_interface: DatabaseInterface = DatabaseInterface()

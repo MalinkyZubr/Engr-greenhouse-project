@@ -2,12 +2,76 @@
 
 
 ////////////////////////////////////////////////////////////////////
+//////////////// CommonDataBuffer //////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+void CommonDataBuffer::increment_light(bool increment) {
+  if(increment) {
+    this->ms_sunlight += millis() - this->last_measurement;
+  }
+  this->last_measurement = millis();
+}
+
+void CommonDataBuffer::set_common_data(float temperature, float humidity, float moisture, float light_exposure) {
+  this->temperature = temperature;
+  this->humidity = humidity;
+  this->moisture = moisture;
+  this->light_exposure = light_exposure;
+
+  if(light_exposure > 800) {
+    this->increment_light(true);
+  }
+  else {
+    this->increment_light(false);
+  }
+}
+
+const float CommonDataBuffer::get_temperature() const {
+  return this->temperature;
+}
+
+const float CommonDataBuffer::get_humidity() const {
+  return this->humidity;
+}
+
+const float CommonDataBuffer::get_moisture() const {
+  return this->moisture;
+}
+
+const float CommonDataBuffer::get_light_exposure() const {
+  return this->light_exposure;
+}
+
+const long long CommonDataBuffer::get_ms_light() const {
+  return this->ms_sunlight;
+}
+
+const bool CommonDataBuffer::is_night_time() const {
+  return this->night_time;
+}
+
+const DynamicJsonDocument CommonDataBuffer::to_json() const {
+  DynamicJsonDocument data(CONFIG_JSON_SIZE);
+
+  data["temperature"] = this->temperature;
+  data["humidity"] = this->humidity;
+  data["moisture"] = this->moisture;
+  data["light_exposure"] = this->light_exposure;
+
+  return data;
+}
+
+void CommonDataBuffer::set_night_time(bool night) {
+  this->night_time = night;
+}
+
+////////////////////////////////////////////////////////////////////
 //////////////// ConfigStruct //////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
 ConfigStruct::ConfigStruct(SPIFlash *flash, int address) : flash(flash), flash_address(address) {}
 
-StorageException ConfigStruct::write(DynamicJsonDocument &data) {
+StorageException ConfigStruct::write(const DynamicJsonDocument &data) {
   String to_write;
 
   StorageException conversion_exception = this->from_json(data);
@@ -76,7 +140,7 @@ String Identifiers::get_device_name() const {
   return this->device_name;
 }
 
-StorageException Identifiers::from_json(DynamicJsonDocument &data) {
+StorageException Identifiers::from_json(const DynamicJsonDocument &data) {
   if(!data.containsKey("device_id") || !data.containsKey("project_id") || !data.containsKey("device_name")) {
     return STORAGE_IDENTIFIER_FIELD_MISSING;
   }
@@ -87,7 +151,7 @@ StorageException Identifiers::from_json(DynamicJsonDocument &data) {
   return STORAGE_OKAY;
 }
 
-DynamicJsonDocument Identifiers::to_json() {
+const DynamicJsonDocument Identifiers::to_json() const {
   DynamicJsonDocument data(CONFIG_JSON_SIZE);
 
   data["device_id"] = this->device_id;
@@ -111,7 +175,7 @@ void MachineState::set_state(MachineOperationalState state) {
   this->operational_state = state;
 }
 
-StorageException MachineState::from_json(DynamicJsonDocument &data) {
+StorageException MachineState::from_json(const DynamicJsonDocument &data) {
   if(!data.containsKey("operational_state")) {
     return STORAGE_IDENTIFIER_FIELD_MISSING;
   }
@@ -128,7 +192,7 @@ StorageException MachineState::from_json(DynamicJsonDocument &data) {
   return STORAGE_OKAY;
 }
 
-DynamicJsonDocument MachineState::to_json() {
+const DynamicJsonDocument MachineState::to_json() const {
   DynamicJsonDocument data(CONFIG_JSON_SIZE);
 
   data["operational_state"] = (char)this->operational_state;
@@ -162,7 +226,7 @@ float Preset::get_preset_id() const {
   return this->preset_id;
 }
 
-StorageException Preset::from_json(DynamicJsonDocument &data) {
+StorageException Preset::from_json(const DynamicJsonDocument &data) {
   if(!data.containsKey("preset_id") || !data.containsKey("temperature") || !data.containsKey("humidity") || !data.containsKey("moisture") || !data.containsKey("hours_daylight")) {
     return STORAGE_PRESET_FIELD_MISSING;
   }
@@ -176,7 +240,7 @@ StorageException Preset::from_json(DynamicJsonDocument &data) {
   return STORAGE_OKAY;
 }
 
-DynamicJsonDocument Preset::to_json() {
+const DynamicJsonDocument Preset::to_json() const {
   DynamicJsonDocument data(CONFIG_JSON_SIZE);
 
   data["preset_id"] = this->preset_id;
@@ -188,6 +252,27 @@ DynamicJsonDocument Preset::to_json() {
   return data;
 }
 
+MeasurementCompliance Preset::check_measurement_compliance(float desired, float real) const {
+  if(desired < real - 2) {
+    return LOWER;
+  }
+  else if(desired > real + 2) {
+    return HIGHER;
+  }
+  return COMPLIANT;
+}
+
+MeasurementCompliance Preset::check_temperature_compliance(float measured) const {
+  return this->check_measurement_compliance(this->temperature, measured);
+}
+
+MeasurementCompliance Preset::check_humidity_compliance(float measured) const {
+  return this->check_measurement_compliance(this->humidity, measured);
+}
+
+MeasurementCompliance Preset::check_moisture_compliance(float measured) const {
+  return this->check_measurement_compliance(this->moisture, measured);
+}
 
 ////////////////////////////////////////////////////////////////////
 //////////////// WifiInfo //////////////////////////////////////////
@@ -232,7 +317,7 @@ bool WifiInfo::copy(WifiInfo to_copy) {
   return this->write(wifi_info_json);
 }
 
-StorageException WifiInfo::from_json(DynamicJsonDocument &data) {
+StorageException WifiInfo::from_json(const DynamicJsonDocument &data) {
   String type = data["type"];
   
   switch(type.c_str()[0]) {
@@ -253,7 +338,7 @@ StorageException WifiInfo::from_json(DynamicJsonDocument &data) {
   this->ssid = (char *)&data["ssid"];
 }
 
-DynamicJsonDocument WifiInfo::to_json() {
+const DynamicJsonDocument WifiInfo::to_json() const {
   DynamicJsonDocument data(CONFIG_JSON_SIZE);
 
   data["type"] = (char)this->type;
@@ -406,7 +491,7 @@ MachineState& StorageManager::get_machine_state() {
   return this->machine_state;
 }
 
-bool StorageManager::write_flash_configuration(ConfigType configuration, DynamicJsonDocument &to_write) {
+bool StorageManager::write_flash_configuration(ConfigType configuration, const DynamicJsonDocument &to_write) {
   switch(configuration) {
     case IDENTIFIER:
       return this->identifier_info.write(to_write);
@@ -425,7 +510,7 @@ void StorageManager::set_network_state(NetworkState state) {
   this->network_state = state;
 }
 
-NetworkState StorageManager::get_network_state() const{
+NetworkState StorageManager::get_network_state() const {
   return this->network_state;
 }
 
@@ -433,7 +518,7 @@ void StorageManager::set_common_data(CommonDataBuffer &common) {
   this->common_data = common;
 }
 
-CommonDataBuffer StorageManager::get_common_data() const {
+CommonDataBuffer& StorageManager::get_common_data() {
   return this->common_data;
 }
 

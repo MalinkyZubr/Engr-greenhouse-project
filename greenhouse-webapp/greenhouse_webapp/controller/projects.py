@@ -10,7 +10,7 @@ from requests import Response
 from greenhouse_webapp.controller.APIDRouter import APIDRouter
 from controller.frontend_paths import PROJECT, CREATE_PROJECT, STATIC, CSS, ARCHIVE, CONFIG
 from controller.device_management import change_identifier, DeviceConfigurationSchema
-from model.timing import MAX_TIME, MIN_TIME, get_today_tomorrow, convert_time_formats
+from greenhouse_webapp.utilities.timing import MAX_TIME, MIN_TIME, get_today_tomorrow, convert_time_formats
 
 router = APIDRouter(
     prefix="/projects"

@@ -1,6 +1,7 @@
 {
-    "board": "arduino:avr:uno",
+    "board": "arduino:avr:mega",
     "programmer": "avrisp",
     "port": "/dev/ttyS0",
-    "sketch": "microcontroller/greenhouse/greenhouse.ino"
+    "sketch": "microcontroller/greenhouse/greenhouse.ino",
+    "configuration": "cpu=atmega2560"
 }

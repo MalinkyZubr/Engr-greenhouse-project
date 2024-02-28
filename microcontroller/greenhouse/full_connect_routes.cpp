@@ -25,7 +25,7 @@ Response storage_route_error_handler(StorageException exception, int okay_code =
 
 NetworkReset::NetworkReset(const char* route, const Method method) : Route(route, method) {}
 
-Response NetworkReset::execute(Request &request) {
+Response NetworkReset::execute(const Request &request) {
   Response response(200);
   response.set_directive(DEVICE_NETWORK_RESET);
 
@@ -35,7 +35,7 @@ Response NetworkReset::execute(Request &request) {
 
 DeviceReset::DeviceReset(const char* route, const Method method) : Route(route, method) {}
 
-Response DeviceReset::execute(Request &request) {
+Response DeviceReset::execute(const Request &request) {
   Response response(200);
   response.set_directive(DEVICE_HARD_RESET);
   
@@ -45,7 +45,7 @@ Response DeviceReset::execute(Request &request) {
 
 SetTime::SetTime(const char* route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
 
-Response SetTime::execute(Request &request) {
+Response SetTime::execute(const Request &request) {
   Response response;
 
   if(!request.get_body().containsKey("datetime")) {
@@ -64,7 +64,7 @@ Response SetTime::execute(Request &request) {
 
 ConfigureDeviceIds::ConfigureDeviceIds(const char* route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
 
-Response ConfigureDeviceIds::execute(Request &request) {
+Response ConfigureDeviceIds::execute(const Request &request) {
   Response response;
   StorageException exception = this->global_storage->get_identifiers().write(request.get_body());
   
@@ -77,8 +77,9 @@ Response ConfigureDeviceIds::execute(Request &request) {
 ConfigureDevicePreset::ConfigureDevicePreset(const char* route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
 
 //error handling should also go here
-Response ConfigureDevicePreset::execute(Request &request) {
+Response ConfigureDevicePreset::execute(const Request &request) {
   Response response;
+
   StorageException exception = this->global_storage->get_preset().write(request.get_body());
 
   response = storage_route_error_handler(exception);
@@ -89,7 +90,7 @@ Response ConfigureDevicePreset::execute(Request &request) {
 
 PauseDevice::PauseDevice(const char* route, const Method method, StorageManager *global_storage) : Route(route, method), global_storage(global_storage) {}
 
-Response PauseDevice::execute(Request &request) {
+Response PauseDevice::execute(const Request &request) {
   Response response;
   bool paused = request.get_body()["paused"];
   StorageException exception;

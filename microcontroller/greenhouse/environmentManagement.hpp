@@ -9,12 +9,11 @@
 #include "async.hpp"
 #include "storage.hpp"
 
-#define MILLISECONDS_IN_HOUR 3600000
-#define LUX_THRESHOLD 800
-
 // Device control
 #define CONTROL_INTERVAL 5 // in seconds
 #define CONTROL_ID 3
+
+#define MILLISECONDS_IN_HOUR 3600000
 
 long long hours_ms(int hours);
 
@@ -46,45 +45,28 @@ class LedStrip {
   public:
   bool status;
 
-  LedStrip(int pin);
+  LedStrip(int pin, int led_count);
   void startup();
   void set_strip_high();
   void set_strip_low();
 };
 
-class Interval {
-  public:
-  float upper;
-  float lower;
-
-  enum relation {HIGHER, LOWER, OKAY};
-
-  Interval(float desired_value);
-  void set_interval(float desired_value);
-  relation check_current_value(float value);
-};
+enum DeviceState{DEVICE_HIGH, DEVICE_LOW};
 
 class EnvironmentManager : public Callable {
   private:
-  Interval temperature;
-  Interval humidity;
-  Interval moisture;
-  long long hours_sunlight_ms;
-
-  MachineState *machine_state;
-
   Device pump;
   Device heater;
   Device fan;
   LedStrip led;
   StorageManager *global_storage;
 
-  Interval::relation check_status();
+  void set_devices_low(Device devices[]);
+  void set_devices_high(Device devices[]);
+  void set_device_statuses(MeasurementCompliance current_measurement_classification, Device set_high_when_higher[], Device set_low_when_higher[]);
 
   public:
-  EnvironmentManager(MachineState *machine_state, StorageManager *global_storage);
-
-  void update_interfaces();
+  EnvironmentManager::EnvironmentManager(StorageManager *global_storage, int pump_pin, int heater_pin, int fan_pin, int led_pin, int num_led);
 
   void device_activation();
   void callback() override;
@@ -132,14 +114,13 @@ class HumidityTemperature {
 
 class Sensors : public Callable {
   private:
-  MachineState *machine_state;
   StorageManager *global_storage;
   Moisture moisture;
   Light light;
   HumidityTemperature humtemp;
 
   public:
-  Sensors(MachineState *machine_state, StorageManager* global_storage, int humtemp_pin, int moisture_pin);
+  Sensors(StorageManager* global_storage, int humtemp_pin, int moisture_pin);
 
   void submit_readings();
   void callback() override {

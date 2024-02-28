@@ -16,7 +16,7 @@ from requests.exceptions import Timeout
 from controller.frontend_paths import SCAN, ASSIGN_PRES, ASSIGN_PROJ
 from greenhouse_webapp.controller.APIDRouter import APIDRouter
 from controller.schemas.server_device_schemas import BaseSchema
-from model.device_initialization import Device
+from greenhouse_webapp.model.device_manager.device_initialization import Device
 from jinja2 import Template
 from abc import ABC, abstractmethod
 

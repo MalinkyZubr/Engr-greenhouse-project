@@ -4,11 +4,11 @@
 /////////////// ReceiveCredentials /////////////////
 ////////////////////////////////////////////////////
 
-ReceiveCredentials::ReceiveCredentials(const String route, const Method method, WifiInfo *temporary_wifi_info, bool *wifi_configured_flag) : Route(route, method), temporary_wifi_info(temporary_wifi_info), wifi_configured_flag(wifi_configured_flag) {} 
+ReceiveCredentials::ReceiveCredentials(const char* route, const Method method, WifiInfo *temporary_wifi_info, bool *wifi_configured_flag) : Route(route, method), temporary_wifi_info(temporary_wifi_info), wifi_configured_flag(wifi_configured_flag) {} 
 
-Response ReceiveCredentials::execute(Request &request) {
+Response ReceiveCredentials::execute(const Request &request) {
   Response response;
-  DynamicJsonDocument &body = request.get_body();
+  const DynamicJsonDocument &body = request.get_body();
   WifiInfo new_wifi_info;
 
   String ssid;
@@ -26,10 +26,10 @@ Response ReceiveCredentials::execute(Request &request) {
       break;
   }
 
-  if(strcmp(body["type"], "enterprise")) {
+  if(strcmp((char*)body["type"], "enterprise")) {
     new_wifi_info = WifiInfo(ssid, channel, body["password"], body["username"]);
   }
-  else if(strcmp(body["type"], "home")) {
+  else if(strcmp((char*)body["type"], "home")) {
     new_wifi_info = WifiInfo(ssid, channel, body["password"]);
   }
   else {
@@ -47,9 +47,9 @@ Response ReceiveCredentials::execute(Request &request) {
 /////////////// SendHTML ///////////////////////////
 ////////////////////////////////////////////////////
 
-SendHTML::SendHTML(const String route, const Method method) : Route(route, method) {}
+SendHTML::SendHTML(const char* route, const Method method) : Route(route, method) {}
 
-Response SendHTML::execute(Request &request) {
+Response SendHTML::execute(const Request &request) {
   Response response(200, HTML, webpage_html);
   return response;
 }
@@ -58,9 +58,9 @@ Response SendHTML::execute(Request &request) {
 /////////////// SendCSS ////////////////////////////
 ////////////////////////////////////////////////////
 
-SendCSS::SendCSS(const String route, const Method method) : Route(route, method) {}
+SendCSS::SendCSS(const char* route, const Method method) : Route(route, method) {}
 
-Response SendCSS::execute(Request &request) {
+Response SendCSS::execute(const Request &request) {
   Response response(200, CSS, webpage_css);
   return response;
 }
@@ -69,9 +69,9 @@ Response SendCSS::execute(Request &request) {
 /////////////// SendJS /////////////////////////////
 ////////////////////////////////////////////////////
 
-SendJS::SendJS(const String route, const Method method) : Route(route, method) {}
+SendJS::SendJS(const char* route, const Method method) : Route(route, method) {}
 
-Response SendJS::execute(Request &request) {
+Response SendJS::execute(const Request &request) {
   Response response(200, JS, webpage_js);
   return response;
 }
