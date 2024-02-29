@@ -23,7 +23,6 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 manager_conf = os.path.join(script_dir, "conf/managerconf.json")
 
 
-class CheckForDeadTask()
 class Device:
     def __init__(self, ip: str, name: Optional[str]=None, id: Optional[int]=None, expidited: bool=False):
         """Low level class for storing information about active connections to the server. Used to provide registration with server as well
@@ -67,6 +66,24 @@ class Device:
     def json(self) -> dict[str, Union[str, int, bool]]:
         return {"ip":self.ip, "name":self.name, "id":self.id, "expidited":self.expidited}
         
+        
+class ScanUDPSocket:
+    buffer_size: int = 1024
+    def __init__(self):
+        self.sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(('', self.port))
+        
+        receiving_group = socket.inet_aton(self.multicast_address)
+        request = struct.pack('4sL', receiving_group, socket.INADDR_ANY)
+        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, request)
+        
+        self.sock.setblocking(False)
+        
+    async def receive(self) -> dict[str, Union[str, int]]:
+        data: bytes = await asyncio.get_event_loop().sock_recv(self.sock, self.buffer_size)
+        data: dict[str, Union[str, int]] = json.loads(data.decode())
+        
+        return data
 
 class DeviceManager:
     multicast_address: str = '224.0.2.4'
@@ -88,14 +105,7 @@ class DeviceManager:
         self.registration_queue: dict[str, asyncio.Condition] = dict() # devices who are in the process of associating with the server
         self.active_device_list: dict[str, Device] = dict() # devices that have associated with the server and are active
         
-        self.sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(('', self.port))
-        
-        receiving_group = socket.inet_aton(self.multicast_address)
-        request = struct.pack('4sL', receiving_group, socket.INADDR_ANY)
-        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, request)
-        
-        self.sock.setblocking(False)
+    
         
         self.active: bool = True
         

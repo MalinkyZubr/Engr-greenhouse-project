@@ -1,6 +1,8 @@
 import abc
 import asyncio
 import json
+import socket
+import struct
 
 from typing import Awaitable, Union
 from pydantic import ValidationError
@@ -10,13 +12,38 @@ sys.path.append("/home/malinkyzubr/Desktop/purdue-stuff/Fall-2023/ENGR-101/Engin
 from model.task_manager.task_manager import Task, TaskManager
 from model.device_manager.scanner.udp_schemas import ConnectRequestSchema
 from model.device_manager.device import Device, DeviceContainer
+from utilities.config_reader import get_config
+
+
+class ScanUDPSocket:
+    buffer_size: int = 1024
+    def __init__(self):
+        config = get_config("device_scanner") # standardize the config getting, return some sort of class to make things more solid and stable
+        port = config["listening_port"]
+        multicast_address = config["multicastaddress"]
+        
+        self.sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(('', port))
+        
+        receiving_group: bytes = socket.inet_aton(multicast_address)
+        request = struct.pack('4sL', receiving_group, socket.INADDR_ANY)
+        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, request)
+        
+        self.sock.setblocking(False)
+        
+    async def receive(self) -> dict[str, Union[str, int]]:
+        data: bytes = await asyncio.get_event_loop().sock_recv(self.sock, self.buffer_size)
+        data: dict[str, Union[str, int]] = json.loads(data.decode())
+        
+        return data
             
             
 class ScanListener(Task[DeviceContainer]):
-    async def receive_request(self) -> Awaitable:
-        data: bytes = await self.loop.sock_recv(self.sock, 1024)
-        data: dict[str, Union[str, int]] = json.loads(data.decode())
+    def __init__(self):
+        self.udp_socket: ScanUDPSocket = ScanUDPSocket()
         
+    async def receive_request(self) -> Awaitable:
+        data = await self.udp_socket.receive()
         data_validated = ConnectRequestSchema(**data)
         
         requesting_ip: str = data["ip"]

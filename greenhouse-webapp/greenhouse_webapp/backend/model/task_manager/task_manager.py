@@ -19,9 +19,9 @@ class TaskManager[TaskSubjectGeneric]:
         self.subject: TaskSubjectGeneric = subject
         self.logger: logging.Logger = logger
         self.run_interval: int = run_interval
-        self.task_list: dict[str, Task] = list()
+        self.task_list: dict[str, Task] = dict()
     
-    def attach_task(self, task_id: str, task: Task):
+    def attach_task(self, task_id: str, task: Task) -> None:
         self.task_list.set(task_id ,task)
     
     async def run(self) -> Awaitable: # logging should exist on the loop somehow, integrate later. Each task should be its own new object maybe :(
@@ -53,7 +53,7 @@ class Task[TaskSubjectGeneric](abc.ABC):
     def __init__(self, exception_handler: Callable[[Exception, Task], None] | None = None):
         self.logger: logging.Logger | None = None
         self.subject: TaskSubjectGeneric | None = None
-        self.exception_handler = exception_handler
+        self.exception_handler: Callable[[Exception, Task], None] = exception_handler
 
     @abc.abstractmethod
     async def task(self) -> Awaitable:
