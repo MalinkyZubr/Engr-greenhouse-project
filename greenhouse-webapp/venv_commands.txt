@@ -1,2 +1,0 @@
-source ./greenhouse-webapp-venv/bin/activate
-deactivate

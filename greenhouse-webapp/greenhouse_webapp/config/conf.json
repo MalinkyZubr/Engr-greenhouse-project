@@ -12,7 +12,8 @@
         "pool_size":5,
         "port":8888
     },
-    "device_manager": {
-        "host":"127.0.0.1"
+    "device_scanner": {
+        "multicast_address":"127.0.0.1",
+        "listening_port":"1337"
     }
 }
