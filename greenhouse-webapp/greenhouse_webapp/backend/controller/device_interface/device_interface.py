@@ -8,56 +8,16 @@ from datetime import datetime
 
 from greenhouse_webapp.controller.APIDRouter import APIDRouter
 from controller.schemas.server_device_schemas import BaseSchema
-from controller.device_management import device_unregister
+from controller.device_management.device_management import device_unregister
 
 from greenhouse_webapp.model.device_manager.device_initialization import Device
+
 
 router = APIRouter(
     prefix="/interface"
 )
-"""
-this file interacts directly with the devices on the network
-"""
 
-class DataSchema(BaseModel):
-    """schema for holding all data collected by the device to be put into the database
 
-    Args:
-        project_id, int: id of the project in question
-        device_id, int: id of the device sending the request
-        temperature, float: current temperature reading in celsius
-        humidity, float: current humidity reading %
-        moisture, float: current moisture reading %
-        light_exposure, float: current light level reading in lux
-    """
-    project_id: int # the device should know its own project ID
-    device_id: int
-    temperature: float
-    humidity: float
-    moisture: float
-    light_exposure: float
-    
-    
-class OldDataSchema(DataSchema):
-    """Schema for handling the contingency where connection to the device fails and the device must load data from flash memory upon reconnecting
-
-    Args:
-        next, int: address of next entry in flash memory. Here out of convenience, not for use
-        previous, int: address of previous entry in flash memory. Here out of convenience, not for use
-        seconds_from_start: seconds from the reference datetime
-        reference_datetime: unix reference timestamp from which all data timestamps will be derived
-    """
-    next: Optional[int]
-    previous: Optional[int]
-    seconds_from_start: int
-    reference_datetime: str
-
-    
-class LogSchema(BaseModel):
-    log_level: int
-    log_content: str
-
-    
 @router.post("/data")
 async def post_data(data_info: DataSchema) -> JSONResponse:
     """route for devices to post data intermittently, with stable connection

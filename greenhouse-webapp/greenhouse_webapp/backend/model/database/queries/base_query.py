@@ -6,6 +6,7 @@ import sys
 
 from mysql.connector import cursor
 from mysql.connector.cursor import MySQLCursorPrepared
+from model.database.database_manager import DatabaseInterface
 
 
 METADATA_OBJECT = dict[str, str]
@@ -23,8 +24,11 @@ class DatabaseQuery[
         ]](ABC):
     
     query_str = """"""
+    
+    def __init__(self, database_interface: DatabaseInterface):
+        self.database_interface: DatabaseInterface = database_interface
         
-    def query(self, cursor: MySQLCursorPrepared, query_parameters: parameter_schema) -> list[tuple]:
+    def submit_query(self, cursor: MySQLCursorPrepared, query_parameters: parameter_schema) -> list[tuple]:
         """cursor.execute should go in here, along with query parameters"""
         if query_parameters:
             field_parameters_dict = query_parameters.model_dump()
@@ -43,12 +47,15 @@ class DatabaseQuery[
     def convert_to_schema(self, unformatted_data: list[tuple], column_headers: tuple[str]) -> return_schema:
         pass
 
-    def execute(self, cursor: MySQLCursorPrepared, query_parameters: parameter_schema) -> return_schema:
+    def full_query(self, cursor: MySQLCursorPrepared, query_parameters: parameter_schema) -> return_schema:
         unformatted_data: list[tuple] = self.query(cursor, query_parameters)
         column_headers: tuple[str] = self.get_column_headers(cursor)
         
         formatted_result: return_schema = self.convert_to_schema(unformatted_data, column_headers)
         return formatted_result
+    
+    def execute(self, query_parameters: parameter_schema) -> return_schema:
+        return self.database_interface.execute(self, query_parameters)
         
         
 class MetadataObjectQuery[parameter_schema: BaseModel](DatabaseQuery[parameter_schema, METADATA_OBJECT]):

@@ -10,7 +10,7 @@ from pydantic import ValidationError
 import sys
 sys.path.append("/home/malinkyzubr/Desktop/purdue-stuff/Fall-2023/ENGR-101/Engineering-Design-Project/greenhouse-webapp/greenhouse_webapp")
 from model.task_manager.task_manager import Task, TaskManager
-from model.device_manager.scanner.udp_schemas import ConnectRequestSchema
+from model.device_manager.device_manager.udp_schemas import ConnectRequestSchema
 from model.device_manager.device import Device, DeviceContainer
 from utilities.config_reader import get_config
 

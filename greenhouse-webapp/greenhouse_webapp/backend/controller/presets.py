@@ -7,7 +7,7 @@ from requests import Response
 
 from greenhouse_webapp.controller.APIDRouter import APIDRouter
 from controller.frontend_paths import PRESET, CREATE_PRESET
-from controller.device_management import change_preset, DeviceRegistrationPreset
+from controller.device_management.device_management import change_preset, DeviceRegistrationPreset
 
 router = APIDRouter(
     prefix="/presets"

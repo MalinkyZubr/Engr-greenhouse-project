@@ -13,7 +13,7 @@ import json
 from starlette.responses import FileResponse
 
 from controller.device_interface import router as device_interface_router
-from controller.device_management import router as device_management_router
+from controller.device_management.device_management import router as device_management_router
 from controller.presets import router as preset_router
 from controller.projects import router as project_router
 from controller.frontend_paths import DASHBOARD, CSS, STATIC, JS, CONFIG, ICON, LOCAL_DIR
