@@ -1,21 +1,19 @@
-class getArchiveProjectID(DatabaseQuery):
-    return_type=ReturnTypes.SINGLE_ELEMENT(0)
+from pydantic import BaseModel
+from model.database.queries.base_query import MetadataListQuery, MetadataObjectQuery
+from model.database.queries.query_schemas_shared import QueryByID, QueryByName
+
+
+class getArchiveProjectID(MetadataObjectQuery[QueryByName]):
     query_str = \
-    f"""SELECT ProjectID FROM ArchivedProjects WHERE ProjectName = %s;"""
-    def query(self, cursor, project_name):
-        return cursor.execute(self.query_str, (project_name,))
+    f"""SELECT ProjectID FROM ArchivedProjects WHERE ProjectName = %(name)s;"""
     
     
-class getArchivedProjects(DatabaseQuery):
+class getArchivedProjects(MetadataListQuery[None]):
     query_str = \
     f"""SELECT * FROM ArchivedProjects;"""
-    def query(self, cursor):
-        return cursor.execute(self.query_str)
 
 
-class getArchivedProject(DatabaseQuery):
+class getArchivedProject(MetadataObjectQuery[QueryByID]):
     query_str = \
     f"""SELECT * FROM ArchivedProjects
-    WHERE ProjectID = %s;"""
-    def query(self, cursor, project_id):
-        return cursor.execute(self.query_str, (project_id,))
+    WHERE ProjectID = %(id)s;"""

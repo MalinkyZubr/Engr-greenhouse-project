@@ -9,5 +9,5 @@ class QueryByID(BaseModel):
     id: int
     
     
-class QueryNameID(GetByName, GetByID):
+class QueryNameID(QueryByID, QueryByName):
     pass

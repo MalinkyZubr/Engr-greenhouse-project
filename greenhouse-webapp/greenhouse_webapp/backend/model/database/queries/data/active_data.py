@@ -1,33 +1,68 @@
-class getProjectData(DatabaseQuery):
+from pydantic import BaseModel
+from model.database.queries.base_query import MetadataListQuery, MetadataObjectQuery, DataQuery, NoReturnQuery
+from model.database.queries.query_schemas_shared import QueryByID, QueryByName
+
+
+class getDeviceData(DataQuery[QueryByID]): # maybe you shouldnt call this mASSIVE QUerY!!!!
     query_str = \
-    f"""SELECT * FROM Data WHERE ProjectID = %s;"""
-    def query(self, cursor, project_id):
-        return cursor.execute(self.query_str, (project_id,))
+    f"""SELECT * FROM DATA WHERE DeviceID = %(id)s;"""
     
     
-class getProjectDataInRange(DatabaseQuery):
+class getLatestDeviceData(DataQuery[QueryByID]):
+    query = \
+    f"""SELECT * FROM Data WHERE DeviceID = %(id)s ORDER BY DateCollected DESC limit 1;"""
+    
+
+class DataDateQuery(QueryByID):
+    start_date: str
+    end_date: str
+    
+    
+class getDeviceDataInRange(DataQuery[DataDateQuery]):
     query_str = \
     f"""SELECT * 
     FROM Data
     WHERE DateCollected 
-            BETWEEN  str_to_date(%s, '%Y-%m-%d')
-                AND   str_to_date(%s, '%Y-%m-%d')
-        AND ProjectID = %s;"""
-    def query(self, cursor, project_id, start_date, end_date):
-        return cursor.execute(self.query_str, (start_date, end_date, project_id))
+            BETWEEN  str_to_date(%(start_date)s, '%Y-%m-%d')
+                AND   str_to_date(%(end_date)s, '%Y-%m-%d')
+        AND DeviceID = %(id)s;"""
+    
+
+class getProjectData(DataQuery[QueryByID]):
+    query_str = \
+    f"""SELECT * FROM Data WHERE ProjectID = %(id)s;"""
     
     
-class insertData(DatabaseQuery):
+class getProjectDataInRange(DataQuery[DataDateQuery]):
+    query_str = \
+    f"""SELECT * 
+    FROM Data
+    WHERE DateCollected 
+            BETWEEN  str_to_date(%(start_date)s, '%Y-%m-%d')
+                AND   str_to_date(%(end_date)s, '%Y-%m-%d')
+        AND ProjectID = %(id)s;"""
+    
+    
+class DataInsertQuery(BaseModel):
+    device_id: str
+    project_id: str
+    temperature: float
+    humidity: float
+    moisture: float
+    light_exposure: float
+    
+    
+class insertData(NoReturnQuery[DataInsertQuery]):
     query_str = \
     f"""INSERT INTO Data (DeviceID, ProjectID, Temperature, Humidity, Moisture, LightExposure)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"""
-    def query(self, cursor, device_id, project_id, temperature, humidity, moisture, light_exposure):
-        return cursor.execute(self.query_str, (device_id, project_id, temperature, humidity, moisture, light_exposure))
+    VALUES (%(device_id)s, %(project_id)s, %(temperature)s, %(humidity)s, %(moisture)s, %(light_exposure)s);"""
     
     
-class insertDataAtTime(DatabaseQuery):
+class DataInsertDateQuery(DataInsertQuery):
+    date: str
+    
+    
+class insertDataAtTime(NoReturnQuery[DataInsertDateQuery]):
     query_str = \
     f"""INSERT INTO Data (DeviceID, ProjectID, DateCollected, Temperature, Humidity, Moisture, LightExposure)
-    VALUES (%s, %s, str_to_date(%s, '%Y-%m-%d %H:%i:%s'), %s, %s, %s, %s, %s, %s);"""
-    def query(self, cursor, device_id, project_id, temperature, humidity, moisture, light_exposure, datetime_collected):
-        return cursor.execute(self.query_str, (device_id, project_id, datetime_collected, temperature, humidity, moisture, light_exposure))
+    VALUES (%(device_id)s, %(project_id)s, str_to_date(%(date)s, '%Y-%m-%d %H:%i'), %(temperature)s, %(humidity)s, %(moisture)s, %(light_exposure)s);"""

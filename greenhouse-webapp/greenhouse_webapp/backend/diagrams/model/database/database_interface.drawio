@@ -1,4 +1,4 @@
-<mxfile host="Electron" modified="2024-03-01T22:22:40.024Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/23.1.5 Chrome/120.0.6099.109 Electron/28.1.0 Safari/537.36" etag="Ig7YXrJJaLJxACdhYSVr" version="23.1.5" type="device">
+<mxfile host="Electron" modified="2024-03-02T03:21:32.090Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/23.1.5 Chrome/120.0.6099.109 Electron/28.1.0 Safari/537.36" etag="MDyO1tFM3Atc3Ph6d-PM" version="23.1.5" type="device">
   <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
     <mxGraphModel dx="439" dy="843" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -75,7 +75,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="QqheLPmCud8dR3OVvsNT-23" value="DatabaseQuerySubtypes" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="WIyWlLk6GJQsqaUBKTNV-1">
-          <mxGeometry x="240" y="420" width="290" height="360" as="geometry" />
+          <mxGeometry x="240" y="420" width="290" height="470" as="geometry" />
         </mxCell>
         <mxCell id="QqheLPmCud8dR3OVvsNT-30" value="MetadataObjectQuery[METADATA_OBJECT]" style="swimlane;fontStyle=2;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;marginBottom=0;rounded=0;shadow=0;strokeWidth=1;" vertex="1" parent="QqheLPmCud8dR3OVvsNT-23">
           <mxGeometry x="10" y="30" width="270" height="100" as="geometry">
@@ -108,6 +108,17 @@
           <mxGeometry y="26" width="270" height="8" as="geometry" />
         </mxCell>
         <mxCell id="QqheLPmCud8dR3OVvsNT-35" value="convert_to_schema&#xa;(unformatted_data: list[tuple]) &#xa;-&gt; DataSchema" style="text;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;shadow=0;html=0;" vertex="1" parent="QqheLPmCud8dR3OVvsNT-33">
+          <mxGeometry y="34" width="270" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="QqheLPmCud8dR3OVvsNT-38" value="NoReturnQuery[NONE]" style="swimlane;fontStyle=2;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;marginBottom=0;rounded=0;shadow=0;strokeWidth=1;" vertex="1" parent="QqheLPmCud8dR3OVvsNT-23">
+          <mxGeometry x="10" y="360" width="270" height="100" as="geometry">
+            <mxRectangle x="230" y="140" width="160" height="26" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="QqheLPmCud8dR3OVvsNT-39" value="" style="line;html=1;strokeWidth=1;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;" vertex="1" parent="QqheLPmCud8dR3OVvsNT-38">
+          <mxGeometry y="26" width="270" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="QqheLPmCud8dR3OVvsNT-40" value="convert_to_schema&#xa;(unformatted_data: list[tuple]) &#xa;-&gt; DataSchema" style="text;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;shadow=0;html=0;" vertex="1" parent="QqheLPmCud8dR3OVvsNT-38">
           <mxGeometry y="34" width="270" height="56" as="geometry" />
         </mxCell>
       </root>

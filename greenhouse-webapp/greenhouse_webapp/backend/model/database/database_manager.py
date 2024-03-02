@@ -6,8 +6,14 @@ from pydantic import BaseModel
 
 sys.path.append("/home/malinkyzubr/Desktop/purdue-stuff/Fall-2023/ENGR-101/Engineering-Design-Project/greenhouse-webapp/greenhouse_webapp")
 from utilities.config_reader import get_config
-from model.database.input_sanitization import check_keyword_query, check_query
+from model.database.input_sanitization import check_query
 from model.database.queries.base_query import DatabaseQuery
+from model.database.queries.data.active_data import *
+from model.database.queries.project.active_projects import *
+from model.database.queries.project.archived_projects import *
+from model.database.queries.device.devices import *
+from model.database.queries.preset.presets import *
+from model.database.queries.query_schemas_shared import *
 
 
 class DatabaseInterface:
@@ -30,3 +36,5 @@ class DatabaseInterface:
 
     def shutdown(self) -> None:
         self.connection_pool.close()
+        
+    

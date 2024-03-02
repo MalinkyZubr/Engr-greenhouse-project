@@ -72,3 +72,20 @@ class DeviceState:
         
         
 DeviceContainer = dict[str, Device]
+
+
+async def send_registration(self, device_ip: str) -> None:
+        """when the client requests to add a device to the server, this will send the registration request to the device so it can proceed with authentication and setup
+
+        Args:
+            device_ip (str): ip of desired device
+
+        Raises:
+            IndexError: if the IP is not in the registration queue, this error is raised
+        """
+        if device_ip not in self.scans:
+            raise IndexError("The IP has not been detected by any scan!")
+        message: RegistrationSchema = RegistrationSchema(server_ip=self.ip_address, server_port=self.port).model_dump_json().encode()
+        await self.loop.sock_sendall(self.sock, message)
+        self.registration_queue[device_ip] = asyncio.Condition()
+        self.scans.pop(device_ip)
