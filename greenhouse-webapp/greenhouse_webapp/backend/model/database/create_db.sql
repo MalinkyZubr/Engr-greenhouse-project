@@ -1,6 +1,7 @@
 CREATE TABLE ActiveProjects(
     ProjectID INT AUTO_INCREMENT PRIMARY KEY,
     ProjectName VARCHAR(255) UNIQUE,
+    ProjectDescription VARCHAR(32768)
     DateStarted DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

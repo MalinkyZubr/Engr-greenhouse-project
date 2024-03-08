@@ -13,13 +13,6 @@ router = APIDRouter(
     prefix="/presets"
 )
 
-
-class PresetSchema(BaseModel):
-    daytime_temp: float = Field(gt=0)
-    humidity: float = Field(gt=0, lt=100)
-    moisture: float = Field(gt=0, lt=100)
-    light_exposure: float = Field(gt=0, lt=100000)
-    
     
 @router.get("/availablePresets/{preset_name}")
 async def load_webpage(request: Request, preset_name: str) -> HTMLResponse:

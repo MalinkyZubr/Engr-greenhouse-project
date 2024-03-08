@@ -53,6 +53,7 @@ get_project_devices: getProjectDevices = getProjectDevices(database_interface)
 get_archive_project_id: getArchiveProjectID = getArchiveProjectID(database_interface)
 get_archived_projects: getArchivedProjects = getArchivedProjects(database_interface)
 get_archived_project: getArchivedProject = getArchivedProject(database_interface)
+
 get_preset_name: getPresetName = getPresetName(database_interface)
 get_preset_id: getPresetID = getPresetID(database_interface)
 get_presets: getPresets = getPresets(database_interface)
@@ -61,6 +62,7 @@ create_preset: createPreset = createPreset(database_interface)
 update_preset: updatePreset = updatePreset(database_interface)
 delete_preset: deletePreset = deletePreset(database_interface)
 get_preset_associated_devices: getPresetAssociatedDevices = getPresetAssociatedDevices(database_interface)
+
 get_device_id: getDeviceID = getDeviceID(database_interface)
 get_device_name: getDeviceName = getDeviceName(database_interface)
 get_device_status: getDeviceStatus = getDeviceStatus(database_interface)
@@ -69,6 +71,7 @@ get_device: getDevice = getDevice(database_interface)
 configure_device: configureDevice = configureDevice(database_interface)
 register_device: registerDevice = registerDevice(database_interface)
 delete_device: deleteDevice = deleteDevice(database_interface)
+
 get_device_data: getDeviceData = getDeviceData(database_interface)
 get_latest_device_data: getLatestDeviceData = getLatestDeviceData(database_interface)
 get_device_data_in_range: getDeviceDataInRange = getDeviceDataInRange(database_interface)
@@ -76,7 +79,5 @@ get_project_data: getProjectData = getProjectData(database_interface)
 get_project_data_in_range: getProjectDataInRange = getProjectDataInRange(database_interface)
 insert_data: insertData = insertData(database_interface)
 insert_data_at_time: insertDataAtTime = insertDataAtTime(database_interface)
-
-        
-
-    
+get_data_column_device: getDeviceDataColumn = getDeviceDataColumn(database_interface)
+get_data_column_project: getProjectDataColumn = getProjectDataColumn(database_interface)

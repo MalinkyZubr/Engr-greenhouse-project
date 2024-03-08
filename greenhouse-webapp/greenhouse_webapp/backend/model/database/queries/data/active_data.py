@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Literal
 from model.database.queries.base_query import MetadataListQuery, MetadataObjectQuery, DataQuery, NoReturnQuery
 from model.database.queries.query_schemas_shared import QueryByID, QueryByName
 
@@ -11,6 +12,15 @@ class getDeviceData(DataQuery[QueryByID]): # maybe you shouldnt call this mASSIV
 class getLatestDeviceData(DataQuery[QueryByID]):
     query = \
     f"""SELECT * FROM Data WHERE DeviceID = %(id)s ORDER BY DateCollected DESC limit 1;"""
+    
+    
+class DeviceColumnQuery(QueryByID):
+    column_name: Literal["Temperature", "Humidity", "Moisture", "LightExposure"]
+    
+    
+class getDeviceDataColumn(DataQuery[DeviceColumnQuery]):
+    query_str = \
+    f"""SELECT $(column_name)s, ProjectID, DeviceID, DateCollected FROM DATA WHERE DeviceID = %(id)s;"""
     
 
 class DataDateQuery(QueryByID):
@@ -31,6 +41,11 @@ class getDeviceDataInRange(DataQuery[DataDateQuery]):
 class getProjectData(DataQuery[QueryByID]):
     query_str = \
     f"""SELECT * FROM Data WHERE ProjectID = %(id)s;"""
+    
+    
+class getProjectDataColumn(DataQuery[DeviceColumnQuery]):
+    query_str = \
+    f"""SELECT %(column_name)s, ProjectID, DeviceID, DateCollected FROM Data WHERE ProjectID = %(id)s;"""
     
     
 class getProjectDataInRange(DataQuery[DataDateQuery]):

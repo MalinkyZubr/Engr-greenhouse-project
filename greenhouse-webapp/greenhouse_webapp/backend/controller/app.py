@@ -14,8 +14,8 @@ from starlette.responses import FileResponse
 
 from controller.device_interface import router as device_interface_router
 from controller.device_management.device_management import router as device_management_router
-from controller.presets import router as preset_router
-from controller.projects import router as project_router
+from controller.presets.presets import router as preset_router
+from controller.projects.projects import router as project_router
 from controller.frontend_paths import DASHBOARD, CSS, STATIC, JS, CONFIG, ICON, LOCAL_DIR
 from greenhouse_webapp.model.database.data_interface import DatabaseInterface
 from greenhouse_webapp.model.device_manager.device_initialization import DeviceManager, Device

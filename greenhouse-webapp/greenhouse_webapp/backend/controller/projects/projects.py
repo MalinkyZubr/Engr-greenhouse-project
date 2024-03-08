@@ -17,11 +17,6 @@ router = APIDRouter(
 )
 
 router.mount("/projects/static", StaticFiles(directory=STATIC), name="static")
-    
-
-class DateQuerySchema(BaseModel): # add input validation here
-    start_date: str
-    end_date: str
         
     
 @router.get("/projects/{project_name}")

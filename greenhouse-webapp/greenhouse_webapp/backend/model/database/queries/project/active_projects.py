@@ -18,16 +18,24 @@ class getProject(MetadataObjectQuery[QueryByID]):
     f"""SELECT * FROM ActiveProjects WHERE ProjectID = %(id)s;"""
     
     
-class addProject(NoReturnQuery[QueryByName]):
+class CreateProjectQuery(QueryByName):
+    project_description: str = ""
+    
+    
+class addProject(NoReturnQuery[CreateProjectQuery]):
     query_str = \
-    f"""INSERT INTO ActiveProjects (ProjectName)
-    VALUES (%(name)s);"""
+    f"""INSERT INTO ActiveProjects (ProjectName, ProjectDescription)
+    VALUES (%(name)s, %(project_description)s);"""
 
 
-class updateProject(NoReturnQuery[QueryNameID]):
+class UpdateProjectQuery(CreateProjectQuery, QueryByID):
+    pass
+
+    
+class updateProject(NoReturnQuery[UpdateProjectQuery]):
     query_str = \
     f"""UPDATE ActiveProjects
-    SET ProjectName = COALESCE(%(name)s, ProjectName)
+    SET ProjectName = COALESCE(%(name)s, ProjectName), ProjectDescription = COALESCE(%(project_description), ProjectDescription)
     WHERE ProjectID = %(id)s;"""
 
 
