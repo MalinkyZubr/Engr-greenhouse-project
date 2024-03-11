@@ -295,7 +295,7 @@ async def register_device(device_ip: str, project_name: Optional[str] = None) ->
     
     return JSONResponse("Device registered successfully", 200)
 
-@router.post("/confirm")
+@router.post("/confirm") # THIS ROUTE SHOULD ONLY HANDLE RE-REGISTRATION! INITIAL REGISTRATION NOW HANDLED BY THE DEVICE MANAGER!
 async def confirm_registration(stored_device_info: DeviceConfigurationSchema, request: Request) -> DeviceRegistrationResponse:
     """Step 3 of the device registration process (see register_device and send_registration). Waits for a request from an IoT device containing
     device information. This information should be from the flash memory unit on the IoT device. If the device knows its own ID, it must be in the database

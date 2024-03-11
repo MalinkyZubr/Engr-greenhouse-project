@@ -1,5 +1,4 @@
-from model.database.database_manager import DATA_SCHEMA, get_device_name
-from model.database.queries.query_schemas_shared import QueryByID
+from typing import Literal
 import csv
 import datetime
 import os
@@ -7,13 +6,16 @@ import matplotlib.pyplot as plt
 from matplotlib.dates import dates
 import matplotlib
 
+from model.database.database_manager import DATA_SCHEMA, DatabaseInterface
+from model.database.queries.query_schemas_shared import QueryByID
+
 
 LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMP_IMAGES = os.path.join(LOCAL_DIR, "/temp-images")
 TEMP_CSV = os.path.join(LOCAL_DIR, "/temp-csv")
 
 
-def generate_file_name(identifier: str, extension: str) -> str:
+def generate_file_name(identifier: str, extension: Literal["csv", "png", "pdf"]) -> str:
     current_time = datetime.datetime.now().strftime("%m-%D-%Y_%H-%M-%S")
     filename = f"{identifier}_{current_time}.{extension}"
     
@@ -28,11 +30,11 @@ def convert_to_csv(identifier: str, data: DATA_SCHEMA) -> str:
         
     return filename
 
-def get_devicewise_data(data: DATA_SCHEMA, column_name: str) -> dict[str, list[tuple[str, str]]]:
+
+def get_devicewise_data(data: DATA_SCHEMA, column_name: str, database_interface: DatabaseInterface) -> dict[str, list[tuple[str, str]]]:
     device_wise_data: dict[str, tuple[list]] = dict()
-    
     device_ids = set(data["DeviceID"])
-    device_names = {device_id:get_device_name.execute(QueryByID(id=device_id)) for device_id in device_ids}
+    device_names = {device_id:database_interface.get_device_name.execute(QueryByID(id=device_id)) for device_id in device_ids}
     
     for index, datapoint in enumerate(data[column_name]):
         datapoint_device_id: str = data["DeviceID"][index]

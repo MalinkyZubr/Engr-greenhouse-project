@@ -17,26 +17,29 @@ from utilities.config_reader import get_config
 
 class ScanUDPSocket:
     buffer_size: int = 1024
-    def __init__(self):
-        config = get_config("device_scanner") # standardize the config getting, return some sort of class to make things more solid and stable
-        port = config["listening_port"]
-        multicast_address = config["multicastaddress"]
-        
+    def __init__(self, listening_port, multicast_address):
         self.sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(('', port))
+        self.sock.bind(('', listening_port))
         
         receiving_group: bytes = socket.inet_aton(multicast_address)
         request = struct.pack('4sL', receiving_group, socket.INADDR_ANY)
         self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, request)
         
         self.sock.setblocking(False)
+        self.socket_lock: asyncio.Lock = asyncio.Lock()
         
     async def receive(self) -> dict[str, Union[str, int]]:
-        data: bytes = await asyncio.get_event_loop().sock_recv(self.sock, self.buffer_size)
-        data: dict[str, Union[str, int]] = json.loads(data.decode())
+        with self.socket_lock:
+            data: bytes = await asyncio.get_event_loop().sock_recv(self.sock, self.buffer_size)
+            data: dict[str, Union[str, int]] = json.loads(data.decode())
         
         return data
-            
+    
+    @staticmethod
+    async def send(message: str, destination_ip: str) -> None:
+        send_sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        await asyncio.get_event_loop().sock_sendto(bytes(message), destination_ip)
+        
             
 class ScanListener(Task[DeviceContainer]):
     def __init__(self):

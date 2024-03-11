@@ -10,9 +10,10 @@ class DeviceDataSchema(BaseModel):
         humidity, float: humidity percentage that the plant likes
         moisture, float: moisture level in the soil that the plant likes
     """
-    temperature: float
-    humidity: float
-    moisture: float
+    Temperature: float
+    Humidity: float
+    Moisture: float
+    
     
 class DeviceRegistrationPreset(DeviceDataSchema):
     """Preset schema which represents preset data while communicating with the device from the server
@@ -21,8 +22,8 @@ class DeviceRegistrationPreset(DeviceDataSchema):
         hours_daylight, float: how many hours of daylight does the plant need?
         preset_id, int: id of the preset in question for database interactions
     """
-    hours_daylight: float
-    preset_id: int
+    HoursDaylight: float
+    PresetID: int
     
 
 class DeviceConfigurationSchema(BaseModel):

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Project Report</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                }
+                h1 {
+                    text-align: center;
+                }
+                .project {
+                    margin-bottom: 30px;
+                }
+                .project img {
+                    display: block;
+                    margin: 0 auto;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                }
+                th, td {
+                    border: 1px solid #ddd;
+                    padding: 8px;
+                    text-align: left;
+                }
+                th {
+                    background-color: #f2f2f2;
+                }
+            </style>
+        </head>
+        <body>
+
+        <h1>Project Report</h1>
+
+        <div class="project">
+            <h2>{{ ProjectName }}</h2>
+            <h4>{{ ProjectID }}</h4>
+            <br>
+            <h3>Project Description</h3>
+            <p>{{ ProjectDescription }}</p>
+            <img src={{image_path}} alt="Graph">
+            
+            <h3>Assigned Devices</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>IP</th>
+                        <th>Preset Name</th>
+                        <th>Creation Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for device in devices %}
+                    <tr>
+                        <td>{{ device.DeviceName }}</td>
+                        <td>{{ device.DeviceIP }}</td>
+                        <td>{{ device.PresetName }}</td>
+                        <td>{{ device.CreationDate }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </body>
+</html>

@@ -10,6 +10,16 @@ class getDeviceID(MetadataObjectQuery[QueryByName]):
     WHERE DeviceName = %(name)s;"""
     
     
+class QueryByIP(BaseModel):
+    ip_address: str
+    
+    
+class getDeviceIDByIP(MetadataObjectQuery[QueryByIP]):
+    query_str = \
+    f"""SELECT DeviceID FROM RegisteredDevices
+    WHERE DeviceIP = %(ip_address)s"""
+    
+    
 class getDeviceName(MetadataObjectQuery[QueryByID]):
     query_str = \
     f"""SELECT DeviceName FROM RegisteredDevices
@@ -37,8 +47,8 @@ class ConfigureDeviceQuery(QueryByID):
     name: Optional[str]
     preset_id: Optional[int]
     project_id: Optional[int]
-    device_status: Optional[bool]
-    device_ip: Optional[Literal['ACTIVE', 'IDLE', 'DISCONNECTED']]
+    device_status: Optional[Literal['ACTIVE', 'IDLE', 'DISCONNECTED']]
+    device_ip: Optional[str]
     
     
 class configureDevice(NoReturnQuery[ConfigureDeviceQuery]):
@@ -49,15 +59,17 @@ class configureDevice(NoReturnQuery[ConfigureDeviceQuery]):
     
 
 class RegisterDeviceQuery(QueryByName):
+    name: str
     preset_id: int
     project_id: int
     device_status: Literal['ACTIVE', 'IDLE', 'DISCONNECTED']
+    device_ip: str
     
 
 class registerDevice(NoReturnQuery[RegisterDeviceQuery]):
     query_str = \
-    f"""INSERT INTO RegisteredDevices (DeviceName, PresetID, ProjectID, DeviceStatus)
-    VALUES (%(name)s, %(preset_id)s, %(project_id)s, %(device_status)s);"""
+    f"""INSERT INTO RegisteredDevices (DeviceName, PresetID, ProjectID, DeviceStatus, DeviceIP)
+    VALUES (%(name)s, %(preset_id)s, %(project_id)s, %(device_status)s, %(device_ip)s);"""
 
 
 class deleteDevice(NoReturnQuery[QueryByID]):

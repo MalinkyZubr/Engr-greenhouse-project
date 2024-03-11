@@ -50,5 +50,5 @@ CREATE TABLE Presets (
     Temperature FLOAT,
     Humidity FLOAT,
     Moisture FLOAT,
-    LightExposure FLOAT,
+    HoursDaylight FLOAT
 );
