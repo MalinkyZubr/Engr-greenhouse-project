@@ -7,9 +7,11 @@ import asyncio
 import time
 import sys
 
-from model.device_manager.device_manager.udp_schemas import ConnectRequestSchema, RegistrationSchema
+from backend.model.devices.udp_schemas import ConnectRequestSchema, RegistrationSchema
 from model.database.database_manager import DatabaseInterface, QueryByID, METADATA_OBJECT, RegisterDeviceQuery, QueryByIP
-from model.device_manager.device_manager.device_manager import ScanUDPSocket
+from model.devices.device_manager import ScanUDPSocket
+from model.devices.exceptions import *
+from model.devices.device_requests import *
 from controller.device_management.schemas import DeviceRegistrationPreset, DeviceRegistrationResponse
 
 class DeviceState:
@@ -35,7 +37,7 @@ class Device:
         self.id: int = id
         self.expidited: bool = expidited
         
-        self.selected_state: DeviceState | None = None
+        self.selected_state: DeviceState
         
     def update_time(self) -> None:
         """reset the timer for disconnecting the device
@@ -49,24 +51,37 @@ class Device:
             TimeoutError: raised if timeout threshold exceeded
         """
         return time.time() - self.time_received > 30
-        
-    def json(self) -> dict[str, Union[str, int, bool]]:
-        return {"ip":self.ip, "name":self.name, "id":self.id, "expidited":self.expidited}
     
-    async def state_set_register_request(self, server_port: int) -> asyncio.Condition: # add synchronization primitives to the socket to prevent race condition, also add to api router to prevent problems with 2 routes being added at once
-        self.selected_state = RequestRegistration(self, server_port)
+    async def state_set_register_request(self, server_port: int) -> Awaitable: # add synchronization primitives to the socket to prevent race condition, also add to api router to prevent problems with 2 routes being added at once
+        self.selected_state = RequestRegistrationState(self, server_port)
         await self.selected_state.state_action()
-        
-        return asyncio.Condition()
     
     async def state_set_active(self):
-        pass
+        self.selected_state = DeviceActiveState(self)
     
     async def state_set_idle(self):
-        pass
+        self.selected_state = DeviceIdleState(self)
     
     async def state_set_disconnect(self):
-        pass
+        self.selected_state = DeviceDisconnectedState(self)
+    
+    async def state_set_error(self, error: Exception):
+        self.selected_state = DeviceErrorState(error)
+        
+    async def get(self, request: BaseModel) -> Awaitable[BaseModel]:
+        return await self.selected_state.get(request)
+        
+    async def set(self, request: BaseModel) -> Awaitable[BaseModel]:
+        return await self.selected_state.set(request)
+    
+    async def delete(self, request: BaseModel) -> Awaitable[BaseModel]:
+        return await self.selected_state.delete(request)
+    
+    def to_json(self) -> dict[str, Union[str, int, bool]]:
+        return {"ip":self.ip, "name":self.name, "id":self.id, "expidited":self.expidited, "state":self.selected_state.to_json().model_dump_json()}
+        
+    def get_state_name(self) -> str:
+        return self.selected_state.__class__.__name__
         
     def get_id(self) -> str:
         return self.id
@@ -85,29 +100,43 @@ class DeviceState:
         self.context: Device = context
     
     @abc.abstractmethod
-    async def state_action(self) -> Awaitable:
+    async def get(self, request: BaseModel) -> Awaitable[BaseModel]:
         pass
     
     @abc.abstractmethod
-    async def state_failure_action(self, exception: Exception) -> Awaitable:
+    async def set(self, request: BaseModel) -> Awaitable[BaseModel]:
         pass
     
     @abc.abstractmethod
-    def dead_action(self) -> None:
+    async def delete(self, request: BaseModel) -> Awaitable[BaseModel]:
+        pass
+    
+    @abc.abstractmethod
+    async def error_handler(self, exception: Exception) -> Awaitable:
+        pass
+    
+    @abc.abstractmethod
+    def to_json(self) -> BaseModel:
         pass
     
     def cleanup(self) -> None:
         pass
     
-    async def run(self) -> Awaitable:
+    async def run(self, method: Literal["get", "set", "delete"], request: BaseModel) -> Awaitable:
         try:
-            await self.state_action()
+            match method:
+                case "get":
+                    self.get(request)
+                case "set":
+                    self.set(request)
+                case "delete":
+                    self.delete(request)
         except Exception as e:
-            await self.state_failure_action(e)
+            await self.error_handler(e)
         self.cleanup()
             
 
-class RequestRegistration(DeviceState):
+class RequestRegistrationState(DeviceState):
     registration_timeout: int = 30
     def __init__(self, context: Device, server_port: int, selected_router: APIRouter, database_interface: DatabaseInterface):
         super(context)
@@ -117,6 +146,9 @@ class RequestRegistration(DeviceState):
         
         self.register_event: asyncio.Event = asyncio.Event()
         
+    def advance_state(self) -> None:
+        self.context.set_state_active()
+        
     async def state_action(self) -> Awaitable:
         message: RegistrationSchema = RegistrationSchema(server_ip=self.context.get_ip(), server_port=self.server_port).model_dump_json()
         await ScanUDPSocket.send(message, self.context.get_ip())
@@ -125,11 +157,14 @@ class RequestRegistration(DeviceState):
         
         await asyncio.wait_for(self.register_event, self.registration_timeout)
         
+        self.advance_state()
+    
     @override
     async def cleanup(self):
         self.router.routes.remove(f"/register/{self.context.get_ip()}")
         
     async def state_failure_action(self, exception: Exception) -> Awaitable: # this should regress the state to scanned, or something
+        self.context.set
         raise HTTPException(503, detail=f"Registration of Device {self.context.get_ip()} failed!")
             
     def sync_project_and_preset(self, true_device_id: str, database_device_data: METADATA_OBJECT) -> DeviceRegistrationResponse:
@@ -155,13 +190,13 @@ class RequestRegistration(DeviceState):
         
         return response
     
-    def database_registration(self, database_device_data: METADATA_OBJECT) -> DeviceRegistrationResponse:
+    def database_registration(self, database_device_data: METADATA_OBJECT, request_ip: str) -> DeviceRegistrationResponse: # if the preset and project are specified, the device should be set to active. otherwise it should be set to idle
         self.database_interface.register_device.execute(RegisterDeviceQuery(
                 name=database_device_data["DeviceName"],
                 preset_id=database_device_data["PresetID"], # should project and preset be registered to device here? check this
                 project_id=database_device_data["ProjectID"],
                 device_status="IDLE",
-                device_ip=self.request_ip # MUST IMPLEMENT SOME WAY TO GET ACCESS TO ORIGINAL REQUEST! FOR IP
+                device_ip=request_ip # MUST IMPLEMENT SOME WAY TO GET ACCESS TO ORIGINAL REQUEST! FOR IP
             )
         ) # device name initially set to the ip
         true_device_id: int = self.database_interface.get_device_id_by_ip(QueryByIP(ip_address=self.request_ip))
@@ -171,7 +206,7 @@ class RequestRegistration(DeviceState):
         
         return response
         
-    async def registration_route(self) -> DeviceRegistrationResponse:
+    async def registration_route(self, request: Request) -> DeviceRegistrationResponse:
         reported_device_id: str = self.context.get_id()
         
         database_device_data: METADATA_OBJECT = self.database_interface.get_device.execute(QueryByID(id=reported_device_id))
@@ -189,28 +224,52 @@ class RequestRegistration(DeviceState):
             response: DeviceRegistrationResponse = self.sync_project_and_preset(reported_device_id, database_device_data)
         # if the device has never been configured before (if no reported ID)
         else:
-            response: DeviceRegistrationResponse = self.database_registration(database_device_data)
+            response: DeviceRegistrationResponse = self.database_registration(database_device_data, request.client.host)
             
         self.register_event.notify_all() # only at the end
         
         return response
         
 
-class DeviceActive(DeviceState):
+class DeviceActiveState(DeviceState):
+    request_types = {
+        "change_preset":
+    }
+
+    
+class DeviceIdleState(DeviceState):
     pass
 
     
-class DeviceIdle(DeviceState):
-    pass
-
+class DeviceDisconnectedState(DeviceState):
+    def __init__(self, server_port: int):
+        self.server_port: int = server_port
+        
+    async def state_action(self) -> None:
+        raise DeviceDisconnectedException(self.context.get_id())
     
-class DeviceDisconnect(DeviceState):
-    pass
-
-
-class DeviceError(DeviceState):
-    pass
+    def advance_state(self) -> Awaitable:
+        self.context.state_set_register_request(self.server_port)
     
+    async def state_failure_action(self, exception: Exception) -> Awaitable:
+        pass
+
+class DeviceErrorState(DeviceState): # needs advance state
+    def __init__(self, exception: Exception):
+        self.exception: Exception = exception
+        
+    async def state_action(self) -> Awaitable:
+        raise DeviceErrorException from self.exception
+    
+    async def state_failure_action(self, exception: Exception) -> Awaitable:
+        pass
+        
+class DeviceHaltedState(DeviceState):
+    async def state_action(self) -> Awaitable:
+        raise DeviceHaltedException(self.context.get_id())
+    
+    async def advance_state(self) -> None:
+        self.context.state_set_active()
     
 # class DeviceContainer(TaskSubject):
 #     def __init__(self):
@@ -220,8 +279,5 @@ class DeviceError(DeviceState):
 #         self.devices.set(device_id, device)
         
 #     def remove_device(self, device_id: str) -> None:
-        
-        
-DeviceContainer = dict[str, Device]
 
 

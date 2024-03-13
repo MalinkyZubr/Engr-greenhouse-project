@@ -10,9 +10,12 @@ from pydantic import ValidationError
 import sys
 sys.path.append("/home/malinkyzubr/Desktop/purdue-stuff/Fall-2023/ENGR-101/Engineering-Design-Project/greenhouse-webapp/greenhouse_webapp")
 from model.task_manager.task_manager import Task, TaskManager
-from model.device_manager.device_manager.udp_schemas import ConnectRequestSchema
-from model.device_manager.device import Device, DeviceContainer
+from backend.model.devices.udp_schemas import ConnectRequestSchema
+from model.devices.device import Device
 from utilities.config_reader import get_config
+
+
+DeviceContainer = dict[str, Device]
 
 
 class ScanUDPSocket:
@@ -54,7 +57,10 @@ class ScanListener(Task[DeviceContainer]):
         return requesting_ip, data_validated
     
     async def task(self) -> Awaitable:
-        requesting_ip, data: [str, ConnectRequestSchema] = await self.receive_request()
+        requesting_ip: str
+        data: ConnectRequestSchema
+        
+        requesting_ip, data = await self.receive_request()
             
         if(requesting_ip in self.scans):
             self.subject.get(requesting_ip).update_time()
@@ -70,24 +76,7 @@ class CheckDeadScans(Task[DeviceContainer]):
         for ip, scan_object in self.subject.items():
             if scan_object.is_dead():
                 self.subject.pop(ip)
-                
-
-class NonAssociatedDeviceManager(DeviceManager):
-    async def send_registration(self, device_ip: str) -> None:
-        """when the client requests to add a device to the server, this will send the registration request to the device so it can proceed with authentication and setup
-
-        Args:
-            device_ip (str): ip of desired device
-
-        Raises:
-            IndexError: if the IP is not in the registration queue, this error is raised
-        """
-        if device_ip not in self.scans:
-            raise IndexError("The IP has not been detected by any scan!")
-        message: RegistrationSchema = RegistrationSchema(server_ip=self.ip_address, server_port=self.port).model_dump_json().encode()
-        await self.loop.sock_sendall(self.sock, message)
-        self.registration_queue[device_ip] = asyncio.Condition() # this should be a trait of the device
-        self.scans.pop(device_ip)
+    
 
 
     

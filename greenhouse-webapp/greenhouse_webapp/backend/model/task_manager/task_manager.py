@@ -3,7 +3,7 @@ import asyncio
 import json
 import logging
 
-from typing import Awaitable, Union, Callable, Concatenate
+from typing import Awaitable, Union, Callable, Concatenate, Self
 
 import sys
 sys.path.append("/home/malinkyzubr/Desktop/purdue-stuff/Fall-2023/ENGR-101/Engineering-Design-Project/greenhouse-webapp/greenhouse_webapp")
@@ -19,10 +19,11 @@ class TaskManager[TaskSubjectGeneric]:
         self.subject: TaskSubjectGeneric = subject
         self.logger: logging.Logger = logger
         self.run_interval: int = run_interval
-        self.task_list: dict[str, Task] = dict()
+        self.task_list: dict[str, Task[TaskSubjectGeneric]] = dict()
     
-    def attach_task(self, task_id: str, task: Task) -> None:
+    def attach_task(self, task_id: str, task: Task) -> Self:
         self.task_list.set(task_id ,task)
+        return self
     
     async def run(self) -> Awaitable: # logging should exist on the loop somehow, integrate later. Each task should be its own new object maybe :(
         while True:

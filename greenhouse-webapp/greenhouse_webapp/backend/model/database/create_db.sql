@@ -41,7 +41,7 @@ CREATE TABLE RegisteredDevices (
     PresetID INT,
     ProjectID INT,
     CreationDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    DeviceStatus ENUM('ACTIVE', 'IDLE', 'DISCONNECTED')
+    DeviceStatus ENUM('ACTIVE', 'IDLE', 'DISCONNECTED', 'HALTED')
 );
 
 CREATE TABLE Presets (

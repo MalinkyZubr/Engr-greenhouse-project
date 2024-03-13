@@ -25,7 +25,7 @@ def generate_html(project_metadata: METADATA_OBJECT, device_metadata: METADATA_L
     
 def generate_pdf(project_metadata: METADATA_OBJECT, device_metadata: METADATA_LIST, project_data: DATA_SCHEMA) -> str:
     file_name: str = generate_file_name(project_metadata["ProjectName"], "pdf")
-    with open(f"{TEMP_PDF}/{file_name}") as f:
+    with open(f"{TEMP_PDF}/{file_name}", 'w') as f:
         pisa_status = pisa.CreatePDF(
             generate_html(project_metadata, device_metadata, project_data),
             dest=f
