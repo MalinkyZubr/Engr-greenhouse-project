@@ -14,9 +14,11 @@
         defined(ARDUINO_AVR_PROTRINKET3FTDI) )
 #endif
 
-#include <SimpleTimer.h>  
+
 #include <ArduinoJson.h>
-#include "storage.hpp"
+#include <SimpleTimer.h>  
+#include "../storage/storage_manager.hpp"
+
 
 #define MAX_TASKS 10
 #define MESSAGE_QUEUE_SIZE 20

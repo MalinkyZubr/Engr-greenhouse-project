@@ -1,3 +1,9 @@
+#ifndef COMMON_DATA_HPP
+
+#include <ArduinoJson.h>
+#include <SPIMemory.h>
+#include "../constants.h"
+
 class CommonDataBuffer {
   private:
   float temperature;
@@ -52,3 +58,5 @@ class DataManager {
   bool read_data(DynamicJsonDocument &data_output);
   bool erase_data();
 };
+
+#endif

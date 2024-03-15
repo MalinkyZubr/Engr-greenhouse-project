@@ -5,12 +5,7 @@
 #include <ArduinoJson.hpp>
 #include <Arduino.h>
 #include <SPIMemory.h>
-#include "exceptions.hpp"
-
-#define BLOCK_SIZE 4000
-#define DATA_STORAGE_LIMIT 200000
-
-#define CONFIG_JSON_SIZE 128
+#include "../exceptions.hpp"
 
 #define LUX_THRESHOLD 800
 
