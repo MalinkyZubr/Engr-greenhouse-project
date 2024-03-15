@@ -1,8 +1,12 @@
 import abc
-from typing import Union, Optional, Awaitable, Literal, override
+from typing import Union, Optional, Awaitable, Literal, override, Type
+from pydantic import BaseModel
+from requests import Response
+import requests
 from pydantic_core import ValidationError
 from fastapi import Request, APIRouter, HTTPException
 from socket import socket
+from asyncio import Timeout
 import asyncio
 import time
 import sys
@@ -11,12 +15,25 @@ from backend.model.devices.udp_schemas import ConnectRequestSchema, Registration
 from model.database.database_manager import DatabaseInterface, QueryByID, METADATA_OBJECT, RegisterDeviceQuery, QueryByIP
 from model.devices.device_manager import ScanUDPSocket
 from model.devices.exceptions import *
-from model.devices.device_requests import *
 from controller.device_management.schemas import DeviceRegistrationPreset, DeviceRegistrationResponse
 
 class DeviceState:
     pass
 
+
+class DeviceStateInterface(abc.ABC):
+    @abc.abstractmethod
+    async def get(self, route: str, request: BaseModel) -> Awaitable[BaseModel]:
+        pass
+    
+    @abc.abstractmethod
+    async def post(self, route: str, request: BaseModel) -> Awaitable[BaseModel]:
+        pass
+    
+    @abc.abstractmethod
+    async def delete(self, route: str, request: BaseModel) -> Awaitable[BaseModel]:
+        pass
+    
 
 class Device:
     def __init__(self, ip: str, name: Optional[str]=None, id: Optional[int]=None, expidited: bool=False):
@@ -53,9 +70,11 @@ class Device:
         return time.time() - self.time_received > 30
     
     async def state_set_register_request(self, server_port: int) -> Awaitable: # add synchronization primitives to the socket to prevent race condition, also add to api router to prevent problems with 2 routes being added at once
-        self.selected_state = RequestRegistrationState(self, server_port)
-        await self.selected_state.state_action()
-    
+        register_state: RequestRegistrationState = RequestRegistrationState(self, server_port)
+        await register_state.setup()
+        
+        self.selected_state = register_state
+        
     async def state_set_active(self):
         self.selected_state = DeviceActiveState(self)
     
@@ -68,14 +87,14 @@ class Device:
     async def state_set_error(self, error: Exception):
         self.selected_state = DeviceErrorState(error)
         
-    async def get(self, request: BaseModel) -> Awaitable[BaseModel]:
-        return await self.selected_state.get(request)
+    async def get(self, route: str, request: BaseModel) -> Awaitable[BaseModel]:
+        return await self.selected_state.get(route, request)
         
-    async def set(self, request: BaseModel) -> Awaitable[BaseModel]:
-        return await self.selected_state.set(request)
+    async def post(self, route: str, request: BaseModel) -> Awaitable[BaseModel]:
+        return await self.selected_state.set(route, request)
     
-    async def delete(self, request: BaseModel) -> Awaitable[BaseModel]:
-        return await self.selected_state.delete(request)
+    async def delete(self, route: str, request: BaseModel) -> Awaitable[BaseModel]:
+        return await self.selected_state.delete(route, request)
     
     def to_json(self) -> dict[str, Union[str, int, bool]]:
         return {"ip":self.ip, "name":self.name, "id":self.id, "expidited":self.expidited, "state":self.selected_state.to_json().model_dump_json()}
@@ -94,22 +113,48 @@ class Device:
         
     
 class DeviceState:
+    request_interval: int = 3
+    request_fail_count: int = 3
+    methods = Literal["GET", "PUT", "POST", "DELETE"]
     dead_time_interval: int | None = None
     
     def __init__(self, context: Device, **kwargs: dict):
         self.context: Device = context
+        
+    def __submit_request(self, ip: str, method: DeviceState.methods, route: str, data: Optional[BaseModel]) -> BaseModel | None:
+        match method:
+            case "GET":
+                response: Response = requests.get(f"{ip}{route}", timeout=DeviceState.request_interval)
+            case "PUT":
+                response: Response = requests.put(f"{ip}{route}", data=data.model_dump_json(), timeout=DeviceState.request_interval)
+            case "POST":
+                response: Response = requests.post(f"{ip}{route}", data=data.model_dump_json(), timeout=DeviceState.request_interval)
+            case "DELETE":
+                response: Response = requests.delete(f"{ip}{route}", data=data.model_dump_json(), timeout=DeviceState.request_interval)
+
+        return response
+
+    async def make_request(self, method: DeviceState.methods, route: str, data: Optional[BaseModel]) -> BaseModel:
+        response: Response | None = None
+        for _ in range(DeviceState.request_fail_count):
+            try:
+                self.__submit_request(self.context.get_ip(), method, route, data)
+            except Timeout:
+                await asyncio.sleep(DeviceState.request_interval)
+                continue
+        if not response:
+            raise HTTPException(500, detail="Request to device failed!")
+        
+        return response
     
-    @abc.abstractmethod
-    async def get(self, request: BaseModel) -> Awaitable[BaseModel]:
-        pass
+    async def get(self, route: Literal[""], request: BaseModel) -> Awaitable[BaseModel]:
+        raise RequestNotImplemented(self.context.get_id(), self.context.get_state_name(), "GET")
     
-    @abc.abstractmethod
-    async def set(self, request: BaseModel) -> Awaitable[BaseModel]:
-        pass
+    async def post(self, route: Literal[""], request: BaseModel) -> Awaitable[BaseModel]:
+        raise RequestNotImplemented(self.context.get_id(), self.context.get_state_name(), "POST")
     
-    @abc.abstractmethod
-    async def delete(self, request: BaseModel) -> Awaitable[BaseModel]:
-        pass
+    async def delete(self, route: Literal[""], request: BaseModel) -> Awaitable[BaseModel]:
+        raise RequestNotImplemented(self.context.get_id(), self.context.get_state_name(), "DELETE")
     
     @abc.abstractmethod
     async def error_handler(self, exception: Exception) -> Awaitable:
@@ -146,10 +191,7 @@ class RequestRegistrationState(DeviceState):
         
         self.register_event: asyncio.Event = asyncio.Event()
         
-    def advance_state(self) -> None:
-        self.context.set_state_active()
-        
-    async def state_action(self) -> Awaitable:
+    async def setup(self) -> Awaitable:
         message: RegistrationSchema = RegistrationSchema(server_ip=self.context.get_ip(), server_port=self.server_port).model_dump_json()
         await ScanUDPSocket.send(message, self.context.get_ip())
         
@@ -157,15 +199,15 @@ class RequestRegistrationState(DeviceState):
         
         await asyncio.wait_for(self.register_event, self.registration_timeout)
         
-        self.advance_state()
+        self.context.state_set_active()
     
     @override
     async def cleanup(self):
         self.router.routes.remove(f"/register/{self.context.get_ip()}")
         
-    async def state_failure_action(self, exception: Exception) -> Awaitable: # this should regress the state to scanned, or something
-        self.context.set
-        raise HTTPException(503, detail=f"Registration of Device {self.context.get_ip()} failed!")
+    async def error_handler(self, exception: Exception) -> Awaitable: # this should regress the state to scanned, or something
+        self.context.state_set_error(exception)
+        raise HTTPException(503, detail=f"Registration of Device {self.context.get_ip()} failed!") from exception
             
     def sync_project_and_preset(self, true_device_id: str, database_device_data: METADATA_OBJECT) -> DeviceRegistrationResponse:
         server_preset_response: Optional[DeviceRegistrationPreset] = None
@@ -232,44 +274,68 @@ class RequestRegistrationState(DeviceState):
         
 
 class DeviceActiveState(DeviceState):
-    request_types = {
-        "change_preset":
-    }
+    @override
+    async def post(self, route: Literal[
+            "/reset/network",
+            "/time"
+            "/configure/id"
+            "/configure/preset",
+            "/configure/status"
+        ], 
+    request: BaseModel) -> Awaitable[BaseModel]:
+        self.make_request("POST", route, request)
+    
+    @override
+    async def delete(self, route: Literal["/reset/hard"], request: BaseModel) -> Awaitable[BaseModel]:
+        self.make_request("DELETE", route, request)
 
     
 class DeviceIdleState(DeviceState):
     pass
-
+        
     
 class DeviceDisconnectedState(DeviceState):
     def __init__(self, server_port: int):
         self.server_port: int = server_port
         
-    async def state_action(self) -> None:
+    @override
+    async def get(self) -> None:
         raise DeviceDisconnectedException(self.context.get_id())
     
-    def advance_state(self) -> Awaitable:
-        self.context.state_set_register_request(self.server_port)
+    @override
+    async def post(self) -> None:
+        raise DeviceDisconnectedException(self.context.get_id())
     
-    async def state_failure_action(self, exception: Exception) -> Awaitable:
+    @override
+    async def delete(self) -> None:
+        raise DeviceDisconnectedException(self.context.get_id())
+    
+    async def error_handler(self, exception: Exception) -> Awaitable:
         pass
 
 class DeviceErrorState(DeviceState): # needs advance state
     def __init__(self, exception: Exception):
         self.exception: Exception = exception
         
-    async def state_action(self) -> Awaitable:
-        raise DeviceErrorException from self.exception
+    @override
+    async def get(self) -> None:
+        raise DeviceErrorException(self.exception)
     
-    async def state_failure_action(self, exception: Exception) -> Awaitable:
+    @override
+    async def post(self) -> None:
+        raise DeviceErrorException(self.exception)
+    
+    @override
+    async def delete(self) -> None:
+        raise DeviceErrorException(self.exception)
+    
+    async def error_handler(self, exception: Exception) -> Awaitable:
         pass
+    
         
 class DeviceHaltedState(DeviceState):
-    async def state_action(self) -> Awaitable:
-        raise DeviceHaltedException(self.context.get_id())
-    
-    async def advance_state(self) -> None:
-        self.context.state_set_active()
+    async def post(self, route: Literal["/configure/status"], request: BaseModel) -> Awaitable[BaseModel]:
+        self.make_request("POST", route, request)
     
 # class DeviceContainer(TaskSubject):
 #     def __init__(self):
